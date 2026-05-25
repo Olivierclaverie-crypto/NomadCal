@@ -85,11 +85,12 @@ function minutesToHHMM(min) {
   return `${h}:${m}`;
 }
 
-const GRID_START = 8*60;  // 8h
-const GRID_END   = 20*60; // 20h
-const GRID_TOTAL = GRID_END - GRID_START; // 720 min
+const GRID_START = 0;      // 0h — grille complète 24h
+const GRID_END   = 24*60;  // 24h
+const GRID_TOTAL = GRID_END - GRID_START; // 1440 min
 const SLOT_H     = 56; // px par heure
-const GRID_H     = (GRID_TOTAL/60)*SLOT_H; // 672px
+const GRID_H     = (GRID_TOTAL/60)*SLOT_H; // 1344px
+const GRID_DEFAULT_SCROLL = 8*60; // scroll initial à 8h
 
 function timeToY(hhmm) {
   const min = timeToMinutes(hhmm);
@@ -428,7 +429,7 @@ function TaskForm({initial,onSave,onCancel}){
 }
 
 // ── Fiche détail événement ────────────────────────────────────────────────────
-function EventDetail({ev,onEdit,onDelete,onClose,onShare}){
+function EventDetail({ev,onEdit,onDelete,onClose,onShare,onCopy}){
   const isTask = ev.type==="task";
   const isSynthese = ev.type==="synthese";
   const pr = isTask ? PRIORITY[ev.priority||"normal"] : null;
@@ -487,11 +488,21 @@ function EventDetail({ev,onEdit,onDelete,onClose,onShare}){
 
       {/* Actions */}
       {!isSynthese&&(
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
-          <Btn onClick={onEdit} variant="soft" style={{flex:1}}>✎ Modifier</Btn>
-          <Btn onClick={onShare} variant="outline" style={{flex:1}}>↗ Partager</Btn>
-          <Btn onClick={onDelete} variant="danger" style={{flex:1}}>🗑 Supprimer</Btn>
-        </div>
+        <>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
+            <Btn onClick={onEdit} variant="soft" style={{flex:1}}>✎ Modifier</Btn>
+            <Btn onClick={onShare} variant="outline" style={{flex:1}}>↗ Partager</Btn>
+            <Btn onClick={onDelete} variant="danger" style={{flex:1}}>🗑 Supprimer</Btn>
+          </div>
+          <div style={{marginTop:8}}>
+            <Btn onClick={onCopy} variant="gold" style={{width:"100%",justifyContent:"center",display:"flex"}}>
+              📋 Copier cet événement
+            </Btn>
+            <div style={{fontSize:11,color:"#8B5E20",textAlign:"center",marginTop:6}}>
+              Après avoir copié → swipe vers le jour cible → appui long sur le créneau → Coller
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -668,6 +679,9 @@ function SettingsScreen({calendars,settings,onSave,onLogout,onClose}){
 
 // ── App principale ────────────────────────────────────────────────────────────
 export default function CalFlow(){
+  // Ref scroll grille
+  const gridScrollRef = useRef(null);
+
   // Auth
   const [auth,setAuth]       = useState(()=>load("cf_auth",null));
   const [calendars,setCalendars]=useState(()=>load("cf_calendars",[]));
@@ -699,6 +713,14 @@ export default function CalFlow(){
   const touchStartX = useRef(null);
 
   const weekDays = getWeekDays(weekStart);
+
+  // ── Scroll initial à 8h ──
+  useEffect(()=>{
+    if(gridScrollRef.current){
+      const scrollTo = (GRID_DEFAULT_SCROLL/GRID_TOTAL)*GRID_H;
+      gridScrollRef.current.scrollTop = scrollTo;
+    }
+  },[]);
 
   // ── Persistance ──
   useEffect(()=>save("cf_tasks",tasks),[tasks]);
@@ -921,7 +943,9 @@ export default function CalFlow(){
     }).map(d=>({...d,type:"synthese",allDay:true,startDate:d.date,endDate:d.date,
       calColor:C.green,calName:"Synthèses NotesFlow"}));
 
-    return [...caldavEvs,...dayTasks,...deadlines];
+    // Les deadlines et allDay restent dans les bannières uniquement
+    const timedCaldavEvs = caldavEvs.filter(ev=>!ev.allDay);
+    return [...timedCaldavEvs,...dayTasks];
   }
 
   // ── Événements all-day (bannières) ──
@@ -955,7 +979,7 @@ export default function CalFlow(){
   const today = todayISO();
   const banners = getBannerEvents();
   const nowMinutes = new Date().getHours()*60+new Date().getMinutes();
-  const nowY = ((nowMinutes-GRID_START)/GRID_TOTAL)*GRID_H;
+  const nowY = (nowMinutes/GRID_TOTAL)*GRID_H;
 
   return(
     <div style={{height:"100vh",display:"flex",flexDirection:"column",background:C.bg,
@@ -1028,7 +1052,8 @@ export default function CalFlow(){
       {/* ── Zone bannières (all-day) ── */}
       {banners.length>0&&(
         <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,
-          flexShrink:0,padding:"4px 0"}}>
+          flexShrink:0,padding:"4px 0",
+          minHeight: Math.max(28, banners.length * 24 + 8)}}>
           <div style={{display:"flex"}}>
             <div style={{width:36,flexShrink:0,fontSize:9,color:C.muted,
               textAlign:"right",paddingRight:4,paddingTop:4,lineHeight:1.2}}>
@@ -1063,7 +1088,7 @@ export default function CalFlow(){
       )}
 
       {/* ── Grille horaire ── */}
-      <div style={{flex:1,overflowY:"auto",position:"relative"}}
+      <div ref={gridScrollRef} style={{flex:1,overflowY:"auto",position:"relative"}}
         onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div style={{display:"flex",minHeight:GRID_H+20,position:"relative"}}>
 
@@ -1095,7 +1120,7 @@ export default function CalFlow(){
             </div>
 
             {/* Ligne heure courante */}
-            {nowMinutes>=GRID_START&&nowMinutes<=GRID_END&&(
+            {nowMinutes>=0&&nowMinutes<=1440&&(
               <div style={{position:"absolute",left:0,right:0,top:nowY,
                 borderTop:`2px solid ${C.red}`,zIndex:10,pointerEvents:"none"}}>
                 <div style={{width:8,height:8,borderRadius:"50%",background:C.red,
@@ -1143,37 +1168,31 @@ export default function CalFlow(){
                     const y    = timeToY(ev.startTime||"09:00");
                     const h    = Math.max(20,durationToH(ev.startTime||"09:00",ev.endTime||"10:00"));
                     const isTask = ev.type==="task";
-                    const bg   = isTask?C.goldLight:(ev.calColor||C.accent)+"22";
-                    const border= isTask?C.gold:(ev.calColor||C.accent);
-                    const textC = isTask?C.goldDark:(ev.calColor||C.accent);
+                    // Couleur iCloud — fond coloré + texte blanc contrasté
+                    const evColor = isTask ? C.gold : (ev.calColor||C.accent);
+                    const bg    = isTask ? C.goldLight : evColor;
+                    const border= evColor;
+                    // Texte blanc sur couleur foncée, noir sur couleur claire
+                    function isLight(hex){
+                      const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+                      return (r*299+g*587+b*114)/1000>128;
+                    }
+                    const textC = isTask ? C.goldDark : (isLight(evColor)?"#0F1D2B":"#ffffff");
                     const isDone= isTask&&ev.done;
 
                     return(
                       <div key={ev.id}
                         onClick={e=>{e.stopPropagation();setDetailEv(ev);}}
-                        onTouchStart={e=>{
-                          e.stopPropagation();
-                          const timer=setTimeout(()=>{
-                            setClipboard(ev);
-                            alert(`"${ev.title}" copié ! Navigue vers le jour cible et appuie longtemps sur le créneau.`);
-                          },600);
-                          e.currentTarget._longPressTimer=timer;
-                        }}
-                        onTouchEnd={e=>{
-                          clearTimeout(e.currentTarget._longPressTimer);
-                        }}
-                        style={{position:"absolute",top:y+1,left:2,right:2,height:h-2,
+                        style={{position:"absolute",top:y+1,left:1,right:1,height:h-2,
                           background:bg,border:`1.5px solid ${border}`,borderRadius:6,
-                          padding:"2px 4px",cursor:"pointer",overflow:"hidden",
+                          padding:"3px 4px",cursor:"pointer",overflow:"hidden",
                           opacity:isDone?.6:1,transition:"opacity .2s",
-                          borderLeft:`3px solid ${border}`}}>
+                          borderLeft:`3px solid ${border}`,boxSizing:"border-box"}}>
                         <div style={{fontSize:10,fontWeight:800,color:textC,lineHeight:1.3,
-                          textDecoration:isDone?"line-through":"none",
-                          display:"flex",alignItems:"flex-start",gap:3}}>
-                          {isTask&&<span style={{flexShrink:0}}>{ev.done?"✓":"↻"}</span>}
-                          <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                            {ev.startTime} {ev.title}
-                          </span>
+                          textDecoration:isDone?"line-through":"none"}}>
+                          {isTask&&<span style={{marginRight:2}}>{ev.done?"✓ ":"↻ "}</span>}
+                          <span style={{fontSize:10,opacity:.9}}>{ev.startTime} </span>
+                          <span style={{wordBreak:"break-word",whiteSpace:"pre-wrap"}}>{ev.title}</span>
                         </div>
                       </div>
                     );
@@ -1244,6 +1263,7 @@ export default function CalFlow(){
           onDelete={()=>setConfirmDel(detailEv)}
           onClose={()=>setDetailEv(null)}
           onShare={()=>shareEvent(detailEv)}
+          onCopy={()=>{setClipboard(detailEv);setDetailEv(null);}}
         />}
         {detailEv?.type==="task"&&!detailEv.done&&(
           <div style={{marginTop:16}}>
