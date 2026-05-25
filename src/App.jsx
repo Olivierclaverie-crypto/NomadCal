@@ -721,10 +721,10 @@ export default function CalFlow(){
     if(!auth) return;
     setSyncing(true);
     try{
-      // 1. Découvrir les calendriers
+      // 1. Découvrir les calendriers — URL directe p126
       const { text: propText } = await caldavRequest(
         "PROPFIND",
-        `/1012673262/principal/`,
+        `/1012673262/calendars/`,
         auth.auth,
         `<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:a="http://apple.com/ns/ical/">
           <d:prop><d:displayname/><c:calendar-description/><a:calendar-color/><d:resourcetype/></d:prop>
