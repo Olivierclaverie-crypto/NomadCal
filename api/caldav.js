@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const base = "https://p59-caldav.icloud.com";
+  const base = "https://p126-caldav.icloud.com";
   const path = caldavPath.startsWith("/") ? caldavPath : "/" + caldavPath;
   const icloudUrl = `${base}${path}`;
 
