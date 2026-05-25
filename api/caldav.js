@@ -1,10 +1,10 @@
 // api/caldav.js — Vercel Serverless Function
-// Proxy CalDAV iCloud pour contourner les restrictions CORS d'Apple
+// Proxy CalDAV iCloud — partition p59
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,PROPFIND,REPORT,MKCALENDAR,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Depth,Prefer,If-Match");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Depth,Prefer,If-Match,If-None-Match");
 
   if (req.method === "OPTIONS") {
     res.status(200).end();
@@ -23,7 +23,10 @@ export default async function handler(req, res) {
     return;
   }
 
-  const icloudUrl = `https://caldav.icloud.com${caldavPath.startsWith("/") ? caldavPath : "/" + caldavPath}`;
+  // Utilise p59 comme base — découverte automatique si redirect
+  const base = "https://p59-caldav.icloud.com";
+  const path = caldavPath.startsWith("/") ? caldavPath : "/" + caldavPath;
+  const icloudUrl = `${base}${path}`;
 
   try {
     const fetchOptions = {
@@ -35,6 +38,7 @@ export default async function handler(req, res) {
         "Prefer": req.headers["prefer"] || "",
         "User-Agent": "CalFlow/1.0",
       },
+      redirect: "follow",
     };
 
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -49,6 +53,8 @@ export default async function handler(req, res) {
     res.status(response.status);
     const ct = response.headers.get("content-type");
     if (ct) res.setHeader("Content-Type", ct);
+    // Expose l'URL finale en cas de redirect
+    res.setHeader("X-Final-Url", response.url||icloudUrl);
     res.send(text);
   } catch (err) {
     res.status(500).json({ error: err.message });
