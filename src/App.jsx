@@ -728,6 +728,7 @@ export default function CalFlow(){
         "PROPFIND",
         `/dav/principal/`,
         auth.auth,
+        // partition p59 hardcodée — détectée via x-apple-user-partition
         `<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:a="http://apple.com/ns/ical/">
           <d:prop><d:displayname/><c:calendar-description/><a:calendar-color/><d:resourcetype/></d:prop>
         </d:propfind>`,
