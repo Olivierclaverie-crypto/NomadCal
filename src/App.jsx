@@ -647,6 +647,13 @@ function EventDetail({ev,onEdit,onDelete,onClose,onShare,onCopy}){
           🔁 {rruleToFr(ev.rrule)}
         </div>
       )}
+      {isTask&&ev.recurrence&&ev.recurrence!=="none"&&(
+        <div style={{fontSize:12,color:C.accent,background:C.accentLight,
+          border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"4px 10px",
+          display:"inline-flex",alignItems:"center",gap:4}}>
+          🔁 {ev.recurrence==="daily"?"Quotidienne":ev.recurrence==="weekly"?"Hebdomadaire":ev.recurrence==="monthly"?"Mensuelle":"Récurrente"}
+        </div>
+      )}
       {ev.location&&(
         <div style={{fontSize:14,color:C.muted}}>📍 {ev.location}</div>
       )}
@@ -665,14 +672,16 @@ function EventDetail({ev,onEdit,onDelete,onClose,onShare,onCopy}){
             <Btn onClick={onShare} variant="outline" style={{flex:1}}>↗ Partager</Btn>
             <Btn onClick={onDelete} variant="danger" style={{flex:1}}>🗑 Supprimer</Btn>
           </div>
-          <div style={{marginTop:8}}>
-            <Btn onClick={onCopy} variant="gold" style={{width:"100%",justifyContent:"center",display:"flex"}}>
-              📋 Copier cet événement
-            </Btn>
-            <div style={{fontSize:11,color:"#8B5E20",textAlign:"center",marginTop:6}}>
-              Après avoir copié → swipe vers le jour cible → appui long sur le créneau → Coller
+          {!isTask&&(
+            <div style={{marginTop:8}}>
+              <Btn onClick={onCopy} variant="gold" style={{width:"100%",justifyContent:"center",display:"flex"}}>
+                📋 Copier cet événement
+              </Btn>
+              <div style={{fontSize:11,color:"#8B5E20",textAlign:"center",marginTop:6}}>
+                Après avoir copié → swipe vers le jour cible → tap sur le créneau → Coller
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>
@@ -1455,12 +1464,13 @@ export default function CalFlow(){
       {/* ── Tiroir Tâches ── */}
       <div style={{
         position:"fixed",bottom:0,left:0,right:0,zIndex:200,
-        transform:drawerOpen?"translateY(0)":"translateY(calc(100% - 44px))",
+        transform:drawerOpen?"translateY(0)":"translateY(calc(100% - 56px))",
         transition:"transform .3s cubic-bezier(.4,0,.2,1)",
         maxHeight:"60vh",display:"flex",flexDirection:"column",
         background:C.surface,borderTop:`2px solid ${C.gold}`,
         borderRadius:"16px 16px 0 0",
-        boxShadow:"0 -4px 20px rgba(0,0,0,.12)"}}>
+        boxShadow:"0 -4px 20px rgba(0,0,0,.12)",
+        paddingBottom:"env(safe-area-inset-bottom, 20px)"}}>
 
         {/* Handle + titre */}
         <div onClick={()=>setDrawerOpen(o=>!o)}
