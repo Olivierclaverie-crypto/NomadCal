@@ -478,23 +478,7 @@ export default function App() {
       {/* Tiroir tâches */}
       <TaskDrawer tasks={tasks} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} swipeTaskId={swipeTaskId} setSwipeTaskId={setSwipeTaskId} onTaskClick={t=>setDetailEv({...t,type:"task"})} onTaskDone={t=>setConfirmDone(t)} onTaskDelete={t=>setConfirmDel({...t,type:"task"})} onAddTask={()=>setTaskFormOpen(true)}/>
 
-      {/* Tiroir frais — V2 placeholder */}
-      <div style={{
-        position:"fixed",bottom:0,left:0,right:0,
-        height:95,
-        background:C.goldLight,
-        borderTop:`1.5px solid ${C.gold}`,
-        display:"flex",alignItems:"center",
-        justifyContent:"space-between",
-        padding:"0 16px",
-        paddingBottom:"env(safe-area-inset-bottom,16px)",
-        zIndex:190,
-      }}>
-        <span style={{fontSize:16,fontWeight:800,color:C.goldDark,fontFamily:"Phenomena,sans-serif"}}>
-          💰 Frais
-        </span>
-        <span style={{fontSize:11,color:C.goldDark,opacity:.6}}>Bientôt disponible</span>
-      </div>
+
 
       {/* Modals */}
       <Modal open={formOpen} onClose={()=>{setFormOpen(false);setEditEv(null);}} title={editEv?"Modifier l'événement":"+ Nouvel événement"}>
