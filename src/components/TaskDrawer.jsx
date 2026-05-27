@@ -45,7 +45,7 @@ export default function TaskDrawer({
     borderRadius: 10,
     cursor: "pointer",
     fontFamily: "Phenomena, sans-serif",
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: 800,
     transition: "all .15s",
     background: activeTab === tab ? C.accent : "transparent",
@@ -153,7 +153,7 @@ export default function TaskDrawer({
       <div style={{
         position: "fixed",
         bottom: 0, left: 0, right: 0,
-        height: 70,
+        height: 110,
         background: C.surface,
         borderTop: `2px solid ${C.border}`,
         zIndex: 201,
