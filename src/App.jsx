@@ -40,6 +40,7 @@ const save = (k,v)   => { try{ localStorage.setItem(k,JSON.stringify(v)); }catch
 function getWeekStart(date) {
   const d = new Date(date);
   const day = d.getDay();
+  // Semaine commence le lundi (1) termine le dimanche (0→7)
   d.setDate(d.getDate() - (day===0?6:day-1));
   d.setHours(0,0,0,0);
   return d;
@@ -66,13 +67,12 @@ function fmtMonth(iso) {
 function fmtWeekRange(days) {
   const a = new Date(days[0]+"T12:00:00");
   const b = new Date(days[6]+"T12:00:00");
-  const da = a.getDate();
-  const ma = a.toLocaleDateString("fr-FR",{month:"short"});
-  const db = b.getDate();
-  const mb = b.toLocaleDateString("fr-FR",{month:"short"});
+  const ma = a.toLocaleDateString("fr-FR",{month:"long"});
+  const mb = b.toLocaleDateString("fr-FR",{month:"long"});
   const y  = b.getFullYear();
-  if(ma===mb) return `${da} – ${db} ${mb} ${y}`;
-  return `${da} ${ma} – ${db} ${mb} ${y}`;
+  // Afficher uniquement le(s) mois — pas de redondance avec les jours
+  if(ma===mb) return `${ma.charAt(0).toUpperCase()+ma.slice(1)} ${y}`;
+  return `${ma.charAt(0).toUpperCase()+ma.slice(1)} – ${mb.charAt(0).toUpperCase()+mb.slice(1)} ${y}`;
 }
 
 function timeToMinutes(hhmm) {
@@ -306,9 +306,9 @@ function expandRecurring(ev, rangeStart, rangeEnd) {
 
 // ── Tâches glissantes ─────────────────────────────────────────────────────────
 const PRIORITY = {
-  high:   { icon:"🔴", label:"Urgent",         color:C.red,    bg:C.redLight },
-  normal: { icon:"🟡", label:"Normal",          color:C.subtle, bg:"#fdf3e3"  },
-  low:    { icon:"🟢", label:"Quand possible",  color:C.green,  bg:C.greenLight },
+  high:   { icon:"🔴", label:"Chaud devant !",    color:C.red,    bg:C.redLight },
+  normal: { icon:"🟡", label:"C'est pour aujourd'hui", color:C.subtle, bg:"#fdf3e3"  },
+  low:    { icon:"🟢", label:"Quand tu peux…",    color:C.green,  bg:C.greenLight },
 };
 
 function slideTasksToToday(tasks) {
@@ -394,22 +394,34 @@ function EventForm({initial,calendars,defaultCalHref,onSave,onCancel}){
   const [location,setLocation] = useState(initial?.location||"");
   const [notes,setNotes]       = useState(initial?.notes||"");
   const [rrule,setRrule]       = useState(initial?.rrule||"");
-  const [editMode,setEditMode] = useState("this"); // this | all | following
+  const [editMode,setEditMode] = useState("this");
+  const [status,setStatus]     = useState(initial?.status||"confirmed"); // confirmed | pending // this | all | following
 
   const RECURRENCE_OPTIONS = [
-    { value:"",                           label:"Aucune" },
-    { value:"FREQ=DAILY;INTERVAL=1",      label:"Quotidienne" },
-    { value:"FREQ=WEEKLY;INTERVAL=1",     label:"Hebdomadaire" },
-    { value:"FREQ=WEEKLY;INTERVAL=2",     label:"Toutes les 2 semaines" },
-    { value:"FREQ=MONTHLY;INTERVAL=1",    label:"Mensuelle" },
-    { value:"FREQ=YEARLY;INTERVAL=1",     label:"Annuelle" },
-    { value:"FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", label:"Lun–Ven (jours ouvrés)" },
+    { value:"",                                          label:"Aucune" },
+    { value:"FREQ=DAILY;INTERVAL=1",                    label:"Quotidienne" },
+    { value:"FREQ=WEEKLY;INTERVAL=1",                   label:"Hebdomadaire" },
+    { value:"FREQ=WEEKLY;INTERVAL=2",                   label:"Toutes les 2 semaines" },
+    { value:"FREQ=MONTHLY;INTERVAL=1",                  label:"Mensuelle (même date)" },
+    { value:"FREQ=MONTHLY;BYDAY=1MO",                   label:"1er lundi du mois" },
+    { value:"FREQ=MONTHLY;BYDAY=2MO",                   label:"2ème lundi du mois" },
+    { value:"FREQ=MONTHLY;BYDAY=3MO",                   label:"3ème lundi du mois" },
+    { value:"FREQ=MONTHLY;BYDAY=1TU",                   label:"1er mardi du mois" },
+    { value:"FREQ=MONTHLY;BYDAY=2TU",                   label:"2ème mardi du mois" },
+    { value:"FREQ=MONTHLY;BYDAY=1WE",                   label:"1er mercredi du mois" },
+    { value:"FREQ=MONTHLY;BYDAY=2WE",                   label:"2ème mercredi du mois" },
+    { value:"FREQ=MONTHLY;BYDAY=1TH",                   label:"1er jeudi du mois" },
+    { value:"FREQ=MONTHLY;BYDAY=2TH",                   label:"2ème jeudi du mois" },
+    { value:"FREQ=MONTHLY;BYDAY=1FR",                   label:"1er vendredi du mois" },
+    { value:"FREQ=MONTHLY;BYDAY=2FR",                   label:"2ème vendredi du mois" },
+    { value:"FREQ=YEARLY;INTERVAL=1",                   label:"Annuelle" },
+    { value:"FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",        label:"Lun–Ven (jours ouvrés)" },
   ];
 
   function save(){
     if(!title.trim()) return;
     onSave({title:title.trim(),allDay,startDate,startTime:allDay?null:startTime,
-      endDate,endTime:allDay?null:endTime,calHref,location,notes,rrule,editMode});
+      endDate,endTime:allDay?null:endTime,calHref,location,notes,rrule,editMode,status});
   }
 
   return(
@@ -456,7 +468,12 @@ function EventForm({initial,calendars,defaultCalHref,onSave,onCancel}){
       {/* Calendrier */}
       <div>
         <label style={{fontSize:11,color:C.muted,display:"block",marginBottom:4,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>Calendrier</label>
-        <select value={calHref} onChange={e=>setCalHref(e.target.value)} style={{...iStyle}}>
+        <select value={calHref} onChange={e=>setCalHref(e.target.value)}
+          style={{...iStyle,
+            borderColor: calendars.find(c=>c.href===calHref)?.color||C.border,
+            borderWidth:2,
+            background: (calendars.find(c=>c.href===calHref)?.color||C.accent)+"15"
+          }}>
           {calendars.map(c=>(
             <option key={c.href} value={c.href}>{c.displayName}</option>
           ))}
@@ -465,7 +482,16 @@ function EventForm({initial,calendars,defaultCalHref,onSave,onCancel}){
 
       {/* Récurrence */}
       <div>
-        <label style={{fontSize:11,color:C.muted,display:"block",marginBottom:6,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>Récurrence</label>
+        <label style={{fontSize:11,color:C.muted,display:"block",marginBottom:6,fontWeight:700,
+          textTransform:"uppercase",letterSpacing:.5,display:"flex",alignItems:"center",gap:6}}>
+          Récurrence
+          <button onClick={()=>alert("🔁 Récurrence vs Tâche glissante\n\nLa RÉCURRENCE recrée automatiquement l'événement à la fréquence choisie.\n\nLa TÂCHE GLISSANTE glisse au lendemain si non faite — elle ne se duplique pas, elle se décale.")}
+            style={{background:"none",border:`1px solid ${C.border}`,borderRadius:"50%",
+              width:16,height:16,fontSize:10,cursor:"pointer",color:C.muted,
+              display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            ?
+          </button>
+        </label>
         <select value={rrule} onChange={e=>setRrule(e.target.value)} style={{...iStyle}}>
           {RECURRENCE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -490,8 +516,51 @@ function EventForm({initial,calendars,defaultCalHref,onSave,onCancel}){
         </div>
       )}
 
-      <input value={location} onChange={e=>setLocation(e.target.value)}
-        placeholder="Lieu (optionnel)" style={iStyle}/>
+      {/* Statut RDV */}
+      <div style={{display:"flex",gap:8,marginBottom:4}}>
+        <button onClick={()=>setStatus("confirmed")} style={{
+          flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",
+          border:`1.5px solid ${status==="confirmed"?C.green:C.border}`,
+          background:status==="confirmed"?C.greenLight:"transparent",
+          color:status==="confirmed"?C.green:C.muted,
+          fontSize:12,fontWeight:700,transition:"all .15s"}}>
+          ✅ Confirmé
+        </button>
+        <button onClick={()=>setStatus("pending")} style={{
+          flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",
+          border:`1.5px solid ${status==="pending"?"#F5A623":C.border}`,
+          background:status==="pending"?"#FFF8ED":"transparent",
+          color:status==="pending"?"#B8741A":C.muted,
+          fontSize:12,fontWeight:700,transition:"all .15s"}}>
+          🟠 À confirmer
+        </button>
+      </div>
+
+      <div style={{position:"relative"}}>
+        <input value={location} onChange={e=>setLocation(e.target.value)}
+          placeholder="Adresse / Lieu" style={{...iStyle,paddingRight:36}}/>
+        {location&&(
+          <button onClick={()=>{
+            const addr = encodeURIComponent(location);
+            // Pop-up choix navigation
+            const choice = confirm("Ouvrir dans :
+OK = Plans Apple
+Annuler = proposer Waze");
+            if(choice){
+              window.open(`maps://?q=${addr}`,"_blank");
+            } else {
+              const w = confirm("Waze ?
+OK = Waze
+Annuler = Google Maps");
+              if(w) window.open(`waze://?q=${addr}&navigate=yes`,"_blank");
+              else window.open(`https://maps.google.com/?q=${addr}`,"_blank");
+            }
+          }} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",
+            background:"none",border:"none",cursor:"pointer",fontSize:18,padding:2}}>
+            📍
+          </button>
+        )}
+      </div>
       <textarea value={notes} onChange={e=>setNotes(e.target.value)}
         placeholder="Notes (optionnel)" rows={3}
         style={{...iStyle,resize:"none",lineHeight:1.6}}/>
@@ -914,6 +983,33 @@ export default function CalFlow(){
   useEffect(()=>save("cf_calendars",calendars),[calendars]);
   useEffect(()=>save("cf_settings",settings),[settings]);
 
+  // ── Alerte 48h RDV à confirmer ──
+  useEffect(()=>{
+    const checkPending = () => {
+      const now = new Date();
+      const in48h = new Date(now.getTime() + 48*60*60*1000);
+      const in48hISO = toISO(in48h);
+      const pendingRDV = events.filter(ev=>
+        ev.status==="pending" &&
+        ev.startDate === in48hISO
+      );
+      if(pendingRDV.length>0){
+        const titles = pendingRDV.map(e=>e.title).join(", ");
+        if(window.confirm(`⚠️ RDV à confirmer dans 48h :
+${titles}
+
+Voulez-vous les confirmer maintenant ?`)){
+          setEvents(prev=>prev.map(e=>
+            pendingRDV.find(p=>p.id===e.id) ? {...e,status:"confirmed"} : e
+          ));
+        }
+      }
+    };
+    checkPending();
+    const interval = setInterval(checkPending, 60*60*1000); // toutes les heures
+    return()=>clearInterval(interval);
+  },[events]);
+
   // ── Glissement minuit ──
   useEffect(()=>{
     const now=new Date();
@@ -1238,17 +1334,17 @@ export default function CalFlow(){
         padding:"12px 16px 10px",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
           <span style={{fontSize:22,fontWeight:800,color:C.accent,
-            fontFamily:"Phenomena,sans-serif",letterSpacing:-1}}>CalFlow</span>
+            fontFamily:"Phenomena,sans-serif",letterSpacing:-1,fontSize:28}}>NomadCal</span>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             {/* Indicateur sync */}
-            <div style={{width:8,height:8,borderRadius:"50%",
+            <div style={{width:11,height:11,borderRadius:"50%",
               background:syncing?"#F5C97A":syncOk?C.green:C.red,
               transition:"background .3s"}}
               title={syncing?"Synchronisation…":syncOk?"Synchronisé":"Erreur sync"}/>
             <button onClick={syncCalDAV} style={{background:"none",border:"none",
-              color:C.muted,cursor:"pointer",fontSize:16,padding:4}}>↻</button>
+              color:C.muted,cursor:"pointer",fontSize:22,padding:4}}>↻</button>
             <button onClick={()=>setScreen("settings")} style={{background:"none",border:"none",
-              color:C.muted,cursor:"pointer",fontSize:18,padding:4}}>⚙</button>
+              color:C.muted,cursor:"pointer",fontSize:22,padding:4}}>⚙️</button>
           </div>
         </div>
         {clipboard ? (
@@ -1270,11 +1366,11 @@ export default function CalFlow(){
                 style={{fontSize:11,fontWeight:700,color:C.accent,background:C.accentLight,
                   border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"4px 10px",
                   cursor:"pointer",fontFamily:"inherit"}}>Aujourd'hui</button>
-              <button onClick={()=>setDrawerOpen(o=>!o)}
-                style={{fontSize:11,fontWeight:700,color:C.goldDark,background:C.goldLight,
-                  border:`1px solid ${C.gold}88`,borderRadius:8,padding:"4px 10px",
+              <button onClick={()=>window.open("https://notes-flow-six.vercel.app","_blank")}
+                style={{fontSize:11,fontWeight:700,color:C.accent,background:C.accentLight,
+                  border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"4px 10px",
                   cursor:"pointer",fontFamily:"inherit"}}>
-                ↻ {tasks.filter(t=>!t.done).length>0?`${tasks.filter(t=>!t.done).length} Tâche${tasks.filter(t=>!t.done).length>1?"s":""}` : "Tâches"}
+                📝 NomadNotes
               </button>
               <button onClick={()=>setFormOpen(true)}
                 style={{fontSize:11,fontWeight:700,color:"#fff",background:C.accent,
@@ -1385,7 +1481,7 @@ export default function CalFlow(){
             {nowMinutes>=0&&nowMinutes<=1440&&(
               <div style={{position:"absolute",left:0,right:0,top:nowY,
                 borderTop:`2px solid ${C.red}`,zIndex:10,pointerEvents:"none"}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:C.red,
+                <div style={{width:11,height:11,borderRadius:"50%",background:C.red,
                   position:"absolute",left:-4,top:-4}}/>
               </div>
             )}
@@ -1436,15 +1532,28 @@ export default function CalFlow(){
                     return(
                       <div key={ev.id+ev.col}
                         onClick={e=>{e.stopPropagation();setDetailEv(ev);}}
+                        onDoubleClick={e=>{e.stopPropagation();setClipboard(ev);
+                          const t=document.createElement("div");
+                          t.textContent="📋 Copié !";
+                          t.style.cssText="position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#0F1D2B;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;z-index:999;font-family:inherit";
+                          document.body.appendChild(t);
+                          setTimeout(()=>t.remove(),2000);
+                        }}
                         style={{position:"absolute",
                           top:y+1,
                           left:`${leftPct+0.5}%`,
                           width:`${colW-1}%`,
                           height:h-2,
-                          background:bg,border:`1.5px solid ${border}`,borderRadius:6,
+                          background:bg,border:`1.5px solid ${ev.status==="pending"?"#F5A623":border}`,
+                          borderRadius:6,
                           padding:"3px 4px",cursor:"pointer",overflow:"hidden",
                           opacity:isDone?.6:1,transition:"opacity .2s",
-                          borderLeft:`3px solid ${border}`,boxSizing:"border-box"}}>
+                          borderLeft:`3px solid ${ev.status==="pending"?"#F5A623":border}`,
+                          boxSizing:"border-box"}}>
+                        {ev.status==="pending"&&(
+                          <div style={{position:"absolute",top:2,right:2,
+                            width:6,height:6,borderRadius:"50%",background:"#F5A623"}}/>
+                        )}
                         <div style={{fontSize:10,fontWeight:800,color:textC,lineHeight:1.3,
                           textDecoration:isDone?"line-through":"none"}}>
                           {isTask&&<span style={{marginRight:2}}>{ev.done?"✓ ":"↻ "}</span>}
@@ -1475,14 +1584,18 @@ export default function CalFlow(){
         {/* Handle + titre */}
         <div onClick={()=>setDrawerOpen(o=>!o)}
           style={{padding:"8px 16px 6px",cursor:"pointer",flexShrink:0}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 8px"}}/>
+          {/* Flèche gold pleine largeur */}
+          <div style={{textAlign:"center",fontSize:20,color:C.gold,lineHeight:1,marginBottom:4}}>
+            {drawerOpen ? "↓" : "↑"}
+          </div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:13,fontWeight:700,color:C.goldDark}}>
+              <span style={{fontSize:16,fontWeight:800,color:C.goldDark,
+                fontFamily:"Phenomena,sans-serif"}}>
                 ↻ Tâches en cours
               </span>
-              <span style={{fontSize:11,background:C.goldLight,color:C.goldDark,
-                border:`1px solid ${C.gold}88`,borderRadius:10,padding:"1px 6px",fontWeight:700}}>
+              <span style={{fontSize:13,background:C.goldLight,color:C.goldDark,
+                border:`1px solid ${C.gold}88`,borderRadius:10,padding:"2px 8px",fontWeight:700}}>
                 {tasks.filter(t=>!t.done).length}
               </span>
             </div>
