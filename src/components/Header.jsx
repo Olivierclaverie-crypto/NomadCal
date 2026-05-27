@@ -41,19 +41,26 @@ export default function Header({
           NomadCal
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* Indicateur sync */}
-          <div style={{
-            width: 11, height: 11, borderRadius: "50%",
-            background: syncing ? C.gold : syncOk ? C.green : C.red,
-            transition: "background .3s",
-          }} title={syncing ? "Synchronisation…" : syncOk ? "Synchronisé" : "Erreur sync"} />
-          <button onClick={onSync} style={{
-            background: "none", border: "none",
-            color: C.muted, cursor: "pointer", fontSize: 22, padding: 4,
-          }}>↻</button>
+          {/* Refresh + pastille centrée */}
+          <div style={{ position: "relative", display: "inline-flex" }}>
+            <button onClick={onSync} style={{
+              background: "none", border: "none",
+              color: C.muted, cursor: "pointer", fontSize: 24, padding: 4,
+              lineHeight: 1,
+            }}>↻</button>
+            <div style={{
+              position: "absolute",
+              top: "50%", left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 8, height: 8, borderRadius: "50%",
+              background: syncing ? C.gold : syncOk ? C.green : C.red,
+              transition: "background .3s",
+              pointerEvents: "none",
+            }} title={syncing ? "Synchronisation…" : syncOk ? "Synchronisé" : "Erreur sync"} />
+          </div>
           <button onClick={onSettings} style={{
             background: "none", border: "none",
-            color: C.muted, cursor: "pointer", fontSize: 22, padding: 4,
+            color: C.muted, cursor: "pointer", fontSize: 24, padding: 4,
           }}>⚙️</button>
         </div>
       </div>
