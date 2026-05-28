@@ -8,7 +8,6 @@ import TaskDrawer from "./components/TaskDrawer.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
 import Settings from "./components/Settings.jsx";
 
-// ── Push événement vers iCloud ────────────────────────────────────────────────
 async function pushEvent(ev, auth) {
   if (!auth || !ev.calHref) return;
   const uid = ev.id?.startsWith("calflow-") ? ev.id : `calflow-${Date.now()}@nomadcal`;
@@ -35,7 +34,6 @@ async function deleteEvent(ev, auth) {
   await caldavRequest("DELETE", ev.href, makeAuthHeader(auth.email, auth.appPassword));
 }
 
-// ── Algorithme chevauchements ─────────────────────────────────────────────────
 function layoutEvents(dayEvs) {
   if (!dayEvs.length) return [];
   const sorted = [...dayEvs].sort((a,b) => timeToMinutes(a.startTime||"00:00") - timeToMinutes(b.startTime||"00:00"));
@@ -59,7 +57,6 @@ function layoutEvents(dayEvs) {
   return result;
 }
 
-// ── Formulaire événement ──────────────────────────────────────────────────────
 function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref }) {
   const [title,setTitle]       = useState(initial?.title||"");
   const [allDay,setAllDay]     = useState(initial?.allDay||false);
@@ -133,7 +130,6 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref }) {
   );
 }
 
-// ── Formulaire tâche ──────────────────────────────────────────────────────────
 function TaskForm({ initial, onSave, onCancel }) {
   const [title,setTitle]         = useState(initial?.title||"");
   const [notes,setNotes]         = useState(initial?.notes||"");
@@ -178,7 +174,6 @@ function TaskForm({ initial, onSave, onCancel }) {
   );
 }
 
-// ── Fiche détail événement/tâche ──────────────────────────────────────────────
 function EventDetail({ ev, onEdit, onDelete, onShare, onCopy, onDone }) {
   if (!ev) return null;
   const isTask = ev.type === "task";
@@ -209,7 +204,6 @@ function EventDetail({ ev, onEdit, onDelete, onShare, onCopy, onDone }) {
   );
 }
 
-// ── App principale ────────────────────────────────────────────────────────────
 export default function App() {
   const [auth,setAuth]             = useState(()=>load("cf_auth",null));
   const [events,setEvents]         = useState(()=>load("cf_events",[]));
@@ -237,7 +231,6 @@ export default function App() {
 
   const weekDays = getWeekDays(weekStart);
 
-  // Scroll initial 8h
   useEffect(()=>{
     if(gridScrollRef.current){
       const scrollTo=(GRID_DEFAULT_SCROLL/GRID_TOTAL)*GRID_H;
@@ -245,13 +238,11 @@ export default function App() {
     }
   },[]);
 
-  // Persistance
   useEffect(()=>save("cf_tasks",tasks),[tasks]);
   useEffect(()=>save("cf_events",events),[events]);
   useEffect(()=>save("cf_calendars",calendars),[calendars]);
   useEffect(()=>save("cf_settings",settings),[settings]);
 
-  // Glissement minuit
   useEffect(()=>{
     const slide=()=>setTasks(prev=>slideTasksToToday(prev));
     slide();
@@ -262,7 +253,6 @@ export default function App() {
     return()=>clearTimeout(t);
   },[]);
 
-  // Alerte 48h
   useEffect(()=>{
     const check=()=>{
       const in48h=new Date(Date.now()+48*60*60*1000);
@@ -280,11 +270,9 @@ export default function App() {
     return()=>clearInterval(interval);
   },[events]);
 
-  // Sync CalDAV — affiche le cache immédiatement, sync en arrière-plan
-  useEffect(()=>{ 
-    if(auth) {
-      // Délai léger pour laisser l'UI s'afficher d'abord
-      const t = setTimeout(()=>syncCalDAV(), 300);
+  useEffect(()=>{
+    if(auth){
+      const t=setTimeout(()=>syncCalDAV(),300);
       return()=>clearTimeout(t);
     }
   },[auth]);
@@ -335,7 +323,6 @@ export default function App() {
     const completedDate=toISO(new Date());
     const completedTime=new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
     setTasks(prev=>prev.map(t=>t.id===task.id?{...t,done:true,completedAt}:t));
-    // Inscrire dans la grille
     const doneEv={
       id:`done-${task.id}`,type:"task",done:true,
       title:task.title,startDate:completedDate,endDate:completedDate,
@@ -349,7 +336,6 @@ export default function App() {
     setTasks(prev=>prev.filter(t=>t.id!==task.id));
   }
 
-  // Swipe semaine
   function handleTouchStart(e){ touchStartX.current=e.touches[0].clientX; touchStartY.current=e.touches[0].clientY; }
   function handleTouchEnd(e){
     if(!touchStartX.current) return;
@@ -373,7 +359,6 @@ export default function App() {
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,overflow:"hidden",fontFamily:"Phenomena,Nunito,sans-serif"}}>
       <Header weekDays={weekDays} syncing={syncing} syncOk={syncOk} onSync={syncCalDAV} onSettings={()=>setScreen("settings")} onAddEvent={()=>{setEditEv(null);setFormOpen(true);}} clipboard={clipboard} onClearClipboard={()=>{setClipboard(null);setPasteTarget(null);}} tasks={tasks} onToggleDrawer={()=>setDrawerOpen(o=>!o)} weekStart={weekStart} onToday={()=>setWeekStart(getWeekStart(new Date()))} fmtWeekRange={fmtWeekRange}/>
 
-      {/* En-tête jours */}
       <div style={{display:"flex",background:C.surface,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
         <div style={{width:36,flexShrink:0}}/>
         {weekDays.map(day=>{
@@ -391,7 +376,6 @@ export default function App() {
         })}
       </div>
 
-      {/* Bannières all-day */}
       {allEvs.some(e=>e.allDay&&weekDays.some(d=>d>=e.startDate&&d<=e.endDate))&&(
         <div style={{display:"flex",background:C.surface,borderBottom:`1px solid ${C.border}`,padding:"4px 0",flexShrink:0}}>
           <div style={{width:36,flexShrink:0,fontSize:9,color:C.muted,textAlign:"center",paddingTop:4}}>Jour<br/>entier</div>
@@ -410,17 +394,14 @@ export default function App() {
         </div>
       )}
 
-      {/* Grille horaire */}
       <div ref={gridScrollRef} style={{flex:1,overflowY:"auto",position:"relative"}}
         onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div style={{display:"flex",height:GRID_H,position:"relative"}}>
-          {/* Heures */}
           <div style={{width:36,flexShrink:0}}>
             {Array.from({length:24},(_,h)=>(
               <div key={h} style={{position:"absolute",top:(h*60/GRID_TOTAL)*GRID_H,left:0,width:36,fontSize:9,color:C.muted,textAlign:"right",paddingRight:4,fontFamily:"monospace"}}>{h}h</div>
             ))}
           </div>
-          {/* Colonnes jours */}
           {weekDays.map(day=>{
             const isToday=day===today;
             const caldavEvs=allEvs.filter(e=>!e.allDay&&(e.startDate===day||(!e.isRecurring&&e.startDate<=day&&(e.endDate||e.startDate)>=day)));
@@ -438,13 +419,10 @@ export default function App() {
                   if(clipboard){setPasteTarget({date:day,time});}
                   else{setEditEv(null);setFormOpen(true);}
                 }}>
-                {/* Lignes heures */}
                 {Array.from({length:24},(_,h)=>(
                   <div key={h} style={{position:"absolute",top:(h*60/GRID_TOTAL)*GRID_H,left:0,right:0,borderTop:h%1===0?`0.5px solid ${C.border}`:"none"}}/>
                 ))}
-                {/* Ligne heure courante */}
                 {nowPct&&<div style={{position:"absolute",top:`${nowPct*100}%`,left:0,right:0,height:2,background:C.red,zIndex:10}}><div style={{position:"absolute",left:-4,top:-3,width:8,height:8,borderRadius:"50%",background:C.red}}/></div>}
-                {/* Événements */}
                 {layoutEvents(dayEvs).map(ev=>{
                   const y=timeToY(ev.startTime||"09:00");
                   const h=Math.max(20,durationToH(ev.startTime||"09:00",ev.endTime||"10:00"));
@@ -475,12 +453,22 @@ export default function App() {
         </div>
       </div>
 
-      {/* Tiroir tâches */}
-      <TaskDrawer tasks={tasks} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} swipeTaskId={swipeTaskId} setSwipeTaskId={setSwipeTaskId} onTaskClick={t=>setDetailEv({...t,type:"task"})} onTaskDone={t=>setConfirmDone(t)} onTaskDelete={t=>setConfirmDel({...t,type:"task"})} onAddTask={()=>setTaskFormOpen(true)}/>
+      {/* Tiroir tâches — correction bug écran blanc */}
+      <TaskDrawer
+        tasks={tasks}
+        drawerOpen={drawerOpen}
+        setDrawerOpen={setDrawerOpen}
+        swipeTaskId={swipeTaskId}
+        setSwipeTaskId={setSwipeTaskId}
+        onTaskClick={t=>{
+          setDrawerOpen(false);
+          setTimeout(()=>setDetailEv({...t,type:"task"}),50);
+        }}
+        onTaskDone={t=>setConfirmDone(t)}
+        onTaskDelete={t=>setConfirmDel({...t,type:"task"})}
+        onAddTask={()=>setTaskFormOpen(true)}
+      />
 
-
-
-      {/* Modals */}
       <Modal open={formOpen} onClose={()=>{setFormOpen(false);setEditEv(null);}} title={editEv?"Modifier l'événement":"+ Nouvel événement"}>
         <EventForm initial={editEv} calendars={calendars} defaultCalHref={settings.defaultCalHref} onCancel={()=>{setFormOpen(false);setEditEv(null);}} onSave={async ev=>{const newEv={...ev,id:editEv?.id||`calflow-${Date.now()}`,calColor:calendars.find(c=>c.href===ev.calHref)?.color||C.accent,calName:calendars.find(c=>c.href===ev.calHref)?.displayName||"",type:"event"};setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]);await pushEvent(newEv,auth);setFormOpen(false);setEditEv(null);}}/>
       </Modal>
