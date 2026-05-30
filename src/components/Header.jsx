@@ -16,14 +16,6 @@ const IconSettings = () => (
   </svg>
 );
 
-const IconFrais = () => (
-  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-    <circle cx="10" cy="10" r="8" stroke="#2B5A9E" strokeWidth="1.5"/>
-    <circle cx="10" cy="10" r="5" stroke="#F5C97A" strokeWidth="1"/>
-    <text x="10" y="14" textAnchor="middle" fontSize="9" fontWeight="700" fill="#2B5A9E" fontFamily="sans-serif">€</text>
-  </svg>
-);
-
 export default function Header({
   weekDays, syncing, syncOk, onSync, onSettings, onAddEvent,
   clipboard, onClearClipboard, onToday, onGoToDate, onChangeView,
@@ -60,14 +52,13 @@ export default function Header({
     return()=>{ document.removeEventListener("mousedown", handle); document.removeEventListener("touchstart", handle); };
   },[showViewMenu, showDatePicker]);
 
-  // ── Boutons — même taille fixe ──
-  const btnW = "calc(25% - 5px)";
+  // 4 boutons même taille fixe
   const btnBase = {
     fontSize: 13, fontWeight: 700,
     borderRadius: 9, padding: "7px 4px",
     cursor: "pointer", fontFamily: "inherit",
-    whiteSpace: "nowrap",
-    width: btnW, textAlign: "center",
+    whiteSpace: "nowrap", flex: 1,
+    textAlign: "center", width: "100%",
     boxSizing: "border-box",
   };
   const btnStyle   = { ...btnBase, border:`1px solid ${C.accentBorder}`, background:C.accentLight, color:C.accent };
@@ -132,12 +123,12 @@ export default function Header({
           <span style={{ fontSize:15, color:C.muted, fontWeight:600 }}>{fmtWeekRange(weekDays)}</span>
         </div>
 
-        {/* ── Ligne 3 — 4 boutons MÊME TAILLE ── */}
+        {/* ── Ligne 3 — 4 boutons même taille ── */}
         <div style={{ display:"flex", gap:6, padding:"0 14px 8px" }}>
 
           {/* Aller */}
-          <div style={{ position:"relative", width:btnW }} data-menu>
-            <button onClick={()=>{ setShowDatePicker(v=>!v); setShowViewMenu(false); }} style={{...btnStyle, width:"100%"}}>Aller</button>
+          <div style={{ position:"relative", flex:1 }} data-menu>
+            <button onClick={()=>{ setShowDatePicker(v=>!v); setShowViewMenu(false); }} style={btnStyle}>Aller</button>
             {showDatePicker && (
               <div data-menu style={{ position:"absolute", top:"calc(100% + 8px)", left:"50%", transform:"translateX(-50%)", background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:"16px", boxShadow:"0 8px 32px rgba(0,0,0,.18)", zIndex:499, width:300 }}>
                 <div style={{ fontSize:12, color:C.muted, fontWeight:700, letterSpacing:.5, textAlign:"center", marginBottom:10 }}>ALLER À UNE DATE</div>
@@ -147,8 +138,8 @@ export default function Header({
                   <div style={{ flex:1 }}><WheelPicker items={YEARS}  selectedIdx={pickYearIdx}  onChange={setPickYearIdx}/></div>
                 </div>
                 <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-                  <button onClick={()=>setShowDatePicker(false)} style={{...btnStyle,flex:1,width:"auto"}}>Annuler</button>
-                  <button onClick={handleGoToDate} style={{...btnPrimary,flex:1,width:"auto"}}>Aller ✓</button>
+                  <button onClick={()=>setShowDatePicker(false)} style={{...btnStyle,flex:1}}>Annuler</button>
+                  <button onClick={handleGoToDate} style={{...btnPrimary,flex:1}}>Aller ✓</button>
                 </div>
                 <button onClick={()=>{ onGoToDate(new Date()); setShowDatePicker(false); }} style={{ width:"100%", background:"none", border:"none", color:C.accent, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                   Aujourd'hui
@@ -158,8 +149,8 @@ export default function Header({
           </div>
 
           {/* Vues — sans flèche */}
-          <div style={{ position:"relative", width:btnW }} data-menu>
-            <button onClick={()=>{ setShowViewMenu(v=>!v); setShowDatePicker(false); }} style={{...btnStyle, width:"100%"}}>Vues</button>
+          <div style={{ position:"relative", flex:1 }} data-menu>
+            <button onClick={()=>{ setShowViewMenu(v=>!v); setShowDatePicker(false); }} style={btnStyle}>Vues</button>
             {showViewMenu && (
               <div data-menu style={{ position:"absolute", top:"calc(100% + 6px)", left:0, background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, overflow:"hidden", boxShadow:"0 6px 24px rgba(0,0,0,.15)", zIndex:499, minWidth:150 }}>
                 {views.map(v=>(
@@ -176,7 +167,7 @@ export default function Header({
           <button onClick={onAddEvent} style={btnPrimary}>+RDV</button>
         </div>
 
-        {/* ── Ligne 4 — Jours + numéros + € SVG sans disque ── */}
+        {/* ── Ligne 4 — Jours + numéros + € CSS ── */}
         <div style={{ display:"flex", borderTop:`0.5px solid ${C.border}` }}>
           {weekDays.map(day=>{
             const isToday = day === today;
@@ -188,10 +179,20 @@ export default function Header({
                 <div style={{ width:24, height:24, borderRadius:"50%", background:isToday?C.accent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 4px" }}>
                   <span style={{ fontSize:13, fontWeight:700, color:isToday?"#fff":C.ink }}>{fmtDayNum(day)}</span>
                 </div>
-                {/* € SVG sans disque bleu */}
-                <div onClick={()=>onOpenFrais&&onOpenFrais(day)}
-                  style={{ display:"flex", justifyContent:"center", cursor:"pointer" }}>
-                  <IconFrais/>
+                {/* € CSS pur — cercle bleu clair, filet bleu acier, € bleu foncé */}
+                <div
+                  onClick={()=>onOpenFrais&&onOpenFrais(day)}
+                  style={{
+                    width: 20, height: 20, borderRadius: "50%",
+                    background: C.accentLight,
+                    border: `1.5px solid ${C.accent}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    margin: "0 auto", cursor: "pointer",
+                    fontSize: 11, fontWeight: 800, color: C.accent,
+                    fontFamily: "Phenomena, sans-serif",
+                    boxShadow: `0 1px 3px ${C.accent}33`,
+                  }}>
+                  €
                 </div>
               </div>
             );
