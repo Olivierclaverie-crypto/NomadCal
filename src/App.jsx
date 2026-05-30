@@ -7,6 +7,7 @@ import Header from "./components/Header.jsx";
 import TaskDrawer from "./components/TaskDrawer.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
 import Settings from "./components/Settings.jsx";
+import NomadBook from "./components/NomadBook.jsx";
 
 const USER_PLAN = "free";
 
@@ -214,9 +215,9 @@ function EventPopover({ ev, onInfo, onShare, onDelete, onClose, position }) {
           {isPending&&<span style={{marginRight:4}}>🟠</span>}{ev.title}
         </div>
         <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-          <button onClick={onInfo} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,padding:4}} title="Détail">ℹ️</button>
-          <button onClick={onShare} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,padding:4}} title="Partager">↗️</button>
-          <button onClick={onDelete} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,padding:4}} title="Supprimer">🗑️</button>
+          <button onClick={onInfo} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,padding:4}}>ℹ️</button>
+          <button onClick={onShare} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,padding:4}}>↗️</button>
+          <button onClick={onDelete} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,padding:4}}>🗑️</button>
         </div>
       </div>
     </>
@@ -276,6 +277,7 @@ export default function App() {
   const [swipeTaskId,setSwipeTaskId] = useState(null);
   const [popover,setPopover]       = useState(null);
   const [fraisDate,setFraisDate]   = useState(null);
+  const [nomadBookOpen,setNomadBookOpen] = useState(false);
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
   const gridScrollRef = useRef(null);
@@ -433,6 +435,13 @@ export default function App() {
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,overflow:"hidden",fontFamily:"Phenomena,Nunito,sans-serif"}}>
 
+      {/* ── NomadBook en plein écran ── */}
+      {nomadBookOpen&&(
+        <div style={{position:"fixed",inset:0,zIndex:400,background:C.bg,overflowY:"auto"}}>
+          <NomadBook onClose={()=>setNomadBookOpen(false)}/>
+        </div>
+      )}
+
       <Header
         weekDays={weekDays}
         syncing={syncing}
@@ -457,7 +466,7 @@ export default function App() {
         fmtWeekRange={fmtWeekRange}
       />
 
-      {/* Bannières all-day — même couleur que grille */}
+      {/* Bannières all-day */}
       {allEvs.some(e=>e.allDay&&weekDays.some(d=>d>=e.startDate&&d<=e.endDate))&&(
         <div style={{display:"flex",background:C.bg,borderBottom:`1px solid ${C.border}`,padding:"4px 0",flexShrink:0}}>
           <div style={{width:36,flexShrink:0,fontSize:9,color:C.muted,textAlign:"center",paddingTop:4}}>Jour<br/>entier</div>
@@ -521,12 +530,12 @@ export default function App() {
                           return;
                         }
                         const rect=e.currentTarget.getBoundingClientRect();
-                        setPopover({ev, x:rect.left+rect.width/2-80, y:rect.top-80});
+                        setPopover({ev,x:rect.left+rect.width/2-80,y:rect.top-80});
                       }}
                       style={{
                         position:"absolute",top:y+1,
                         left:`${leftPct+0.5}%`,width:`${colW-1}%`,height:h-2,
-                        background: isTask?(ev.done?C.green+"22":C.gold+"15"):"transparent",
+                        background:isTask?(ev.done?C.green+"22":C.gold+"15"):"transparent",
                         border:`2px solid ${isPending?"#F5A623":evColor}`,
                         borderRadius:6,padding:"3px 4px",cursor:"pointer",
                         overflow:"hidden",opacity:ev.done?.7:1,boxSizing:"border-box",
@@ -567,6 +576,7 @@ export default function App() {
         onTaskDone={t=>setConfirmDone(t)}
         onTaskDelete={t=>setConfirmDel({...t,type:"task"})}
         onAddTask={()=>setTaskFormOpen(true)}
+        onOpenNomadBook={()=>setNomadBookOpen(true)}
       />
 
       <Modal open={formOpen} onClose={()=>{setFormOpen(false);setEditEv(null);}} title={editEv?"Modifier l'événement":"+ Nouvel événement"}>
@@ -651,7 +661,6 @@ export default function App() {
         </div>}
       </Modal>
 
-      {/* Modal frais du jour — placeholder */}
       <Modal open={!!fraisDate} onClose={()=>setFraisDate(null)} title={`💰 Frais du ${fraisDate||""}`}>
         <div style={{textAlign:"center",padding:"20px 0",color:C.muted,fontSize:14}}>
           Module Frais — bientôt disponible en Premium 🚀
