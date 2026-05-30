@@ -8,8 +8,7 @@ import TaskDrawer from "./components/TaskDrawer.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
 import Settings from "./components/Settings.jsx";
 
-// ── Abonnement user (à connecter à StoreKit plus tard) ────────────────────────
-const USER_PLAN = "free"; // "free" | "abo1" | "abo2"
+const USER_PLAN = "free";
 
 async function pushEvent(ev, auth) {
   if (!auth || !ev.calHref) return;
@@ -60,7 +59,6 @@ function layoutEvents(dayEvs) {
   return result;
 }
 
-// ── Numéro de semaine ISO ─────────────────────────────────────────────────────
 function getWeekNum(date) {
   const d = new Date(date);
   d.setHours(0,0,0,0);
@@ -186,7 +184,6 @@ function TaskForm({ initial, onSave, onCancel }) {
   );
 }
 
-// ── Popover événement ─────────────────────────────────────────────────────────
 function EventPopover({ ev, onInfo, onShare, onDelete, onClose, position }) {
   if (!ev || !position) return null;
   const isPending = ev.status === "pending";
@@ -205,7 +202,6 @@ function EventPopover({ ev, onInfo, onShare, onDelete, onClose, position }) {
         padding:"10px 14px",
         minWidth:160,
       }}>
-        {/* Petite flèche */}
         <div style={{
           position:"absolute", bottom:-8, left:"50%",
           transform:"translateX(-50%)",
@@ -227,7 +223,6 @@ function EventPopover({ ev, onInfo, onShare, onDelete, onClose, position }) {
   );
 }
 
-// ── Détail événement/tâche ────────────────────────────────────────────────────
 function EventDetail({ ev, onEdit, onDelete, onCopy, onDone }) {
   if (!ev) return null;
   const isTask = ev.type === "task";
@@ -257,7 +252,6 @@ function EventDetail({ ev, onEdit, onDelete, onCopy, onDone }) {
   );
 }
 
-// ── App principale ────────────────────────────────────────────────────────────
 export default function App() {
   const [auth,setAuth]             = useState(()=>load("cf_auth",null));
   const [events,setEvents]         = useState(()=>load("cf_events",[]));
@@ -280,15 +274,16 @@ export default function App() {
   const [confirmDone,setConfirmDone] = useState(null);
   const [drawerOpen,setDrawerOpen] = useState(false);
   const [swipeTaskId,setSwipeTaskId] = useState(null);
-  const [popover,setPopover]       = useState(null); // {ev, x, y}
+  const [popover,setPopover]       = useState(null);
+  const [fraisDate,setFraisDate]   = useState(null);
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
   const gridScrollRef = useRef(null);
 
   const weekDays = getWeekDays(weekStart);
   const weekNum = getWeekNum(weekStart);
+  const today = todayISO();
 
-  // Scroll initial 12h
   useEffect(()=>{
     if(gridScrollRef.current){
       const scrollTo=(GRID_DEFAULT_SCROLL/GRID_TOTAL)*GRID_H;
@@ -381,7 +376,6 @@ export default function App() {
     setCurrentView("week");
   }
 
-  // ── doneTask — écriture atomique anti-perte réseau ────────────────────────
   function doneTask(task){
     const completedAt=new Date().toISOString();
     const completedDate=toISO(new Date());
@@ -412,15 +406,10 @@ export default function App() {
     setTasks(updatedTasks);
   }
 
-  // ── Suppression événement selon abonnement ────────────────────────────────
   function handleDeleteEvent(ev){
-    if(USER_PLAN==="free"){
-      setConfirmDel(ev);
-    } else if(USER_PLAN==="abo1"){
-      setConfirmDel({...ev, _plan:"abo1"});
-    } else {
-      setConfirmDel({...ev, _plan:"abo2"});
-    }
+    if(USER_PLAN==="free") setConfirmDel(ev);
+    else if(USER_PLAN==="abo1") setConfirmDel({...ev,_plan:"abo1"});
+    else setConfirmDel({...ev,_plan:"abo2"});
   }
 
   function handleTouchStart(e){ touchStartX.current=e.touches[0].clientX; touchStartY.current=e.touches[0].clientY; }
@@ -438,7 +427,6 @@ export default function App() {
   if(!auth) return <LoginScreen onLogin={handleLogin}/>;
   if(screen==="settings") return <Settings settings={settings} setSettings={setSettings} calendars={calendars} onBack={()=>setScreen("main")} auth={auth}/>;
 
-  const today=todayISO();
   const syntheseEvs=SYNTHESE_DEADLINES.map(s=>({id:`synth-${s.id}`,type:"event",allDay:true,title:s.label,startDate:s.date,endDate:s.date,calColor:"#2d7a4f",calName:"Synthèse"}));
   const allEvs=[...events,...syntheseEvs];
 
@@ -458,32 +446,20 @@ export default function App() {
         onToggleDrawer={()=>setDrawerOpen(o=>!o)}
         weekStart={weekStart}
         weekNum={weekNum}
+        today={today}
+        fmtDay={fmtDay}
+        fmtDayNum={fmtDayNum}
         onToday={()=>{setWeekStart(getWeekStart(new Date()));setCurrentView("week");}}
         onGoToDate={handleGoToDate}
         onChangeView={setCurrentView}
+        onOpenFrais={date=>setFraisDate(date)}
         currentView={currentView}
         fmtWeekRange={fmtWeekRange}
       />
 
-      {/* En-tête jours — sans points bleus */}
-      <div style={{display:"flex",background:C.surface,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
-        <div style={{width:36,flexShrink:0}}/>
-        {weekDays.map(day=>{
-          const isToday=day===today;
-          return(
-            <div key={day} style={{flex:1,textAlign:"center",padding:"6px 0 4px"}}>
-              <div style={{fontSize:10,color:isToday?C.accent:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>{fmtDay(day)}</div>
-              <div style={{width:28,height:28,borderRadius:"50%",background:isToday?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",margin:"2px auto"}}>
-                <span style={{fontSize:14,fontWeight:700,color:isToday?"#fff":C.ink}}>{fmtDayNum(day)}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Bannières all-day */}
+      {/* Bannières all-day — même couleur que grille */}
       {allEvs.some(e=>e.allDay&&weekDays.some(d=>d>=e.startDate&&d<=e.endDate))&&(
-        <div style={{display:"flex",background:C.surface,borderBottom:`1px solid ${C.border}`,padding:"4px 0",flexShrink:0}}>
+        <div style={{display:"flex",background:C.bg,borderBottom:`1px solid ${C.border}`,padding:"4px 0",flexShrink:0}}>
           <div style={{width:36,flexShrink:0,fontSize:9,color:C.muted,textAlign:"center",paddingTop:4}}>Jour<br/>entier</div>
           <div style={{flex:1,position:"relative",minHeight:28}}>
             {allEvs.filter(e=>e.allDay&&weekDays.some(d=>d>=e.startDate&&d<=(e.endDate||e.startDate))).map(ev=>{
@@ -504,15 +480,11 @@ export default function App() {
       <div ref={gridScrollRef} style={{flex:1,overflowY:"auto",position:"relative"}}
         onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div style={{display:"flex",height:GRID_H,position:"relative"}}>
-
-          {/* Heures */}
           <div style={{width:36,flexShrink:0}}>
             {Array.from({length:24},(_,h)=>(
               <div key={h} style={{position:"absolute",top:(h*60/GRID_TOTAL)*GRID_H,left:0,width:36,fontSize:9,color:C.muted,textAlign:"right",paddingRight:4,fontFamily:"monospace"}}>{h}h</div>
             ))}
           </div>
-
-          {/* Colonnes jours */}
           {weekDays.map(day=>{
             const isToday=day===today;
             const caldavEvs=allEvs.filter(e=>!e.allDay&&(e.startDate===day||(!e.isRecurring&&e.startDate<=day&&(e.endDate||e.startDate)>=day)));
@@ -530,11 +502,7 @@ export default function App() {
                   if(clipboard){setPasteTarget({date:day,time});}
                   else{setEditEv(null);setFormOpen(true);}
                 }}>
-
-                {/* Lignage vertical uniquement — pas de horizontal */}
                 {nowPct&&<div style={{position:"absolute",top:`${nowPct*100}%`,left:0,right:0,height:2,background:C.red,zIndex:10}}><div style={{position:"absolute",left:-4,top:-3,width:8,height:8,borderRadius:"50%",background:C.red}}/></div>}
-
-                {/* Événements — bordure 2px stylo feutre, sans remplissage */}
                 {layoutEvents(dayEvs).map(ev=>{
                   const y=timeToY(ev.startTime||"09:00");
                   const h=Math.max(20,durationToH(ev.startTime||"09:00",ev.endTime||"10:00"));
@@ -543,7 +511,6 @@ export default function App() {
                   const evColor=isTask?C.gold:(ev.calColor||C.accent);
                   const colW=100/(ev.totalCols||1);
                   const leftPct=(ev.col||0)*colW;
-
                   return(
                     <div key={ev.id+ev.col}
                       onClick={e=>{
@@ -553,29 +520,16 @@ export default function App() {
                           setTimeout(()=>setDetailEv({...ev,type:"task"}),50);
                           return;
                         }
-                        // Popover sur l'événement
                         const rect=e.currentTarget.getBoundingClientRect();
-                        setPopover({
-                          ev,
-                          x: rect.left + rect.width/2 - 80,
-                          y: rect.top - 80,
-                        });
+                        setPopover({ev, x:rect.left+rect.width/2-80, y:rect.top-80});
                       }}
                       style={{
-                        position:"absolute",
-                        top:y+1,
-                        left:`${leftPct+0.5}%`,
-                        width:`${colW-1}%`,
-                        height:h-2,
-                        // Bordure 2px stylo feutre — sans remplissage sauf tâches terminées
-                        background: isTask ? (ev.done ? C.green+"22" : C.gold+"15") : "transparent",
+                        position:"absolute",top:y+1,
+                        left:`${leftPct+0.5}%`,width:`${colW-1}%`,height:h-2,
+                        background: isTask?(ev.done?C.green+"22":C.gold+"15"):"transparent",
                         border:`2px solid ${isPending?"#F5A623":evColor}`,
-                        borderRadius:6,
-                        padding:"3px 4px",
-                        cursor:"pointer",
-                        overflow:"hidden",
-                        opacity:ev.done?.7:1,
-                        boxSizing:"border-box",
+                        borderRadius:6,padding:"3px 4px",cursor:"pointer",
+                        overflow:"hidden",opacity:ev.done?.7:1,boxSizing:"border-box",
                       }}>
                       {isPending&&<div style={{position:"absolute",top:2,right:2,width:6,height:6,borderRadius:"50%",background:"#F5A623"}}/>}
                       <div style={{fontSize:10,fontWeight:800,color:isPending?"#B8741A":evColor,lineHeight:1.3,textDecoration:ev.done?"line-through":"none"}}>
@@ -592,11 +546,10 @@ export default function App() {
         </div>
       </div>
 
-      {/* Popover événement */}
       {popover&&(
         <EventPopover
           ev={popover.ev}
-          position={{x:popover.x, y:popover.y}}
+          position={{x:popover.x,y:popover.y}}
           onClose={()=>setPopover(null)}
           onInfo={()=>{setDetailEv(popover.ev);setPopover(null);}}
           onShare={()=>{if(navigator.share)navigator.share({title:popover.ev.title,text:`${popover.ev.startDate} ${popover.ev.startTime||""} — ${popover.ev.title}`});setPopover(null);}}
@@ -604,33 +557,26 @@ export default function App() {
         />
       )}
 
-      {/* Tiroir tâches */}
       <TaskDrawer
         tasks={tasks}
         drawerOpen={drawerOpen}
         setDrawerOpen={setDrawerOpen}
         swipeTaskId={swipeTaskId}
         setSwipeTaskId={setSwipeTaskId}
-        onTaskClick={t=>{
-          setDrawerOpen(false);
-          setTimeout(()=>setDetailEv({...t,type:"task"}),50);
-        }}
+        onTaskClick={t=>{setDrawerOpen(false);setTimeout(()=>setDetailEv({...t,type:"task"}),50);}}
         onTaskDone={t=>setConfirmDone(t)}
         onTaskDelete={t=>setConfirmDel({...t,type:"task"})}
         onAddTask={()=>setTaskFormOpen(true)}
       />
 
-      {/* Modal création événement */}
       <Modal open={formOpen} onClose={()=>{setFormOpen(false);setEditEv(null);}} title={editEv?"Modifier l'événement":"+ Nouvel événement"}>
         <EventForm initial={editEv} calendars={calendars} defaultCalHref={settings.defaultCalHref} onCancel={()=>{setFormOpen(false);setEditEv(null);}} onSave={async ev=>{const newEv={...ev,id:editEv?.id||`calflow-${Date.now()}`,calColor:calendars.find(c=>c.href===ev.calHref)?.color||C.accent,calName:calendars.find(c=>c.href===ev.calHref)?.displayName||"",type:"event"};setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]);await pushEvent(newEv,auth);setFormOpen(false);setEditEv(null);}}/>
       </Modal>
 
-      {/* Modal création tâche */}
       <Modal open={taskFormOpen} onClose={()=>{setTaskFormOpen(false);setEditTask(null);}} title={editTask?"Modifier la tâche":"↻ Nouvelle tâche glissante"}>
         <TaskForm initial={editTask} onCancel={()=>{setTaskFormOpen(false);setEditTask(null);}} onSave={task=>{setTasks(prev=>editTask?prev.map(t=>t.id===editTask.id?{...task,id:editTask.id}:t):[...prev,task]);setTaskFormOpen(false);setEditTask(null);}}/>
       </Modal>
 
-      {/* Modal détail */}
       <Modal open={!!detailEv} onClose={()=>setDetailEv(null)} title={detailEv?.type==="task"?"Tâche glissante":"Événement"}>
         <EventDetail ev={detailEv}
           onEdit={()=>{if(detailEv?.type==="task"){setEditTask(detailEv);setTaskFormOpen(true);}else{setEditEv(detailEv);setFormOpen(true);}setDetailEv(null);}}
@@ -640,7 +586,6 @@ export default function App() {
         />
       </Modal>
 
-      {/* Modal confirmation terminée */}
       <Modal open={!!confirmDone} onClose={()=>setConfirmDone(null)} title="✓ Confirmer la validation">
         {confirmDone&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
           <div style={{background:C.bg,borderRadius:10,padding:"12px 14px",border:`1px solid ${C.border}`}}>
@@ -654,34 +599,28 @@ export default function App() {
         </div>}
       </Modal>
 
-      {/* Modal suppression — 3 niveaux abonnement */}
       <Modal open={!!confirmDel} onClose={()=>setConfirmDel(null)} title="🗑 Confirmer la suppression">
         {confirmDel&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
           <div style={{fontSize:14,color:C.muted}}>Supprimer <strong>{confirmDel.title}</strong> ?</div>
-
-          {/* Abo1 — proposer de prévenir le contact */}
           {confirmDel._plan==="abo1"&&(
             <div style={{background:C.accentLight,borderRadius:10,padding:"10px 14px",border:`1px solid ${C.accentBorder}`,fontSize:13,color:C.accent}}>
               Voulez-vous prévenir le contact ?
               <div style={{display:"flex",gap:8,marginTop:8}}>
                 <Btn variant="soft" onClick={()=>{if(navigator.share)navigator.share({title:`Annulation — ${confirmDel.title}`,text:`Bonjour, je dois annuler notre RDV du ${confirmDel.startDate}.`});}}>📱 Prévenir</Btn>
-                <Btn variant="outline" onClick={()=>{}}>Passer</Btn>
+                <Btn variant="outline">Passer</Btn>
               </div>
             </div>
           )}
-
-          {/* Abo2 — prévenir + rechercher créneau */}
           {confirmDel._plan==="abo2"&&(
             <div style={{background:C.accentLight,borderRadius:10,padding:"10px 14px",border:`1px solid ${C.accentBorder}`,fontSize:13,color:C.accent}}>
               Voulez-vous prévenir le contact et rechercher un nouveau créneau ?
               <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
                 <Btn variant="soft" onClick={()=>{if(navigator.share)navigator.share({title:`Annulation — ${confirmDel.title}`,text:`Bonjour, je dois annuler notre RDV du ${confirmDel.startDate}. Je vous propose un nouveau créneau très bientôt.`});}}>📱 Prévenir</Btn>
                 <Btn variant="soft" onClick={()=>alert("🤖 Recherche IA d'un nouveau créneau — bientôt disponible !")}>🤖 Nouveau créneau</Btn>
-                <Btn variant="outline" onClick={()=>{}}>Passer</Btn>
+                <Btn variant="outline">Passer</Btn>
               </div>
             </div>
           )}
-
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
             <Btn onClick={()=>setConfirmDel(null)}>Annuler</Btn>
             <Btn variant="danger" onClick={async()=>{
@@ -693,7 +632,6 @@ export default function App() {
         </div>}
       </Modal>
 
-      {/* Modal coller événement */}
       <Modal open={!!clipboard&&!!pasteTarget} onClose={()=>setPasteTarget(null)} title="📋 Coller l'événement">
         {clipboard&&pasteTarget&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
           <div style={{background:C.bg,borderRadius:10,padding:"12px 14px",border:`1px solid ${C.border}`}}>
@@ -711,6 +649,13 @@ export default function App() {
             }}>Coller ici</Btn>
           </div>
         </div>}
+      </Modal>
+
+      {/* Modal frais du jour — placeholder */}
+      <Modal open={!!fraisDate} onClose={()=>setFraisDate(null)} title={`💰 Frais du ${fraisDate||""}`}>
+        <div style={{textAlign:"center",padding:"20px 0",color:C.muted,fontSize:14}}>
+          Module Frais — bientôt disponible en Premium 🚀
+        </div>
       </Modal>
 
     </div>
