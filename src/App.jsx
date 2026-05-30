@@ -60,7 +60,7 @@ function layoutEvents(dayEvs) {
   return result;
 }
 
-// Semaine ISO — commence Lundi
+// ── Numéro de semaine ISO (commence Lundi) ────────────────────────────────────
 function getWeekNum(date) {
   const d = new Date(date);
   d.setHours(0,0,0,0);
@@ -143,12 +143,12 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref }) {
 }
 
 function TaskForm({ initial, onSave, onCancel }) {
-  const [title,setTitle]         = useState(initial?.title||"");
-  const [notes,setNotes]         = useState(initial?.notes||"");
-  const [priority,setPriority]   = useState(initial?.priority||"normal");
+  const [title,setTitle]           = useState(initial?.title||"");
+  const [notes,setNotes]           = useState(initial?.notes||"");
+  const [priority,setPriority]     = useState(initial?.priority||"normal");
   const [effectiveDate,setEffDate] = useState(initial?.effectiveDate||todayISO());
-  const [dueDate,setDueDate]     = useState(initial?.dueDate||"");
-  const [recurrence,setRecur]    = useState(initial?.recurrence||"none");
+  const [dueDate,setDueDate]       = useState(initial?.dueDate||"");
+  const [recurrence,setRecur]      = useState(initial?.recurrence||"none");
 
   const iStyle = { width:"100%", padding:"10px 12px", borderRadius:10, border:`1.5px solid ${C.border}`, background:C.bg, color:C.ink, fontSize:14, fontFamily:"inherit", outline:"none", marginBottom:10, boxSizing:"border-box" };
 
@@ -192,18 +192,7 @@ function EventPopover({ ev, onInfo, onShare, onDelete, onClose, position }) {
   return (
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:299}}/>
-      <div style={{
-        position:"fixed",
-        top: position.y,
-        left: Math.min(position.x, window.innerWidth - 180),
-        zIndex:300,
-        background: C.surface,
-        border:`1.5px solid ${isPending?"#F5A623":C.border}`,
-        borderRadius:12,
-        boxShadow:"0 4px 20px rgba(0,0,0,.18)",
-        padding:"10px 14px",
-        minWidth:160,
-      }}>
+      <div style={{position:"fixed",top:position.y,left:Math.min(position.x,window.innerWidth-180),zIndex:300,background:C.surface,border:`1.5px solid ${isPending?"#F5A623":C.border}`,borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",padding:"10px 14px",minWidth:160}}>
         <div style={{position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"8px solid transparent",borderRight:"8px solid transparent",borderTop:`8px solid ${isPending?"#F5A623":C.border}`}}/>
         <div style={{fontSize:12,fontWeight:800,color:isPending?"#B8741A":C.ink,marginBottom:8,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:140}}>
           {isPending&&<span style={{marginRight:4}}>🟠</span>}{ev.title}
@@ -229,7 +218,7 @@ function EventDetail({ ev, onEdit, onDelete, onCopy, onDone }) {
       {ev.isRecurring&&<div style={{fontSize:12,color:C.accent,background:C.accentLight,border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}>🔁 Événement récurrent</div>}
       {ev.rrule&&!ev.isRecurring&&<div style={{fontSize:12,color:C.accent,background:C.accentLight,border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}>🔁 {rruleToFr(ev.rrule)}</div>}
       <div style={{fontSize:14,color:C.muted}}>
-        {ev.allDay ? `📅 ${ev.startDate}${ev.endDate&&ev.endDate!==ev.startDate?` → ${ev.endDate}`:""}` : `📅 ${ev.startDate} · ${ev.startTime} → ${ev.endTime}`}
+        {ev.allDay?`📅 ${ev.startDate}${ev.endDate&&ev.endDate!==ev.startDate?` → ${ev.endDate}`:""}` : `📅 ${ev.startDate} · ${ev.startTime} → ${ev.endTime}`}
       </div>
       {isTask&&ev.effectiveDate&&<div style={{fontSize:13,color:C.muted}}>↻ Apparaît le {ev.effectiveDate}</div>}
       {isTask&&ev.dueDate&&<div style={{fontSize:13,color:C.red}}>⚠ Échéance {ev.dueDate}</div>}
@@ -248,48 +237,45 @@ function EventDetail({ ev, onEdit, onDelete, onCopy, onDone }) {
 }
 
 export default function App() {
-  const [auth,setAuth]             = useState(()=>load("cf_auth",null));
-  const [events,setEvents]         = useState(()=>load("cf_events",[]));
-  const [tasks,setTasks]           = useState(()=>load("cf_tasks",[]));
-  const [calendars,setCalendars]   = useState(()=>load("cf_calendars",[]));
-  const [settings,setSettings]     = useState(()=>load("cf_settings",{startHour:"8",endHour:"20",showDone:false}));
-  const [weekStart,setWeekStart]   = useState(()=>getWeekStart(new Date()));
-  const [screen,setScreen]         = useState("main");
+  const [auth,setAuth]               = useState(()=>load("cf_auth",null));
+  const [events,setEvents]           = useState(()=>load("cf_events",[]));
+  const [tasks,setTasks]             = useState(()=>load("cf_tasks",[]));
+  const [calendars,setCalendars]     = useState(()=>load("cf_calendars",[]));
+  const [settings,setSettings]       = useState(()=>load("cf_settings",{startHour:"8",endHour:"20",showDone:false}));
+  const [screen,setScreen]           = useState("main");
   const [currentView,setCurrentView] = useState("week");
-  const [syncing,setSyncing]       = useState(false);
-  const [syncOk,setSyncOk]         = useState(true);
-  const [formOpen,setFormOpen]     = useState(false);
+  const [syncing,setSyncing]         = useState(false);
+  const [syncOk,setSyncOk]           = useState(true);
+  const [formOpen,setFormOpen]       = useState(false);
   const [taskFormOpen,setTaskFormOpen] = useState(false);
-  const [detailEv,setDetailEv]     = useState(null);
-  const [editEv,setEditEv]         = useState(null);
-  const [editTask,setEditTask]     = useState(null);
-  const [clipboard,setClipboard]   = useState(null);
+  const [detailEv,setDetailEv]       = useState(null);
+  const [editEv,setEditEv]           = useState(null);
+  const [editTask,setEditTask]       = useState(null);
+  const [clipboard,setClipboard]     = useState(null);
   const [pasteTarget,setPasteTarget] = useState(null);
-  const [confirmDel,setConfirmDel] = useState(null);
+  const [confirmDel,setConfirmDel]   = useState(null);
   const [confirmDone,setConfirmDone] = useState(null);
-  const [drawerOpen,setDrawerOpen] = useState(false);
+  const [drawerOpen,setDrawerOpen]   = useState(false);
   const [swipeTaskId,setSwipeTaskId] = useState(null);
-  const [popover,setPopover]       = useState(null);
-  const [fraisDate,setFraisDate]   = useState(null);
+  const [popover,setPopover]         = useState(null);
+  const [fraisDate,setFraisDate]     = useState(null);
   const [nomadBookOpen,setNomadBookOpen] = useState(false);
 
-  // ── Animation tourne-page ──────────────────────────────────────────────────
-  const [pageAnim, setPageAnim]   = useState(null); // "left" | "right" | null
-  const [displayWeek, setDisplayWeek] = useState(()=>getWeekStart(new Date()));
+  // ── UN SEUL état pour la semaine — source de vérité unique ────────────────
+  const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
 
-  const touchStartX = useRef(null);
-  const touchStartY = useRef(null);
+  const touchStartX  = useRef(null);
+  const touchStartY  = useRef(null);
   const gridScrollRef = useRef(null);
 
-  // weekStart = semaine affichée réelle, displayWeek = pour l'animation
-  const weekDays = getWeekDays(displayWeek);
-  const weekNum  = getWeekNum(displayWeek);
+  // Dérivé directement de weekStart — jamais de désynchronisation
+  const weekDays = getWeekDays(weekStart);
+  const weekNum  = getWeekNum(weekStart);
   const today    = todayISO();
 
   useEffect(()=>{
     if(gridScrollRef.current){
-      const scrollTo=(GRID_DEFAULT_SCROLL/GRID_TOTAL)*GRID_H;
-      gridScrollRef.current.scrollTop=scrollTo;
+      gridScrollRef.current.scrollTop = (GRID_DEFAULT_SCROLL / GRID_TOTAL) * GRID_H;
     }
   },[]);
 
@@ -299,78 +285,55 @@ export default function App() {
   useEffect(()=>save("cf_settings",settings),[settings]);
 
   useEffect(()=>{
-    const slide=()=>setTasks(prev=>slideTasksToToday(prev));
+    const slide = () => setTasks(prev => slideTasksToToday(prev));
     slide();
-    const now=new Date();
-    const midnight=new Date(now);
-    midnight.setHours(24,0,0,0);
-    const t=setTimeout(slide,midnight-now);
-    return()=>clearTimeout(t);
+    const now = new Date();
+    const midnight = new Date(now); midnight.setHours(24,0,0,0);
+    const t = setTimeout(slide, midnight - now);
+    return () => clearTimeout(t);
   },[]);
 
   useEffect(()=>{
-    const check=()=>{
-      const in48h=new Date(Date.now()+48*60*60*1000);
-      const in48hISO=toISO(in48h);
-      const pending=events.filter(e=>e.status==="pending"&&e.startDate===in48hISO);
+    const check = () => {
+      const in48h = new Date(Date.now()+48*60*60*1000);
+      const in48hISO = toISO(in48h);
+      const pending = events.filter(e=>e.status==="pending"&&e.startDate===in48hISO);
       if(pending.length>0){
-        const titles=pending.map(e=>e.title).join(", ");
+        const titles = pending.map(e=>e.title).join(", ");
         if(window.confirm(`⚠️ RDV à confirmer dans 48h :\n${titles}\n\nVoulez-vous les confirmer ?`)){
           setEvents(prev=>prev.map(e=>pending.find(p=>p.id===e.id)?{...e,status:"confirmed"}:e));
         }
       }
     };
     check();
-    const interval=setInterval(check,60*60*1000);
-    return()=>clearInterval(interval);
+    const interval = setInterval(check, 60*60*1000);
+    return () => clearInterval(interval);
   },[events]);
 
   useEffect(()=>{
-    if(auth){
-      const t=setTimeout(()=>syncCalDAV(),300);
-      return()=>clearTimeout(t);
-    }
+    if(auth){ const t=setTimeout(()=>syncCalDAV(),300); return()=>clearTimeout(t); }
   },[auth]);
 
-  // ── Changement de semaine avec animation tourne-page ──────────────────────
-  function navigateWeek(dir) {
-    // dir: +1 = suivante (swipe gauche), -1 = précédente (swipe droite)
-    const animClass = dir > 0 ? "left" : "right";
-    setPageAnim(animClass);
-    setTimeout(()=>{
-      const n = new Date(displayWeek);
-      n.setDate(n.getDate() + dir * 7);
-      setDisplayWeek(n);
+  // ── Navigation semaine — simple et propre ─────────────────────────────────
+  function goToWeek(date) {
+    setWeekStart(getWeekStart(date));
+  }
+
+  function handleTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }
+
+  function handleTouchEnd(e) {
+    if (!touchStartX.current) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+    if (Math.abs(dx) > 50 && dy < 80) {
+      const n = new Date(weekStart);
+      n.setDate(n.getDate() + (dx < 0 ? 7 : -7));
       setWeekStart(n);
-      setPageAnim(null);
-    }, 350);
-  }
-
-  function handleGoToDate(date){
-    const newWeek = getWeekStart(date);
-    const dir = newWeek > displayWeek ? 1 : -1;
-    setPageAnim(dir > 0 ? "left" : "right");
-    setTimeout(()=>{
-      setDisplayWeek(newWeek);
-      setWeekStart(newWeek);
-      setCurrentView("week");
-      setPageAnim(null);
-    }, 350);
-  }
-
-  function handleTouchStart(e){
-    touchStartX.current=e.touches[0].clientX;
-    touchStartY.current=e.touches[0].clientY;
-  }
-  function handleTouchEnd(e){
-    if(!touchStartX.current) return;
-    const dx=e.changedTouches[0].clientX-touchStartX.current;
-    const dy=Math.abs(e.changedTouches[0].clientY-touchStartY.current);
-    if(Math.abs(dx)>50&&dy<80){
-      if(dx<0) navigateWeek(+1);
-      else     navigateWeek(-1);
     }
-    touchStartX.current=null;
+    touchStartX.current = null;
   }
 
   async function syncCalDAV(){
@@ -378,11 +341,10 @@ export default function App() {
     setSyncing(true);
     try{
       const authHeader=makeAuthHeader(auth.email,auth.appPassword);
-      const {text:principalXml}=await caldavRequest("PROPFIND","/1012673262/principal/",authHeader,`<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>`,{Depth:"0"});
+      await caldavRequest("PROPFIND","/1012673262/principal/",authHeader,`<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>`,{Depth:"0"});
       const {text:calXml}=await caldavRequest("PROPFIND","/1012673262/calendars/",authHeader,`<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:a="http://apple.com/ns/ical/"><d:prop><d:displayname/><a:calendar-color/><d:resourcetype/></d:prop></d:propfind>`,{Depth:"1"});
       const cals=parseCalendars(calXml);
-      setCalendars(cals);
-      save("cf_calendars",cals);
+      setCalendars(cals); save("cf_calendars",cals);
       const since=new Date(); since.setMonth(since.getMonth()-3);
       const until2=new Date(); until2.setFullYear(until2.getFullYear()+1);
       const untilStr=until2.toISOString().replace(/[-:]/g,"").slice(0,15)+"Z";
@@ -399,37 +361,26 @@ export default function App() {
           else allEvents.push(ev);
         });
       }
-      setEvents(allEvents);
-      save("cf_events",allEvents);
+      setEvents(allEvents); save("cf_events",allEvents);
       setSyncOk(true);
-    }catch(e){
-      setSyncOk(false);
-    }
+    }catch(e){ setSyncOk(false); }
     setSyncing(false);
   }
 
   function handleLogin(email,password){
     const authObj={email,appPassword:password,auth:makeAuthHeader(email,password)};
-    setAuth(authObj);
-    save("cf_auth",authObj);
+    setAuth(authObj); save("cf_auth",authObj);
   }
 
   function doneTask(task){
     const completedAt=new Date().toISOString();
     const completedDate=toISO(new Date());
     const completedTime=new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-    const doneEv={
-      id:`done-${task.id}`,type:"task",done:true,
-      title:task.title,startDate:completedDate,endDate:completedDate,
-      startTime:completedTime,endTime:minutesToHHMM(timeToMinutes(completedTime)+30),
-      calColor:C.green,calName:"Tâches",completedAt,
-    };
+    const doneEv={id:`done-${task.id}`,type:"task",done:true,title:task.title,startDate:completedDate,endDate:completedDate,startTime:completedTime,endTime:minutesToHHMM(timeToMinutes(completedTime)+30),calColor:C.green,calName:"Tâches",completedAt};
     const updatedTasks=tasks.map(t=>t.id===task.id?{...t,done:true,completedAt}:t);
     const updatedEvents=[...events,doneEv];
-    save("cf_tasks",updatedTasks);
-    save("cf_events",updatedEvents);
-    setTasks(updatedTasks);
-    setEvents(updatedEvents);
+    save("cf_tasks",updatedTasks); save("cf_events",updatedEvents);
+    setTasks(updatedTasks); setEvents(updatedEvents);
     if(navigator.vibrate) navigator.vibrate([10,50,20]);
     const toast=document.createElement("div");
     toast.textContent="✓ Tâche terminée !";
@@ -439,9 +390,8 @@ export default function App() {
   }
 
   function deleteTask(task){
-    const updatedTasks=tasks.filter(t=>t.id!==task.id);
-    save("cf_tasks",updatedTasks);
-    setTasks(updatedTasks);
+    const u=tasks.filter(t=>t.id!==task.id);
+    save("cf_tasks",u); setTasks(u);
   }
 
   function handleDeleteEvent(ev){
@@ -455,20 +405,6 @@ export default function App() {
 
   const syntheseEvs=SYNTHESE_DEADLINES.map(s=>({id:`synth-${s.id}`,type:"event",allDay:true,title:s.label,startDate:s.date,endDate:s.date,calColor:"#2d7a4f",calName:"Synthèse"}));
   const allEvs=[...events,...syntheseEvs];
-
-  // ── Style animation tourne-page ───────────────────────────────────────────
-  const pageStyle = {
-    flex:1, overflowY:"auto", position:"relative",
-    transformOrigin: pageAnim==="left" ? "left center" : "right center",
-    transition: pageAnim ? "transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.35s" : "none",
-    transform: pageAnim==="left"
-      ? "perspective(1200px) rotateY(-15deg) scale(0.97)"
-      : pageAnim==="right"
-      ? "perspective(1200px) rotateY(15deg) scale(0.97)"
-      : "perspective(1200px) rotateY(0deg) scale(1)",
-    opacity: pageAnim ? 0.6 : 1,
-    boxShadow: pageAnim ? "0 8px 40px rgba(0,0,0,.18)" : "none",
-  };
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,overflow:"hidden",fontFamily:"Phenomena,Nunito,sans-serif"}}>
@@ -490,13 +426,13 @@ export default function App() {
         onClearClipboard={()=>{setClipboard(null);setPasteTarget(null);}}
         tasks={tasks}
         onToggleDrawer={()=>setDrawerOpen(o=>!o)}
-        weekStart={displayWeek}
+        weekStart={weekStart}
         weekNum={weekNum}
         today={today}
         fmtDay={fmtDay}
         fmtDayNum={fmtDayNum}
-        onToday={()=>{ navigateWeek(0); const n=getWeekStart(new Date()); setDisplayWeek(n); setWeekStart(n); setCurrentView("week"); }}
-        onGoToDate={handleGoToDate}
+        onToday={()=>{ setWeekStart(getWeekStart(new Date())); setCurrentView("week"); }}
+        onGoToDate={date=>goToWeek(date)}
         onChangeView={setCurrentView}
         onOpenFrais={date=>setFraisDate(date)}
         currentView={currentView}
@@ -522,13 +458,9 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Grille avec animation tourne-page ── */}
-      <div
-        ref={gridScrollRef}
-        style={pageStyle}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      {/* Grille horaire */}
+      <div ref={gridScrollRef} style={{flex:1,overflowY:"auto",position:"relative"}}
+        onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div style={{display:"flex",height:GRID_H,position:"relative"}}>
           <div style={{width:36,flexShrink:0}}>
             {Array.from({length:24},(_,h)=>(
@@ -549,8 +481,8 @@ export default function App() {
                   const relY=e.clientY-rect.top;
                   const min=Math.round((relY/GRID_H)*GRID_TOTAL/30)*30;
                   const time=minutesToHHMM(Math.max(0,Math.min(GRID_END-30,min)));
-                  if(clipboard){setPasteTarget({date:day,time});}
-                  else{setEditEv(null);setFormOpen(true);}
+                  if(clipboard) setPasteTarget({date:day,time});
+                  else { setEditEv(null); setFormOpen(true); }
                 }}>
                 {nowPct&&<div style={{position:"absolute",top:`${nowPct*100}%`,left:0,right:0,height:2,background:C.red,zIndex:10}}><div style={{position:"absolute",left:-4,top:-3,width:8,height:8,borderRadius:"50%",background:C.red}}/></div>}
                 {layoutEvents(dayEvs).map(ev=>{
@@ -569,14 +501,7 @@ export default function App() {
                         const rect=e.currentTarget.getBoundingClientRect();
                         setPopover({ev,x:rect.left+rect.width/2-80,y:rect.top-80});
                       }}
-                      style={{
-                        position:"absolute",top:y+1,
-                        left:`${leftPct+0.5}%`,width:`${colW-1}%`,height:h-2,
-                        background:isTask?(ev.done?C.green+"22":C.gold+"15"):"transparent",
-                        border:`2px solid ${isPending?"#F5A623":evColor}`,
-                        borderRadius:6,padding:"3px 4px",cursor:"pointer",
-                        overflow:"hidden",opacity:ev.done?.7:1,boxSizing:"border-box",
-                      }}>
+                      style={{position:"absolute",top:y+1,left:`${leftPct+0.5}%`,width:`${colW-1}%`,height:h-2,background:isTask?(ev.done?C.green+"22":C.gold+"15"):"transparent",border:`2px solid ${isPending?"#F5A623":evColor}`,borderRadius:6,padding:"3px 4px",cursor:"pointer",overflow:"hidden",opacity:ev.done?.7:1,boxSizing:"border-box"}}>
                       {isPending&&<div style={{position:"absolute",top:2,right:2,width:6,height:6,borderRadius:"50%",background:"#F5A623"}}/>}
                       <div style={{fontSize:10,fontWeight:800,color:isPending?"#B8741A":evColor,lineHeight:1.3,textDecoration:ev.done?"line-through":"none"}}>
                         {isTask&&<span style={{marginRight:2}}>{ev.done?"✓ ":"↻ "}</span>}
@@ -593,9 +518,7 @@ export default function App() {
       </div>
 
       {popover&&(
-        <EventPopover
-          ev={popover.ev}
-          position={{x:popover.x,y:popover.y}}
+        <EventPopover ev={popover.ev} position={{x:popover.x,y:popover.y}}
           onClose={()=>setPopover(null)}
           onInfo={()=>{setDetailEv(popover.ev);setPopover(null);}}
           onShare={()=>{if(navigator.share)navigator.share({title:popover.ev.title,text:`${popover.ev.startDate} ${popover.ev.startTime||""} — ${popover.ev.title}`});setPopover(null);}}
@@ -604,11 +527,8 @@ export default function App() {
       )}
 
       <TaskDrawer
-        tasks={tasks}
-        drawerOpen={drawerOpen}
-        setDrawerOpen={setDrawerOpen}
-        swipeTaskId={swipeTaskId}
-        setSwipeTaskId={setSwipeTaskId}
+        tasks={tasks} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}
+        swipeTaskId={swipeTaskId} setSwipeTaskId={setSwipeTaskId}
         onTaskClick={t=>{setDrawerOpen(false);setTimeout(()=>setDetailEv({...t,type:"task"}),50);}}
         onTaskDone={t=>setConfirmDone(t)}
         onTaskDelete={t=>setConfirmDel({...t,type:"task"})}
