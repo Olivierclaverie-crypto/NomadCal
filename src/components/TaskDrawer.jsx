@@ -1,6 +1,32 @@
 import { useState, useRef } from "react";
 import { C, PRIORITY } from '../utils/constants.js';
 
+// ── Icônes SVG ────────────────────────────────────────────────────────────────
+const IconNotes = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <rect x="4" y="3" width="12" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M7 7h6M7 10h6M7 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 13l3 3" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const IconTaches = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <rect x="3" y="3" width="14" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M7 10l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="15" cy="5" r="3" fill="#F5C97A"/>
+    <path d="M14 5h2M15 4v2" stroke="#0F1D2B" strokeWidth="1" strokeLinecap="round"/>
+  </svg>
+);
+
+const IconSuppr = () => (
+  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+    <path d="M5 7h10M8 7V5h4v2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="6" y="7" width="8" height="10" rx="1" stroke="#fff" strokeWidth="1.5"/>
+    <path d="M9 10v4M11 10v4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
 export default function TaskDrawer({
   tasks,
   drawerOpen,
@@ -17,8 +43,8 @@ export default function TaskDrawer({
   const openTasks = tasks.filter(t => !t.done);
 
   const MESSAGES = {
-    notes: "📝 NomadBook — Carnet de route terrain",
-    tasks: `👷 ${openTasks.length} tâche${openTasks.length > 1 ? "s" : ""} en cours`,
+    notes: "NomadBook — Carnet de route terrain",
+    tasks: `${openTasks.length} tâche${openTasks.length > 1 ? "s" : ""} en cours`,
   };
 
   function vibrate(ms = 10) {
@@ -49,30 +75,26 @@ export default function TaskDrawer({
     borderRadius: 12,
     cursor: "pointer",
     fontFamily: "Phenomena, sans-serif",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 800,
     transition: "all .15s",
     background: activeTab === tab ? C.accent : "transparent",
     color: activeTab === tab ? "#fff" : C.muted,
     letterSpacing: .3,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   });
 
   return (
     <>
       {drawerOpen && (
         <div style={{
-          position: "fixed",
-          bottom: 110,
-          left: 0,
-          right: 0,
-          zIndex: 200,
-          maxHeight: "50vh",
-          display: "flex",
-          flexDirection: "column",
-          background: C.surface,
-          borderTop: `2px solid ${C.gold}`,
-          borderRadius: "16px 16px 0 0",
-          boxShadow: "0 -4px 20px rgba(0,0,0,.12)",
+          position: "fixed", bottom: 110, left: 0, right: 0, zIndex: 200,
+          maxHeight: "50vh", display: "flex", flexDirection: "column",
+          background: C.surface, borderTop: `2px solid ${C.gold}`,
+          borderRadius: "16px 16px 0 0", boxShadow: "0 -4px 20px rgba(0,0,0,.12)",
         }}>
           <div onClick={() => { setDrawerOpen(false); vibrate(8); }}
             style={{ padding: "8px 16px 6px", cursor: "pointer", flexShrink: 0, textAlign: "center" }}>
@@ -102,8 +124,7 @@ export default function TaskDrawer({
                   <div style={{
                     position: "absolute", right: 0, top: 0, bottom: 0,
                     width: 160, display: "flex",
-                    opacity: isSwiped ? 1 : 0,
-                    transition: "opacity .2s",
+                    opacity: isSwiped ? 1 : 0, transition: "opacity .2s",
                   }}>
                     <div style={{ flex: 1, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <button onClick={() => { vibrate(20); onTaskDone(task); setSwipeTaskId(null); }}
@@ -113,8 +134,9 @@ export default function TaskDrawer({
                     </div>
                     <div style={{ flex: 1, background: C.red, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <button onClick={() => { vibrate(15); onTaskDelete(task); setSwipeTaskId(null); }}
-                        style={{ background: "none", border: "none", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                        🗑 Suppr.
+                        style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", display:"flex", alignItems:"center", gap:4 }}>
+                        <IconSuppr/>
+                        <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "inherit" }}>Suppr.</span>
                       </button>
                     </div>
                   </div>
@@ -135,28 +157,18 @@ export default function TaskDrawer({
                     }}
                     onClick={() => {
                       if (swipeTaskId === task.id) { setSwipeTaskId(null); return; }
-                      vibrate(10);
-                      onTaskClick(task);
-                      setDrawerOpen(false);
+                      vibrate(10); onTaskClick(task); setDrawerOpen(false);
                     }}>
-                    <div style={{
-                      width: 10, height: 10, borderRadius: "50%",
-                      background: pr.color, flexShrink: 0,
-                      boxShadow: `0 0 6px ${pr.color}88`
-                    }} />
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: pr.color, flexShrink: 0, boxShadow: `0 0 6px ${pr.color}88` }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 14, fontWeight: 600, color: C.ink,
-                        overflow: "hidden", textOverflow: "ellipsis",
-                        whiteSpace: "nowrap", marginBottom: 3
-                      }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 3 }}>
                         {task.title}
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <span style={{ fontSize: 11, color: pr.color, fontWeight: 600 }}>{pr.label}</span>
                         {task.dueDate && <span style={{ fontSize: 11, color: C.muted }}>· ⚠ {task.dueDate}</span>}
                         {task.recurrence && task.recurrence !== "none" && (
-                          <span style={{ fontSize: 11, color: C.accent }}>· 🔁</span>
+                          <span style={{ fontSize: 11, color: C.accent }}>· ↻</span>
                         )}
                       </div>
                     </div>
@@ -169,27 +181,29 @@ export default function TaskDrawer({
         </div>
       )}
 
-      {/* Barre fixe — 2 boutons */}
+      {/* Barre fixe — 2 boutons SVG */}
       <div style={{
-        position: "fixed",
-        bottom: 0, left: 0, right: 0,
-        height: 110,
-        background: C.surface,
-        borderTop: `2px solid ${C.border}`,
-        zIndex: 201,
-        display: "flex",
-        flexDirection: "column",
+        position: "fixed", bottom: 0, left: 0, right: 0, height: 110,
+        background: C.surface, borderTop: `2px solid ${C.border}`,
+        zIndex: 201, display: "flex", flexDirection: "column",
         paddingBottom: "env(safe-area-inset-bottom, 8px)",
       }}>
         <div style={{ display: "flex", gap: 12, padding: "8px 20px 4px" }}>
+
+          {/* Notes */}
           <button onClick={() => handleTabTap("notes")} style={tabStyle("notes")}>
-            📝 Notes
+            <span style={{ color: activeTab === "notes" ? "#fff" : C.accent }}>
+              <IconNotes/>
+            </span>
+            Notes
           </button>
-          <button onClick={() => handleTabTap("tasks")} style={{
-            ...tabStyle("tasks"),
-            position: "relative",
-          }}>
-            👷 Tâches
+
+          {/* Tâches */}
+          <button onClick={() => handleTabTap("tasks")} style={{ ...tabStyle("tasks"), position: "relative" }}>
+            <span style={{ color: activeTab === "tasks" ? "#fff" : C.accent }}>
+              <IconTaches/>
+            </span>
+            Tâches
             {openTasks.length > 0 && (
               <span style={{
                 position: "absolute", top: 4, right: 6,
@@ -202,14 +216,7 @@ export default function TaskDrawer({
         </div>
 
         {activeTab && (
-          <div style={{
-            fontSize: 12, color: C.muted,
-            textAlign: "center",
-            padding: "0 16px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}>
+          <div style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "0 16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {MESSAGES[activeTab]}
           </div>
         )}
