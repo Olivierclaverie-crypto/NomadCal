@@ -1,4 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import {
+  getPeriodEvents, createPeriodEvent, updatePeriodEvent,
+  deletePeriodEvent, autoLabel, calendarDisplayName, checkCalendarExists
+} from "../utils/caldavCalendar.js";
 
 const C = {
   bg:"#fdf8f0", surface:"#ffffff", card:"#fffcf7",
@@ -79,26 +83,29 @@ const CHAPTERS = [
   { id:"outils",       label:"Outils" },
 ];
 
-const DEFAULT_PERIODS = [
-  { id:"s1", start:"2026-05-22", end:"2026-06-01", label:"Rapport Mai" },
-  { id:"s2", start:"2026-06-01", end:"2026-07-06", label:"Rapport Juin–Juillet" },
-  { id:"s3", start:"2026-07-06", end:"2026-09-07", label:"Rapport Juil–Août" },
-  { id:"s4", start:"2026-09-07", end:"2026-10-05", label:"Rapport Sept–Oct" },
-  { id:"s5", start:"2026-10-05", end:"2026-11-02", label:"Rapport Oct–Nov" },
-  { id:"s6", start:"2026-11-02", end:"2026-12-07", label:"Rapport Nov–Déc" },
+const RRULE_OPTIONS = [
+  { value:"",                                    label:"Aucune récurrence" },
+  { value:"FREQ=WEEKLY;INTERVAL=1",              label:"Hebdomadaire" },
+  { value:"FREQ=WEEKLY;INTERVAL=2",              label:"Toutes les 2 semaines" },
+  { value:"FREQ=MONTHLY;INTERVAL=1",             label:"Mensuelle (même date)" },
+  { value:"FREQ=MONTHLY;BYDAY=1MO",              label:"1er lundi du mois" },
+  { value:"FREQ=MONTHLY;BYDAY=2MO",              label:"2ème lundi du mois" },
+  { value:"FREQ=MONTHLY;BYDAY=3MO",              label:"3ème lundi du mois" },
+  { value:"FREQ=MONTHLY;BYDAY=1FR",              label:"1er vendredi du mois" },
+  { value:"FREQ=MONTHLY;BYDAY=-1FR",             label:"Dernier vendredi du mois" },
+  { value:"FREQ=MONTHLY;BYDAY=-1MO",             label:"Dernier lundi du mois" },
 ];
 
 const fmt      = d => new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});
 const fmtYear  = d => new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
 const daysLeft = d => Math.ceil((new Date(d)-new Date())/86400000);
-const daysUntilStart = d => Math.ceil((new Date(d)-new Date())/86400000);
 const load     = (k,def) => { try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } };
 const save     = (k,v)   => { try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} };
 
-function getCurrentPeriod(periods){ const now=new Date(); return periods.find(p=>now>=new Date(p.start)&&now<new Date(p.end))||periods[0]; }
-function getPeriodStatus(p){ const now=new Date(); if(now>=new Date(p.start)&&now<new Date(p.end)) return "current"; if(now<new Date(p.start)) return "future"; return "past"; }
+function getPeriodStatus(p){ const now=new Date(); if(now>=new Date(p.startISO)&&now<new Date(p.endISO)) return "current"; if(now<new Date(p.startISO)) return "future"; return "past"; }
 function urgencyStyle(days){ if(days<0) return {color:C.red,bg:C.redLight,label:"Dépassé"}; if(days===0) return {color:C.red,bg:C.redLight,label:"Aujourd'hui"}; if(days<=3) return {color:C.amber,bg:C.amberLight,label:`J-${days}`}; if(days<=10) return {color:C.accent,bg:C.accentLight,label:`J-${days}`}; return {color:C.green,bg:C.greenLight,label:`J-${days}`}; }
 function chapterById(id){ return CHAPTERS.find(c=>c.id===id)||CHAPTERS[0]; }
+function daysUntilStart(iso){ return Math.ceil((new Date(iso)-new Date())/86400000); }
 
 function ChapterIcon({ id, size=18 }) {
   const icon = ICONS[id];
@@ -118,8 +125,139 @@ const inputStyle = { background:C.bg, border:`1.5px solid ${C.border}`, color:C.
 
 function useVoice(onConfirm){ const rec=useRef(null); const [listening,setListening]=useState(false); const [transcript,setTranscript]=useState(""); const start=()=>{ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){alert("Dictée vocale non supportée.");return;} const r=new SR(); r.lang="fr-FR"; r.continuous=false; r.interimResults=true; r.onresult=e=>{const t=Array.from(e.results).map(x=>x[0].transcript).join("");setTranscript(t);}; r.onend=()=>setListening(false); r.start(); rec.current=r; setListening(true); setTranscript(""); }; const stop=()=>rec.current?.stop(); const confirm=()=>{if(transcript.trim()){onConfirm(transcript.trim());setTranscript("");}}; const discard=()=>setTranscript(""); return {listening,transcript,start,stop,confirm,discard}; }
 
-function AIChat({period,notes,onReportSaved}){ const [messages,setMessages]=useState([]); const [input,setInput]=useState(""); const [loading,setLoading]=useState(false); const [report,setReport]=useState(""); const bottomRef=useRef(); const initialized=useRef(false); useEffect(()=>{ if(initialized.current) return; initialized.current=true; const byChapter={}; notes.forEach(n=>{if(!byChapter[n.chapter])byChapter[n.chapter]=[];byChapter[n.chapter].push(n.text);}); const intro=`Bonjour ! Je suis prêt pour le brainstorming du **${period.label}** (compilation le ${fmt(period.end)}).\n\nJ'ai ${notes.length} note(s) réparties en ${Object.keys(byChapter).length} chapitre(s). Quelques questions pour affiner le rapport avant de le générer :`; setMessages([{role:"assistant",content:intro}]); },[]); useEffect(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),[messages]); async function send(){ if(!input.trim()||loading) return; const userMsg={role:"user",content:input.trim()}; const newMessages=[...messages,userMsg]; setMessages(newMessages); setInput(""); setLoading(true); const byChapter={}; notes.forEach(n=>{if(!byChapter[n.chapter])byChapter[n.chapter]=[];byChapter[n.chapter].push(n.text);}); const notesText=CHAPTERS.filter(c=>byChapter[c.id]).map(c=>`### ${c.label}\n${byChapter[c.id].map(t=>`- ${t}`).join("\n")}`).join("\n\n"); try{ const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,system:`Tu es un assistant de terrain pour un commercial éditorial expérimenté. Période : ${period.label} (du ${fmt(period.start)} au ${fmt(period.end)}). Notes terrain par chapitre :\n${notesText}\n\nAide à brainstormer et affiner le rapport. Quand l'utilisateur demande le rapport final, génère un rapport professionnel structuré par chapitres, avec pour chaque chapitre : synthèse des points clés, actions recommandées. Termine par une section "Points prioritaires" avec les 3-5 actions urgentes. Ton : professionnel, concis, orienté action. En français.`,messages:newMessages.map(m=>({role:m.role,content:m.content}))})}); const data=await res.json(); const reply=data.content?.map(b=>b.text||"").join("")||"Erreur."; setMessages(prev=>[...prev,{role:"assistant",content:reply}]); if(reply.length>600&&(reply.includes("##")||reply.includes("Points prioritaires"))){ setReport(reply); onReportSaved&&onReportSaved(reply); } }catch{ setMessages(prev=>[...prev,{role:"assistant",content:"Erreur de connexion."}]); } setLoading(false); } return(<div style={{display:"flex",flexDirection:"column",gap:12}}><div style={{maxHeight:340,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,padding:"4px 0"}}>{messages.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}><div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:14,fontSize:14,lineHeight:1.65,background:m.role==="user"?C.accent:C.bg,color:m.role==="user"?"#fff":C.ink,borderBottomRightRadius:m.role==="user"?3:14,borderBottomLeftRadius:m.role==="assistant"?3:14,border:m.role==="assistant"?`1px solid ${C.border}`:"none",whiteSpace:"pre-wrap"}}>{m.content}</div></div>))}{loading&&(<div style={{display:"flex",alignItems:"center",gap:8,color:C.muted,fontSize:13,padding:"4px 0"}}><span style={{display:"flex",gap:4}}>{[0,1,2].map(i=><span key={i} style={{width:6,height:6,borderRadius:"50%",background:C.subtle,animation:`bounce 1s ${i*.2}s infinite`}}/>)}</span>Claude rédige…</div>)}<div ref={bottomRef}/></div><div style={{display:"flex",gap:8}}><input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} placeholder='Réponds ou dis "génère le rapport final"…' style={{...inputStyle,flex:1,fontSize:13}}/><Btn onClick={send} variant="primary" disabled={loading} style={{padding:"10px 14px"}}>→</Btn></div>{report&&(<div style={{background:C.greenLight,border:`1.5px solid ${C.green}44`,borderRadius:12,padding:14,marginTop:4}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{color:C.green,fontSize:13,fontWeight:700}}>✓ Rapport sauvegardé</span><div style={{display:"flex",gap:8}}><Btn onClick={()=>navigator.clipboard.writeText(report)} variant="outline" style={{fontSize:12,padding:"5px 12px"}}>Copier</Btn><Btn onClick={()=>{const sub=encodeURIComponent(`${period.label} — Rapport terrain`);window.location.href=`mailto:?subject=${sub}&body=${encodeURIComponent(report)}`;}} variant="outline" style={{fontSize:12,padding:"5px 12px"}}>Envoyer</Btn></div></div></div>)}</div>); }
+function AIChat({period,notes,onReportSaved}){ const [messages,setMessages]=useState([]); const [input,setInput]=useState(""); const [loading,setLoading]=useState(false); const [report,setReport]=useState(""); const bottomRef=useRef(); const initialized=useRef(false); useEffect(()=>{ if(initialized.current) return; initialized.current=true; const byChapter={}; notes.forEach(n=>{if(!byChapter[n.chapter])byChapter[n.chapter]=[];byChapter[n.chapter].push(n.text);}); const intro=`Bonjour ! Je suis prêt pour le brainstorming du **${period.label}** (compilation le ${fmt(period.endISO)}).\n\nJ'ai ${notes.length} note(s) réparties en ${Object.keys(byChapter).length} chapitre(s). Quelques questions pour affiner le rapport avant de le générer :`; setMessages([{role:"assistant",content:intro}]); },[]); useEffect(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),[messages]); async function send(){ if(!input.trim()||loading) return; const userMsg={role:"user",content:input.trim()}; const newMessages=[...messages,userMsg]; setMessages(newMessages); setInput(""); setLoading(true); const byChapter={}; notes.forEach(n=>{if(!byChapter[n.chapter])byChapter[n.chapter]=[];byChapter[n.chapter].push(n.text);}); const notesText=CHAPTERS.filter(c=>byChapter[c.id]).map(c=>`### ${c.label}\n${byChapter[c.id].map(t=>`- ${t}`).join("\n")}`).join("\n\n"); try{ const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,system:`Tu es un assistant de terrain pour un commercial éditorial expérimenté. Période : ${period.label} (du ${fmt(period.startISO)} au ${fmt(period.endISO)}). Notes terrain par chapitre :\n${notesText}\n\nAide à brainstormer et affiner le rapport. Quand l'utilisateur demande le rapport final, génère un rapport professionnel structuré par chapitres, avec pour chaque chapitre : synthèse des points clés, actions recommandées. Termine par une section "Points prioritaires" avec les 3-5 actions urgentes. Ton : professionnel, concis, orienté action. En français.`,messages:newMessages.map(m=>({role:m.role,content:m.content}))})}); const data=await res.json(); const reply=data.content?.map(b=>b.text||"").join("")||"Erreur."; setMessages(prev=>[...prev,{role:"assistant",content:reply}]); if(reply.length>600&&(reply.includes("##")||reply.includes("Points prioritaires"))){ setReport(reply); onReportSaved&&onReportSaved(reply); } }catch{ setMessages(prev=>[...prev,{role:"assistant",content:"Erreur de connexion."}]); } setLoading(false); } return(<div style={{display:"flex",flexDirection:"column",gap:12}}><div style={{maxHeight:340,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,padding:"4px 0"}}>{messages.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}><div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:14,fontSize:14,lineHeight:1.65,background:m.role==="user"?C.accent:C.bg,color:m.role==="user"?"#fff":C.ink,borderBottomRightRadius:m.role==="user"?3:14,borderBottomLeftRadius:m.role==="assistant"?3:14,border:m.role==="assistant"?`1px solid ${C.border}`:"none",whiteSpace:"pre-wrap"}}>{m.content}</div></div>))}{loading&&(<div style={{display:"flex",alignItems:"center",gap:8,color:C.muted,fontSize:13,padding:"4px 0"}}><span style={{display:"flex",gap:4}}>{[0,1,2].map(i=><span key={i} style={{width:6,height:6,borderRadius:"50%",background:C.subtle,animation:`bounce 1s ${i*.2}s infinite`}}/>)}</span>Claude rédige…</div>)}<div ref={bottomRef}/></div><div style={{display:"flex",gap:8}}><input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} placeholder='Réponds ou dis "génère le rapport final"…' style={{...inputStyle,flex:1,fontSize:13}}/><Btn onClick={send} variant="primary" disabled={loading} style={{padding:"10px 14px"}}>→</Btn></div>{report&&(<div style={{background:C.greenLight,border:`1.5px solid ${C.green}44`,borderRadius:12,padding:14,marginTop:4}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{color:C.green,fontSize:13,fontWeight:700}}>✓ Rapport sauvegardé</span><div style={{display:"flex",gap:8}}><Btn onClick={()=>navigator.clipboard.writeText(report)} variant="outline" style={{fontSize:12,padding:"5px 12px"}}>Copier</Btn><Btn onClick={()=>{const sub=encodeURIComponent(`${period.label} — Rapport terrain`);window.location.href=`mailto:?subject=${sub}&body=${encodeURIComponent(report)}`;}} variant="outline" style={{fontSize:12,padding:"5px 12px"}}>Envoyer</Btn></div></div></div>)}</div>); }
 
+// ── Carte période ─────────────────────────────────────────────────────────────
+function PeriodCard({ p, status, noteCount, chapterCounts, totalNotes, synthese, index, total, onTap, onEdit, onDelete }) {
+  const [swiped, setSwiped] = useState(false);
+  const touchStartX = useRef(null);
+  const days = daysLeft(p.endISO);
+  const urg  = urgencyStyle(days);
+
+  const cardStyle = {
+    borderRadius:12, padding:"14px 16px",
+    border: status==="current" ? `2px solid ${C.gold}` : status==="future" ? `1.5px solid ${C.accentBorder}` : `1px solid ${C.border}`,
+    background: status==="current" ? C.goldLight : status==="future" ? C.accentLight : C.surface,
+    transition:"transform .2s", transform: swiped?"translateX(-80px)":"translateX(0)",
+    cursor:"pointer",
+  };
+
+  return(
+    <div style={{position:"relative",overflow:"hidden",borderRadius:12,marginBottom:8}}>
+      {/* Action swipe supprimer */}
+      <div style={{position:"absolute",right:0,top:0,bottom:0,width:80,background:C.red,display:"flex",alignItems:"center",justifyContent:"center",opacity:swiped?1:0,transition:"opacity .2s"}}>
+        <button onClick={()=>onDelete(p)} style={{background:"none",border:"none",color:"#fff",cursor:"pointer"}}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7h10M8 7V5h4v2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><rect x="6" y="7" width="8" height="10" rx="1" stroke="#fff" strokeWidth="1.5"/></svg>
+        </button>
+      </div>
+
+      <div
+        style={cardStyle}
+        onTouchStart={e=>{touchStartX.current=e.touches[0].clientX;}}
+        onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(touchStartX.current||0); if(dx<-50)setSwiped(true); else if(dx>20)setSwiped(false); touchStartX.current=null;}}
+        onClick={()=>{ if(swiped){setSwiped(false);return;} onTap(p); }}
+      >
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:status==="current"?C.gold:status==="future"?C.accent:C.border,display:"inline-block",flexShrink:0}}/>
+              <span style={{fontWeight:700,fontSize:14,color:status==="current"?C.amber:status==="future"?C.accent:C.muted}}>{p.label}</span>
+            </div>
+            <div style={{fontSize:12,color:C.muted}}>{fmtYear(p.startISO)} → {fmtYear(p.endISO)}</div>
+            {p.rrule&&<div style={{fontSize:11,color:C.accent,marginTop:2}}>↻ {RRULE_OPTIONS.find(r=>r.value===p.rrule)?.label||"Récurrent"}</div>}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+            {status==="current"&&<Pill color={C.amber} bg={C.amberLight}>{urg.label}</Pill>}
+            {status==="future"&&<span style={{fontSize:11,color:C.accent,fontWeight:600}}>dans {daysUntilStart(p.startISO)}j</span>}
+            {status==="past"&&(
+              synthese
+                ? <span style={{fontSize:10,fontWeight:700,color:C.green,background:C.greenLight,border:`1px solid ${C.green}44`,borderRadius:10,padding:"2px 7px"}}>✓ Synthèse</span>
+                : <span style={{fontSize:10,fontWeight:700,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:"2px 7px"}}>Sans synthèse</span>
+            )}
+            {/* Bouton modifier */}
+            <button onClick={e=>{e.stopPropagation();setSwiped(false);onEdit(p);}} style={{background:"none",border:"none",cursor:"pointer",padding:4}}>
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M13 4l3 3-9 9H4v-3z" stroke="#5a6e7f" strokeWidth="1.5" strokeLinejoin="round"/><path d="M11 6l3 3" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Mini barres chapitres — en cours uniquement */}
+        {status==="current"&&totalNotes>0&&(
+          <div style={{display:"flex",flexDirection:"column",gap:3,marginBottom:8}}>
+            {CHAPTERS.filter(c=>chapterCounts[c.id]).slice(0,4).map(c=>(
+              <div key={c.id} style={{display:"flex",alignItems:"center",gap:6}}>
+                <ChapterIcon id={c.id} size={10}/>
+                <span style={{fontSize:10,color:C.muted,width:80,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.label}</span>
+                <div style={{height:4,flex:1,background:C.border,borderRadius:2,overflow:"hidden"}}>
+                  <div style={{height:"100%",background:C.gold,borderRadius:2,width:`${(chapterCounts[c.id]/totalNotes)*100}%`}}/>
+                </div>
+                <span style={{fontSize:10,color:C.muted,minWidth:16,textAlign:"right"}}>{chapterCounts[c.id]}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontSize:11,color:C.muted}}>
+            {noteCount > 0 ? `${noteCount} note${noteCount>1?"s":""}` : "Aucune note"}
+          </span>
+          <span style={{fontSize:10,color:C.muted}}>{index+1}/{total}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Formulaire période ────────────────────────────────────────────────────────
+function PeriodForm({ initial, lastEndISO, onSave, onCancel, loading }) {
+  const today = new Date().toISOString().slice(0,10);
+  const [startISO, setStart] = useState(initial?.startISO || lastEndISO || today);
+  const [endISO,   setEnd]   = useState(initial?.endISO   || "");
+  const [label,    setLabel] = useState(initial?.label    || "");
+  const [rrule,    setRrule] = useState(initial?.rrule    || "");
+
+  // Auto-génère le label quand les dates changent
+  useEffect(()=>{
+    if(startISO&&endISO&&!initial?.label){
+      setLabel(autoLabel(startISO,endISO));
+    }
+  },[startISO,endISO]);
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <div style={{display:"flex",gap:8}}>
+        <div style={{flex:1}}>
+          <label style={{fontSize:11,color:C.muted,fontWeight:600,display:"block",marginBottom:6}}>
+            {!initial?"Date de début *":"Date de début"}
+          </label>
+          <input type="date" value={startISO} onChange={e=>setStart(e.target.value)} style={inputStyle}/>
+        </div>
+        <div style={{flex:1}}>
+          <label style={{fontSize:11,color:C.muted,fontWeight:600,display:"block",marginBottom:6}}>Date de fin *</label>
+          <input type="date" value={endISO} onChange={e=>setEnd(e.target.value)} style={inputStyle} min={startISO}/>
+        </div>
+      </div>
+      <div>
+        <label style={{fontSize:11,color:C.muted,fontWeight:600,display:"block",marginBottom:6}}>Label (auto-généré)</label>
+        <input value={label} onChange={e=>setLabel(e.target.value)} placeholder="Rapport Mai 2026…" style={inputStyle}/>
+      </div>
+      <div>
+        <label style={{fontSize:11,color:C.muted,fontWeight:600,display:"block",marginBottom:6}}>Récurrence (optionnelle)</label>
+        <select value={rrule} onChange={e=>setRrule(e.target.value)} style={{...inputStyle}}>
+          {RRULE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
+      <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
+        <Btn onClick={onCancel}>Annuler</Btn>
+        <Btn onClick={()=>onSave({startISO,endISO,label,rrule})} variant="primary" disabled={!startISO||!endISO||loading}>
+          {loading?"Création…":"Enregistrer"}
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
+// ── Carte note ────────────────────────────────────────────────────────────────
 function NoteCard({note,onDelete,onEdit}){
   const [editing,setEditing]=useState(false);
   const [editText,setEditText]=useState(note.text);
@@ -158,7 +296,7 @@ function NoteCard({note,onDelete,onEdit}){
       </div>
       <div
         onTouchStart={e=>{touchStartX.current=e.touches[0].clientX;}}
-        onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(touchStartX.current||0); if(dx<-50){setSwiped(true);}else if(dx>20){setSwiped(false);} touchStartX.current=null;}}
+        onTouchEnd={e=>{const dx=e.changedTouches[0].clientX-(touchStartX.current||0); if(dx<-50)setSwiped(true); else if(dx>20)setSwiped(false); touchStartX.current=null;}}
         style={{background:C.surface,borderRadius:12,padding:"14px 16px",border:`1.5px solid ${C.border}`,display:"flex",gap:12,alignItems:"flex-start",transition:"transform .2s",transform:swiped?"translateX(-80px)":"translateX(0)"}}>
         <ChapterIcon id={ch.id} size={16}/>
         <div style={{flex:1,minWidth:0}}>
@@ -177,133 +315,123 @@ function NoteCard({note,onDelete,onEdit}){
   );
 }
 
-function AddPeriodModal({open,onClose,onAdd}){ const [label,setLabel]=useState(""); const [start,setStart]=useState(""); const [end,setEnd]=useState(""); function submit(){ if(!label.trim()||!start||!end) return; onAdd({id:`p-${Date.now()}`,label:label.trim(),start,end}); setLabel(""); setStart(""); setEnd(""); onClose(); } return(<Modal open={open} onClose={onClose} title="+ Ajouter une période"><div style={{display:"flex",flexDirection:"column",gap:12}}><div><label style={{fontSize:12,color:C.muted,fontWeight:600,display:"block",marginBottom:6}}>Nom de la période</label><input value={label} onChange={e=>setLabel(e.target.value)} placeholder="Rapport Juillet…" style={inputStyle} autoFocus/></div><div style={{display:"flex",gap:10}}><div style={{flex:1}}><label style={{fontSize:12,color:C.muted,fontWeight:600,display:"block",marginBottom:6}}>Début</label><input type="date" value={start} onChange={e=>setStart(e.target.value)} style={inputStyle}/></div><div style={{flex:1}}><label style={{fontSize:12,color:C.muted,fontWeight:600,display:"block",marginBottom:6}}>Fin</label><input type="date" value={end} onChange={e=>setEnd(e.target.value)} style={inputStyle}/></div></div><div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}><Btn onClick={onClose}>Annuler</Btn><Btn onClick={submit} variant="primary" disabled={!label.trim()||!start||!end}>Ajouter</Btn></div></div></Modal>); }
-
-// ── Carte période dans le calendrier ─────────────────────────────────────────
-function PeriodCard({ p, status, notes, syntheReport, currentPeriodId, chapterCounts, totalNotes, onTap, onLongPress, index, total }) {
-  const longPressTimer = useRef(null);
-  const days = daysLeft(p.end);
-  const daysStart = daysUntilStart(p.start);
-  const urg = urgencyStyle(days);
-  const noteCount = notes.filter(n=>n.period===p.id).length;
-
-  const cardStyle = {
-    borderRadius:12, padding:"14px 16px", marginBottom:8,
-    border: status==="current" ? `2px solid ${C.gold}` : status==="future" ? `1.5px solid ${C.accentBorder}` : `1px solid ${C.border}`,
-    background: status==="current" ? C.goldLight : status==="future" ? C.accentLight : C.surface,
-    cursor:"pointer", transition:"all .15s",
-    opacity: status==="past" ? .85 : 1,
-  };
-
-  return(
-    <div
-      style={cardStyle}
-      onClick={()=>onTap(p)}
-      onTouchStart={()=>{ longPressTimer.current=setTimeout(()=>onLongPress(p),600); }}
-      onTouchEnd={()=>clearTimeout(longPressTimer.current)}
-    >
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-        <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-            {status==="current"&&<span style={{width:8,height:8,borderRadius:"50%",background:C.gold,display:"inline-block",flexShrink:0}}/>}
-            {status==="future"&&<span style={{width:8,height:8,borderRadius:"50%",background:C.accent,display:"inline-block",flexShrink:0}}/>}
-            {status==="past"&&<span style={{width:8,height:8,borderRadius:"50%",background:C.border,display:"inline-block",flexShrink:0}}/>}
-            <span style={{fontWeight:700,fontSize:14,color:status==="current"?C.amber:status==="future"?C.accent:C.muted}}>{p.label}</span>
-          </div>
-          <div style={{fontSize:12,color:C.muted}}>{fmtYear(p.start)} → {fmtYear(p.end)}</div>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-          {status==="current"&&<Pill color={C.amber} bg={C.amberLight}>{urg.label}</Pill>}
-          {status==="future"&&<span style={{fontSize:11,color:C.accent,fontWeight:600}}>dans {daysStart}j</span>}
-          {status==="past"&&(
-            syntheReport
-              ? <span style={{fontSize:10,fontWeight:700,color:C.green,background:C.greenLight,border:`1px solid ${C.green}44`,borderRadius:10,padding:"2px 7px"}}>✓ Synthèse</span>
-              : <span style={{fontSize:10,fontWeight:700,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:"2px 7px"}}>Sans synthèse</span>
-          )}
-        </div>
-      </div>
-
-      {/* Mini barres chapitres — en cours uniquement */}
-      {status==="current"&&totalNotes>0&&(
-        <div style={{display:"flex",flexDirection:"column",gap:3,marginBottom:8}}>
-          {CHAPTERS.filter(c=>chapterCounts[c.id]).slice(0,4).map(c=>(
-            <div key={c.id} style={{display:"flex",alignItems:"center",gap:6}}>
-              <ChapterIcon id={c.id} size={10}/>
-              <span style={{fontSize:10,color:C.muted,width:80,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.label}</span>
-              <div style={{height:4,flex:1,background:C.border,borderRadius:2,overflow:"hidden"}}>
-                <div style={{height:"100%",background:C.gold,borderRadius:2,width:`${(chapterCounts[c.id]/totalNotes)*100}%`}}/>
-              </div>
-              <span style={{fontSize:10,color:C.muted,minWidth:16,textAlign:"right"}}>{chapterCounts[c.id]}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Nb notes */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontSize:11,color:C.muted}}>
-          {status==="past"
-            ? noteCount>0 ? `${noteCount} note${noteCount>1?"s":""} archivée${noteCount>1?"s":""}` : "Aucune note"
-            : status==="current" ? `${noteCount} note${noteCount>1?"s":""} saisie${noteCount>1?"s":""}` : ""}
-        </span>
-        <span style={{fontSize:10,color:C.muted}}>{index+1}/{total}</span>
-      </div>
-    </div>
-  );
-}
-
-export default function NomadBook({ onClose }){
+// ── Composant principal ───────────────────────────────────────────────────────
+export default function NomadBook({ onClose, auth }) {
   const [tab,setTab]               = useState("notes");
-  const [notes,setNotes]           = useState(()=>{ const migrated=load("nf4_notes",null); if(migrated&&migrated.length>0&&!load("nb_notes",null)){ save("nb_notes",migrated); } return load("nb_notes",[]); });
-  const [periods,setPeriods]       = useState(()=>load("nb_periods",DEFAULT_PERIODS));
-  const [syntheses,setSyntheses]   = useState(()=>load("nb_syntheses",{})); // {periodId: {text, date}}
+  const [notes,setNotes]           = useState(()=>load("nb_notes",[]));
+  const [periods,setPeriods]       = useState([]);
+  const [syntheses,setSyntheses]   = useState(()=>load("nb_syntheses",{}));
+  const [loadingPeriods,setLoadingPeriods] = useState(true);
+  const [calAvailable,setCalAvailable]     = useState(true);
   const [captureOpen,setCaptureOpen]   = useState(false);
   const [voiceOpen,setVoiceOpen]       = useState(false);
   const [chatOpen,setChatOpen]         = useState(false);
-  const [addPeriodOpen,setAddPeriodOpen] = useState(false);
-  const [confirmDelete,setConfirmDelete] = useState(null);
-  const [pendingDeleteId,setPendingDeleteId] = useState(null);
-  const [viewSyntheseModal,setViewSyntheseModal] = useState(null); // {period, text}
-  const [longPressModal,setLongPressModal] = useState(null); // period
+  const [periodFormOpen,setPeriodFormOpen] = useState(false);
+  const [editingPeriod,setEditingPeriod]   = useState(null);
+  const [savingPeriod,setSavingPeriod]     = useState(false);
+  const [confirmDelPeriod,setConfirmDelPeriod] = useState(null);
+  const [confirmDelNote,setConfirmDelNote]     = useState(null);
+  const [viewSynthese,setViewSynthese]         = useState(null);
   const [noteText,setNoteText]     = useState("");
   const [noteChapter,setNoteChapter] = useState("marche");
-
-  const currentPeriod  = getCurrentPeriod(periods);
-  const daysToCompile  = daysLeft(currentPeriod.end);
-  const urg            = urgencyStyle(daysToCompile);
-  const touchStartX    = useRef(null);
+  const touchStartX = useRef(null);
   const currentCardRef = useRef(null);
 
-  useEffect(()=>save("nb_notes",notes),[notes]);
-  useEffect(()=>save("nb_periods",periods),[periods]);
-  useEffect(()=>save("nb_syntheses",syntheses),[syntheses]);
-  useEffect(()=>{ const h=e=>{if(e.ctrlKey&&e.key===" "){e.preventDefault();setCaptureOpen(true);}}; window.addEventListener("keydown",h); return()=>window.removeEventListener("keydown",h); },[]);
+  // Période courante
+  const currentPeriod = periods.find(p=>getPeriodStatus(p)==="current") || periods[0];
+  const daysToCompile = currentPeriod ? daysLeft(currentPeriod.endISO) : 0;
+  const urg           = urgencyStyle(daysToCompile);
 
-  // Auto-scroll vers période en cours dans l'onglet Rapport
-  useEffect(()=>{
-    if(tab==="rapport"&&currentCardRef.current){
-      setTimeout(()=>currentCardRef.current?.scrollIntoView({behavior:"smooth",block:"center"}),100);
-    }
-  },[tab]);
-
-  const voice=useVoice(t=>{setNoteText(t);setVoiceOpen(false);setCaptureOpen(true);});
-
-  function addNote(){ if(!noteText.trim()) return; const note={id:Date.now(),text:noteText.trim(),chapter:noteChapter,createdAt:new Date().toISOString(),period:currentPeriod.id}; setNotes(prev=>[note,...prev]); setNoteText(""); setCaptureOpen(false); }
-  function editNote(id,{text,chapter}){ setNotes(prev=>prev.map(n=>n.id===id?{...n,text,chapter,editedAt:new Date().toISOString()}:n)); }
-  function requestDelete(id){ setPendingDeleteId(id); setConfirmDelete("single"); }
-  function saveReport(periodId,text){ setSyntheses(prev=>({...prev,[periodId]:{text,date:new Date().toISOString()}})); }
-
-  const periodNotes = notes.filter(n=>n.period===currentPeriod.id);
+  // Notes de la période courante
+  const periodNotes = currentPeriod ? notes.filter(n=>n.periodId===currentPeriod.uid) : [];
   const chapterCounts = {};
   periodNotes.forEach(n=>{chapterCounts[n.chapter]=(chapterCounts[n.chapter]||0)+1;});
-
-  // Notes groupées par chapitre
   const notesByChapter = CHAPTERS.map(ch=>({chapter:ch,notes:periodNotes.filter(n=>n.chapter===ch.id)})).filter(g=>g.notes.length>0);
 
-  // Périodes triées : passés (les plus anciens en haut) → en cours → futurs (en bas)
-  const sortedPeriods = [...periods].sort((a,b)=>new Date(a.start)-new Date(b.start));
-  const pastPeriods    = sortedPeriods.filter(p=>getPeriodStatus(p)==="past").reverse(); // plus récents en bas
+  // Tri périodes
+  const sortedPeriods  = [...periods].sort((a,b)=>new Date(a.startISO)-new Date(b.startISO));
+  const pastPeriods    = sortedPeriods.filter(p=>getPeriodStatus(p)==="past").reverse();
   const futurePeriods  = sortedPeriods.filter(p=>getPeriodStatus(p)==="future");
+
+  useEffect(()=>save("nb_notes",notes),[notes]);
+  useEffect(()=>save("nb_syntheses",syntheses),[syntheses]);
+
+  // Charge les périodes depuis CalDAV
+  useEffect(()=>{
+    if(!auth) return;
+    loadPeriods();
+  },[auth]);
+
+  // Auto-scroll vers période en cours
+  useEffect(()=>{
+    if(tab==="rapport"&&currentCardRef.current){
+      setTimeout(()=>currentCardRef.current?.scrollIntoView({behavior:"smooth",block:"center"}),150);
+    }
+  },[tab,periods]);
+
+  useEffect(()=>{ const h=e=>{if(e.ctrlKey&&e.key===" "){e.preventDefault();setCaptureOpen(true);}}; window.addEventListener("keydown",h); return()=>window.removeEventListener("keydown",h); },[]);
+
+  const voice = useVoice(t=>{setNoteText(t);setVoiceOpen(false);setCaptureOpen(true);});
+
+  async function loadPeriods() {
+    setLoadingPeriods(true);
+    try {
+      const calOk = await checkCalendarExists(auth);
+      setCalAvailable(calOk);
+      if(calOk){
+        const evs = await getPeriodEvents(auth);
+        setPeriods(evs);
+      }
+    } catch {
+      setCalAvailable(false);
+    }
+    setLoadingPeriods(false);
+  }
+
+  function addNote(){
+    if(!noteText.trim()||!currentPeriod) return;
+    const note={id:Date.now(),text:noteText.trim(),chapter:noteChapter,createdAt:new Date().toISOString(),periodId:currentPeriod.uid};
+    setNotes(prev=>[note,...prev]);
+    setNoteText(""); setCaptureOpen(false);
+    // Sync nb notes dans l'event CalDAV
+    if(auth&&currentPeriod?.href){
+      import("../utils/caldavCalendar.js").then(({syncNoteCount})=>{
+        syncNoteCount(auth,currentPeriod.href,{...currentPeriod,noteCount:periodNotes.length+1});
+      });
+    }
+  }
+
+  function editNote(id,{text,chapter}){
+    setNotes(prev=>prev.map(n=>n.id===id?{...n,text,chapter,editedAt:new Date().toISOString()}:n));
+  }
+
+  async function handleSavePeriod({startISO,endISO,label,rrule}){
+    if(!auth||!startISO||!endISO) return;
+    setSavingPeriod(true);
+    try{
+      if(editingPeriod){
+        // Modification
+        const result = await updatePeriodEvent(auth, editingPeriod.href, {startISO,endISO,label,rrule,noteCount:notes.filter(n=>n.periodId===editingPeriod.uid).length});
+        if(result.success) await loadPeriods();
+      } else {
+        // Création
+        const result = await createPeriodEvent(auth,{startISO,endISO,label,rrule});
+        if(result.success) await loadPeriods();
+      }
+    }catch{}
+    setSavingPeriod(false);
+    setPeriodFormOpen(false);
+    setEditingPeriod(null);
+  }
+
+  async function handleDeletePeriod(p){
+    if(!auth||!p.href) return;
+    await deletePeriodEvent(auth,p.href);
+    // Supprime aussi les notes locales de cette période
+    setNotes(prev=>prev.filter(n=>n.periodId!==p.uid));
+    await loadPeriods();
+    setConfirmDelPeriod(null);
+  }
 
   // Swipe droite = retour NomadCal
   function handleTouchStart(e){ touchStartX.current=e.touches[0].clientX; }
@@ -319,6 +447,8 @@ export default function NomadBook({ onClose }){
   const btnPrimary = { ...btnBase, background:C.accent, color:"#fff", border:"none" };
   const btnActive  = { ...btnBase, background:C.accent, color:"#fff", border:"none" };
 
+  const lastEndISO = sortedPeriods.length > 0 ? sortedPeriods[sortedPeriods.length-1].endISO : null;
+
   return(
     <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:"'Phenomena','Nunito',sans-serif",position:"relative"}}
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
@@ -329,12 +459,14 @@ export default function NomadBook({ onClose }){
           <span style={{fontSize:34,fontWeight:800,color:C.accent,fontFamily:"Phenomena,sans-serif",letterSpacing:-1,lineHeight:1}}>NomadBook</span>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <button onClick={()=>onClose?onClose():window.location.href="https://cal-flow-jade.vercel.app"} style={{background:"none",border:"none",cursor:"pointer",padding:2,display:"flex"}}><IconHome/></button>
-            <button onClick={()=>setAddPeriodOpen(true)} style={{background:"none",border:"none",cursor:"pointer",padding:2,display:"flex"}}><IconSettings/></button>
+            <button onClick={()=>{setEditingPeriod(null);setPeriodFormOpen(true);}} style={{background:"none",border:"none",cursor:"pointer",padding:2,display:"flex"}}><IconSettings/></button>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px 6px"}}>
-          <span style={{fontSize:15,color:C.ink,fontWeight:700,fontFamily:"Phenomena,sans-serif"}}>{currentPeriod.label}</span>
-          <span style={{fontSize:13,color:urg.color,fontWeight:600}}>Compilation le {fmt(currentPeriod.end)} — {urg.label}</span>
+          <span style={{fontSize:15,color:C.ink,fontWeight:700,fontFamily:"Phenomena,sans-serif"}}>
+            {currentPeriod ? currentPeriod.label : "Aucune période"}
+          </span>
+          {currentPeriod&&<span style={{fontSize:13,color:urg.color,fontWeight:600}}>Compilation le {fmt(currentPeriod.endISO)} — {urg.label}</span>}
         </div>
         <div style={{display:"flex",gap:6,padding:"0 14px 8px"}}>
           <button onClick={()=>{setVoiceOpen(true);voice.start();}} style={{...btnStyle,display:"flex",alignItems:"center",justifyContent:"center",gap:5,color:voice.listening?C.red:C.accent,borderColor:voice.listening?C.red:C.accentBorder}}>
@@ -353,18 +485,38 @@ export default function NomadBook({ onClose }){
         </div>
       </div>
 
+      {/* Bandeau calendrier indisponible */}
+      {!calAvailable&&!loadingPeriods&&(
+        <div style={{background:C.amberLight,border:`1px solid ${C.gold}`,margin:"8px 16px",borderRadius:10,padding:"10px 14px",fontSize:12,color:C.amber,fontWeight:600}}>
+          📅 Calendrier iCloud indisponible — NomadCal fonctionne en mode local.
+          <button onClick={loadPeriods} style={{background:"none",border:"none",color:C.accent,cursor:"pointer",fontSize:12,fontWeight:700,marginLeft:8}}>Réessayer</button>
+        </div>
+      )}
+
       <div style={{maxWidth:680,margin:"0 auto",padding:"16px 16px 80px"}}>
 
         {/* NOTES */}
         {tab==="notes"&&(
           <div>
-            {periodNotes.length===0
-              ?<div style={{textAlign:"center",color:C.subtle,padding:"60px 0",fontSize:15}}>
-                  <div style={{fontSize:40,marginBottom:16}}>📋</div>
-                  Aucune note pour cette période.<br/>
-                  <span style={{fontSize:13}}>Appuie sur + Note ou utilise le micro.</span>
+            {!currentPeriod&&!loadingPeriods&&(
+              <div style={{textAlign:"center",color:C.subtle,padding:"60px 0",fontSize:15}}>
+                <div style={{fontSize:40,marginBottom:16}}>📋</div>
+                Aucune période de rapport.<br/>
+                <span style={{fontSize:13}}>Crée ta première période via ⚙️</span>
+                <div style={{marginTop:20}}>
+                  <Btn variant="primary" onClick={()=>{setEditingPeriod(null);setPeriodFormOpen(true);}}>+ Créer une période</Btn>
                 </div>
-              :<div style={{display:"flex",flexDirection:"column",gap:24}}>
+              </div>
+            )}
+            {currentPeriod&&periodNotes.length===0&&(
+              <div style={{textAlign:"center",color:C.subtle,padding:"60px 0",fontSize:15}}>
+                <div style={{fontSize:40,marginBottom:16}}>📋</div>
+                Aucune note pour cette période.<br/>
+                <span style={{fontSize:13}}>Appuie sur + Note ou utilise le micro.</span>
+              </div>
+            )}
+            {currentPeriod&&notesByChapter.length>0&&(
+              <div style={{display:"flex",flexDirection:"column",gap:24}}>
                 {notesByChapter.map(({chapter,notes:chNotes})=>(
                   <div key={chapter.id}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,paddingBottom:6,borderBottom:`1px solid ${C.border}`}}>
@@ -373,134 +525,177 @@ export default function NomadBook({ onClose }){
                       <span style={{fontSize:11,color:C.muted,marginLeft:"auto"}}>{chNotes.length} note{chNotes.length>1?"s":""}</span>
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                      {chNotes.map(note=>(<NoteCard key={note.id} note={note} onDelete={requestDelete} onEdit={editNote}/>))}
+                      {chNotes.map(note=>(<NoteCard key={note.id} note={note} onDelete={id=>setConfirmDelNote(id)} onEdit={editNote}/>))}
                     </div>
                   </div>
                 ))}
               </div>
-            }
+            )}
           </div>
         )}
 
-        {confirmDelete&&(<Modal open={true} onClose={()=>{setConfirmDelete(null);setPendingDeleteId(null);}} title="Confirmer la suppression"><p style={{fontSize:14,color:C.muted,lineHeight:1.6,marginBottom:20}}>Supprimer cette note définitivement ?<br/><span style={{fontSize:12,color:C.subtle}}>Cette action est irréversible.</span></p><div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn onClick={()=>{setConfirmDelete(null);setPendingDeleteId(null);}}>Annuler</Btn><Btn variant="danger" onClick={()=>{setNotes(p=>p.filter(n=>n.id!==pendingDeleteId));setConfirmDelete(null);setPendingDeleteId(null);}}>Supprimer</Btn></div></Modal>)}
-
-        {/* RAPPORT — Calendrier chronologique 2 ans */}
+        {/* RAPPORT — Calendrier 2 ans */}
         {tab==="rapport"&&(
           <div>
-            {/* Indicateur global */}
-            <div style={{fontSize:11,color:C.muted,textAlign:"center",marginBottom:16,fontWeight:600,letterSpacing:.5}}>
-              {pastPeriods.length} passée{pastPeriods.length>1?"s":""} · 1 en cours · {futurePeriods.length} à venir — {periods.length} périodes au total
-            </div>
-
-            {/* PASSÉS — les plus anciens en haut */}
-            {pastPeriods.length>0&&(
-              <div style={{marginBottom:8}}>
-                <div style={{fontSize:11,color:C.muted,fontWeight:700,letterSpacing:.5,textTransform:"uppercase",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
-                  <span style={{width:8,height:8,borderRadius:"50%",background:C.border,display:"inline-block"}}/>
-                  Archivés
-                </div>
-                {[...pastPeriods].reverse().map((p,i)=>(
-                  <PeriodCard
-                    key={p.id} p={p} status="past"
-                    notes={notes} syntheReport={syntheses[p.id]}
-                    currentPeriodId={currentPeriod.id}
-                    chapterCounts={{}} totalNotes={0}
-                    index={i} total={periods.length}
-                    onTap={p=>{ if(syntheses[p.id]) setViewSyntheseModal({period:p,text:syntheses[p.id].text,date:syntheses[p.id].date}); }}
-                    onLongPress={p=>setLongPressModal(p)}
-                  />
-                ))}
+            {loadingPeriods&&(
+              <div style={{textAlign:"center",color:C.muted,padding:"40px 0",fontSize:14}}>
+                Chargement des périodes depuis iCloud…
               </div>
             )}
 
-            {/* SÉPARATEUR */}
-            <div style={{display:"flex",alignItems:"center",gap:10,margin:"16px 0"}}>
-              <div style={{flex:1,height:1,background:C.gold}}/>
-              <span style={{fontSize:11,fontWeight:800,color:C.amber,letterSpacing:.5}}>PÉRIODE EN COURS</span>
-              <div style={{flex:1,height:1,background:C.gold}}/>
-            </div>
+            {!loadingPeriods&&periods.length===0&&(
+              <div style={{textAlign:"center",color:C.subtle,padding:"60px 0",fontSize:15}}>
+                <div style={{fontSize:40,marginBottom:16}}>📅</div>
+                Aucune période de rapport.<br/>
+                <div style={{marginTop:20}}>
+                  <Btn variant="primary" onClick={()=>{setEditingPeriod(null);setPeriodFormOpen(true);}}>+ Créer ma première période</Btn>
+                </div>
+              </div>
+            )}
 
-            {/* EN COURS */}
-            <div ref={currentCardRef}>
-              <PeriodCard
-                p={currentPeriod} status="current"
-                notes={notes} syntheReport={syntheses[currentPeriod.id]}
-                currentPeriodId={currentPeriod.id}
-                chapterCounts={chapterCounts} totalNotes={periodNotes.length}
-                index={sortedPeriods.findIndex(p=>p.id===currentPeriod.id)} total={periods.length}
-                onTap={()=>setChatOpen(true)}
-                onLongPress={()=>{}}
-              />
-              <Btn onClick={()=>setChatOpen(true)} variant="primary" style={{width:"100%",justifyContent:"center",display:"flex",marginBottom:8}}>
-                Lancer le brainstorming & générer le rapport
+            {!loadingPeriods&&periods.length>0&&(<>
+              {/* Indicateur */}
+              <div style={{fontSize:11,color:C.muted,textAlign:"center",marginBottom:16,fontWeight:600,letterSpacing:.5}}>
+                {pastPeriods.length} passée{pastPeriods.length>1?"s":""} · {currentPeriod?1:0} en cours · {futurePeriods.length} à venir
+              </div>
+
+              {/* PASSÉS */}
+              {pastPeriods.length>0&&(<>
+                <div style={{fontSize:11,color:C.muted,fontWeight:700,letterSpacing:.5,textTransform:"uppercase",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:C.border,display:"inline-block"}}/>Archivés
+                </div>
+                {[...pastPeriods].reverse().map((p,i)=>(
+                  <PeriodCard key={p.uid||p.href} p={p} status="past"
+                    noteCount={notes.filter(n=>n.periodId===p.uid).length}
+                    chapterCounts={{}} totalNotes={0}
+                    synthese={syntheses[p.uid]}
+                    index={sortedPeriods.findIndex(pp=>pp.uid===p.uid)} total={periods.length}
+                    onTap={p=>{ if(syntheses[p.uid]) setViewSynthese({period:p,text:syntheses[p.uid].text,date:syntheses[p.uid].date}); }}
+                    onEdit={p=>{ setEditingPeriod(p); setPeriodFormOpen(true); }}
+                    onDelete={p=>setConfirmDelPeriod(p)}
+                  />
+                ))}
+              </>)}
+
+              {/* EN COURS */}
+              {currentPeriod&&(<>
+                <div style={{display:"flex",alignItems:"center",gap:10,margin:"16px 0"}}>
+                  <div style={{flex:1,height:1,background:C.gold}}/>
+                  <span style={{fontSize:11,fontWeight:800,color:C.amber,letterSpacing:.5}}>PÉRIODE EN COURS</span>
+                  <div style={{flex:1,height:1,background:C.gold}}/>
+                </div>
+                <div ref={currentCardRef}>
+                  <PeriodCard p={currentPeriod} status="current"
+                    noteCount={periodNotes.length}
+                    chapterCounts={chapterCounts} totalNotes={periodNotes.length}
+                    synthese={syntheses[currentPeriod.uid]}
+                    index={sortedPeriods.findIndex(p=>p.uid===currentPeriod.uid)} total={periods.length}
+                    onTap={()=>setChatOpen(true)}
+                    onEdit={p=>{ setEditingPeriod(p); setPeriodFormOpen(true); }}
+                    onDelete={p=>setConfirmDelPeriod(p)}
+                  />
+                  <Btn onClick={()=>setChatOpen(true)} variant="primary" style={{width:"100%",justifyContent:"center",display:"flex",marginBottom:8}}>
+                    Lancer le brainstorming & générer le rapport
+                  </Btn>
+                </div>
+              </>)}
+
+              {/* FUTURS */}
+              {futurePeriods.length>0&&(<>
+                <div style={{display:"flex",alignItems:"center",gap:10,margin:"16px 0"}}>
+                  <div style={{flex:1,height:1,background:C.accentBorder}}/>
+                  <span style={{fontSize:11,fontWeight:800,color:C.accent,letterSpacing:.5}}>À VENIR</span>
+                  <div style={{flex:1,height:1,background:C.accentBorder}}/>
+                </div>
+                {futurePeriods.map((p,i)=>(
+                  <PeriodCard key={p.uid||p.href} p={p} status="future"
+                    noteCount={notes.filter(n=>n.periodId===p.uid).length}
+                    chapterCounts={{}} totalNotes={0}
+                    synthese={null}
+                    index={sortedPeriods.findIndex(pp=>pp.uid===p.uid)} total={periods.length}
+                    onTap={()=>{}}
+                    onEdit={p=>{ setEditingPeriod(p); setPeriodFormOpen(true); }}
+                    onDelete={p=>setConfirmDelPeriod(p)}
+                  />
+                ))}
+              </>)}
+
+              <Btn onClick={()=>{setEditingPeriod(null);setPeriodFormOpen(true);}} variant="soft" style={{width:"100%",justifyContent:"center",display:"flex",marginTop:8}}>
+                + Ajouter une période
               </Btn>
-            </div>
-
-            {/* SÉPARATEUR */}
-            <div style={{display:"flex",alignItems:"center",gap:10,margin:"16px 0"}}>
-              <div style={{flex:1,height:1,background:C.accentBorder}}/>
-              <span style={{fontSize:11,fontWeight:800,color:C.accent,letterSpacing:.5}}>À VENIR</span>
-              <div style={{flex:1,height:1,background:C.accentBorder}}/>
-            </div>
-
-            {/* FUTURS */}
-            {futurePeriods.map((p,i)=>(
-              <PeriodCard
-                key={p.id} p={p} status="future"
-                notes={notes} syntheReport={null}
-                currentPeriodId={currentPeriod.id}
-                chapterCounts={{}} totalNotes={0}
-                index={sortedPeriods.findIndex(pp=>pp.id===p.id)} total={periods.length}
-                onTap={()=>{}}
-                onLongPress={p=>setLongPressModal(p)}
-              />
-            ))}
-
-            <Btn onClick={()=>setAddPeriodOpen(true)} variant="soft" style={{width:"100%",justifyContent:"center",display:"flex",marginTop:8}}>
-              + Ajouter une période
-            </Btn>
+            </>)}
           </div>
         )}
       </div>
 
-      {/* Modal voir synthèse archivée */}
-      {viewSyntheseModal&&(
-        <Modal open={true} onClose={()=>setViewSyntheseModal(null)} title={`Synthèse — ${viewSyntheseModal.period.label}`} wide={true}>
-          <div style={{fontSize:11,color:C.muted,marginBottom:16}}>Générée le {new Date(viewSyntheseModal.date).toLocaleDateString("fr-FR")}</div>
+      {/* ── Modals ── */}
+
+      {/* Formulaire période */}
+      <Modal open={periodFormOpen} onClose={()=>{setPeriodFormOpen(false);setEditingPeriod(null);}}
+        title={editingPeriod?"Modifier la période":"+ Nouvelle période"}>
+        <PeriodForm
+          initial={editingPeriod}
+          lastEndISO={lastEndISO}
+          onSave={handleSavePeriod}
+          onCancel={()=>{setPeriodFormOpen(false);setEditingPeriod(null);}}
+          loading={savingPeriod}
+        />
+      </Modal>
+
+      {/* Confirmer suppression période */}
+      {confirmDelPeriod&&(
+        <Modal open={true} onClose={()=>setConfirmDelPeriod(null)} title="Supprimer la période">
+          <p style={{fontSize:14,color:C.muted,lineHeight:1.6,marginBottom:20}}>
+            Supprimer <strong>{confirmDelPeriod.label}</strong> de votre iCloud ?<br/>
+            <span style={{fontSize:12,color:C.subtle}}>Les notes locales associées seront aussi supprimées. Action irréversible.</span>
+          </p>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <Btn onClick={()=>setConfirmDelPeriod(null)}>Annuler</Btn>
+            <Btn variant="danger" onClick={()=>handleDeletePeriod(confirmDelPeriod)}>Supprimer</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {/* Confirmer suppression note */}
+      {confirmDelNote&&(
+        <Modal open={true} onClose={()=>setConfirmDelNote(null)} title="Supprimer la note">
+          <p style={{fontSize:14,color:C.muted,lineHeight:1.6,marginBottom:20}}>
+            Supprimer cette note définitivement ?<br/>
+            <span style={{fontSize:12,color:C.subtle}}>Action irréversible.</span>
+          </p>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <Btn onClick={()=>setConfirmDelNote(null)}>Annuler</Btn>
+            <Btn variant="danger" onClick={()=>{setNotes(p=>p.filter(n=>n.id!==confirmDelNote));setConfirmDelNote(null);}}>Supprimer</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {/* Voir synthèse archivée */}
+      {viewSynthese&&(
+        <Modal open={true} onClose={()=>setViewSynthese(null)} title={`Synthèse — ${viewSynthese.period.label}`} wide={true}>
+          <div style={{fontSize:11,color:C.muted,marginBottom:16}}>Générée le {new Date(viewSynthese.date).toLocaleDateString("fr-FR")}</div>
           <div style={{fontSize:13,lineHeight:1.8,color:C.ink,whiteSpace:"pre-wrap",background:C.bg,borderRadius:10,padding:"14px 16px",border:`1px solid ${C.border}`,marginBottom:16}}>
-            {viewSyntheseModal.text}
+            {viewSynthese.text}
           </div>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-            <Btn onClick={()=>navigator.clipboard.writeText(viewSyntheseModal.text)} variant="soft">Copier</Btn>
-            <Btn onClick={()=>{const sub=encodeURIComponent(`${viewSyntheseModal.period.label} — Rapport terrain`);window.location.href=`mailto:?subject=${sub}&body=${encodeURIComponent(viewSyntheseModal.text)}`;}} variant="outline">Envoyer</Btn>
+            <Btn onClick={()=>navigator.clipboard.writeText(viewSynthese.text)} variant="soft">Copier</Btn>
+            <Btn onClick={()=>{const sub=encodeURIComponent(`${viewSynthese.period.label} — Rapport terrain`);window.location.href=`mailto:?subject=${sub}&body=${encodeURIComponent(viewSynthese.text)}`;}} variant="outline">Envoyer</Btn>
           </div>
         </Modal>
       )}
 
-      {/* Modal tap long — options période */}
-      {longPressModal&&(
-        <Modal open={true} onClose={()=>setLongPressModal(null)} title={longPressModal.label}>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {syntheses[longPressModal.id]&&(
-              <Btn variant="soft" onClick={()=>{ setViewSyntheseModal({period:longPressModal,text:syntheses[longPressModal.id].text,date:syntheses[longPressModal.id].date}); setLongPressModal(null); }} style={{width:"100%",justifyContent:"center",display:"flex"}}>
-                Voir la synthèse
-              </Btn>
-            )}
-            <Btn variant="danger" onClick={()=>{ setPeriods(prev=>prev.filter(p=>p.id!==longPressModal.id)); setSyntheses(prev=>{const n={...prev};delete n[longPressModal.id];return n;}); setLongPressModal(null); }} style={{width:"100%",justifyContent:"center",display:"flex"}}>
-              Supprimer cette période
-            </Btn>
-            <Btn onClick={()=>setLongPressModal(null)} style={{width:"100%",justifyContent:"center",display:"flex"}}>
-              Annuler
-            </Btn>
-          </div>
-        </Modal>
-      )}
-
-      {/* Modals notes */}
+      {/* Capture note */}
       <Modal open={captureOpen} onClose={()=>setCaptureOpen(false)} title="Nouvelle note">
-        <div style={{background:C.accentLight,border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"8px 12px",marginBottom:16,fontSize:12,color:C.accent,fontWeight:600}}>
-          Rattachée à : <strong>{currentPeriod.label}</strong> · compilation le {fmt(currentPeriod.end)}
-        </div>
+        {!currentPeriod&&(
+          <div style={{background:C.amberLight,border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.amber,fontWeight:600}}>
+            Aucune période active — crée une période d'abord via ⚙️
+          </div>
+        )}
+        {currentPeriod&&(
+          <div style={{background:C.accentLight,border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"8px 12px",marginBottom:16,fontSize:12,color:C.accent,fontWeight:600}}>
+            Rattachée à : <strong>{currentPeriod.label}</strong> · compilation le {fmt(currentPeriod.endISO)}
+          </div>
+        )}
         <div style={{marginBottom:12}}>
           <label style={{fontSize:12,color:C.muted,display:"block",marginBottom:8,fontWeight:600}}>Chapitre</label>
           <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4,WebkitOverflowScrolling:"touch"}}>
@@ -514,10 +709,11 @@ export default function NomadBook({ onClose }){
         <textarea value={noteText} onChange={e=>setNoteText(e.target.value)} rows={4} placeholder="Ta note terrain…" autoFocus onKeyDown={e=>{if(e.metaKey&&e.key==="Enter")addNote();}} style={{...inputStyle,resize:"vertical",marginBottom:16,lineHeight:1.6}}/>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <Btn onClick={()=>setCaptureOpen(false)}>Annuler</Btn>
-          <Btn onClick={addNote} variant="primary" disabled={!noteText.trim()}>Enregistrer</Btn>
+          <Btn onClick={addNote} variant="primary" disabled={!noteText.trim()||!currentPeriod}>Enregistrer</Btn>
         </div>
       </Modal>
 
+      {/* Dictée vocale */}
       <Modal open={voiceOpen} onClose={()=>{voice.stop();setVoiceOpen(false);}} title="Dictée vocale">
         <div style={{textAlign:"center",padding:"12px 0"}}>
           <div style={{width:72,height:72,borderRadius:"50%",margin:"0 auto 16px",background:voice.listening?C.redLight:C.bg,border:`2px solid ${voice.listening?C.red:C.border}`,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .3s"}}>
@@ -531,11 +727,12 @@ export default function NomadBook({ onClose }){
         </div>
       </Modal>
 
-      <Modal open={chatOpen} onClose={()=>setChatOpen(false)} title={`Brainstorming — ${currentPeriod.label}`} wide={true}>
-        <AIChat period={currentPeriod} notes={periodNotes} onReportSaved={text=>saveReport(currentPeriod.id,text)}/>
-      </Modal>
-
-      <AddPeriodModal open={addPeriodOpen} onClose={()=>setAddPeriodOpen(false)} onAdd={p=>setPeriods(prev=>[...prev,p])}/>
+      {/* Brainstorming IA */}
+      {currentPeriod&&(
+        <Modal open={chatOpen} onClose={()=>setChatOpen(false)} title={`Brainstorming — ${currentPeriod.label}`} wide={true}>
+          <AIChat period={currentPeriod} notes={periodNotes} onReportSaved={text=>{setSyntheses(prev=>({...prev,[currentPeriod.uid]:{text,date:new Date().toISOString()}}));}}/>
+        </Modal>
+      )}
 
       <style>{`* { box-sizing: border-box; } @keyframes bounce { 0%,80%,100%{transform:scale(0)} 40%{transform:scale(1)} } ::-webkit-scrollbar{width:4px;height:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#d4c9b8;border-radius:4px} textarea:focus, input:focus { border-color: #2B5A9E !important; } button:active { transform: scale(.97); }`}</style>
     </div>
