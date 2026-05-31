@@ -11,6 +11,20 @@ import NomadBook from "./components/NomadBook.jsx";
 
 const USER_PLAN = "free";
 
+// ── Email propriétaire — SYNTHESE_DEADLINES visibles uniquement pour lui ──────
+const OWNER_EMAIL = "olivierclaverie@icloud.com";
+
+// ── Préfixage clés localStorage par user ──────────────────────────────────────
+function userPrefix(email) {
+  if (!email) return "";
+  return email.split("@")[0].slice(0,8).replace(/[^a-z0-9]/gi,"_") + "_";
+}
+function uKey(email, key) {
+  // cf_auth n'est jamais préfixé — clé globale de session
+  if (key === "cf_auth") return key;
+  return userPrefix(email) + key;
+}
+
 async function pushEvent(ev, auth) {
   if (!auth || !ev.calHref) return;
   const uid = ev.id?.startsWith("calflow-") ? ev.id : `calflow-${Date.now()}@nomadcal`;
@@ -237,11 +251,18 @@ function EventDetail({ ev, onEdit, onDelete, onCopy, onDone }) {
 }
 
 export default function App() {
-  const [auth,setAuth]               = useState(()=>load("cf_auth",null));
-  const [events,setEvents]           = useState(()=>load("cf_events",[]));
-  const [tasks,setTasks]             = useState(()=>load("cf_tasks",[]));
-  const [calendars,setCalendars]     = useState(()=>load("cf_calendars",[]));
-  const [settings,setSettings]       = useState(()=>load("cf_settings",{startHour:"8",endHour:"20",showDone:false}));
+  // ── Auth — clé globale non préfixée ──────────────────────────────────────
+  const [auth,setAuth] = useState(()=>load("cf_auth",null));
+
+  // ── email dérivé de auth pour préfixer les clés ───────────────────────────
+  const email = auth?.email || "";
+
+  // ── États — clés préfixées par user ──────────────────────────────────────
+  const [events,setEvents]       = useState(()=>load(uKey(email,"cf_events"),[]));
+  const [tasks,setTasks]         = useState(()=>load(uKey(email,"cf_tasks"),[]));
+  const [calendars,setCalendars] = useState(()=>load(uKey(email,"cf_calendars"),[]));
+  const [settings,setSettings]   = useState(()=>load(uKey(email,"cf_settings"),{startHour:"8",endHour:"20",showDone:false}));
+
   const [screen,setScreen]           = useState("main");
   const [currentView,setCurrentView] = useState("week");
   const [syncing,setSyncing]         = useState(false);
@@ -261,79 +282,68 @@ export default function App() {
   const [fraisDate,setFraisDate]     = useState(null);
   const [nomadBookOpen,setNomadBookOpen] = useState(false);
 
-  // ── UN SEUL état pour la semaine — source de vérité unique ────────────────
-  const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
+  // ── UN SEUL état semaine ──────────────────────────────────────────────────
+  const [weekStart,setWeekStart] = useState(()=>getWeekStart(new Date()));
 
-  const touchStartX  = useRef(null);
-  const touchStartY  = useRef(null);
+  const touchStartX   = useRef(null);
+  const touchStartY   = useRef(null);
   const gridScrollRef = useRef(null);
 
-  // Dérivé directement de weekStart — jamais de désynchronisation
   const weekDays = getWeekDays(weekStart);
   const weekNum  = getWeekNum(weekStart);
   const today    = todayISO();
 
   useEffect(()=>{
     if(gridScrollRef.current){
-      gridScrollRef.current.scrollTop = (GRID_DEFAULT_SCROLL / GRID_TOTAL) * GRID_H;
+      gridScrollRef.current.scrollTop = (GRID_DEFAULT_SCROLL/GRID_TOTAL)*GRID_H;
     }
   },[]);
 
-  useEffect(()=>save("cf_tasks",tasks),[tasks]);
-  useEffect(()=>save("cf_events",events),[events]);
-  useEffect(()=>save("cf_calendars",calendars),[calendars]);
-  useEffect(()=>save("cf_settings",settings),[settings]);
+  // ── Sauvegarde préfixée par user ──────────────────────────────────────────
+  useEffect(()=>{ if(email) save(uKey(email,"cf_tasks"),tasks); },[tasks,email]);
+  useEffect(()=>{ if(email) save(uKey(email,"cf_events"),events); },[events,email]);
+  useEffect(()=>{ if(email) save(uKey(email,"cf_calendars"),calendars); },[calendars,email]);
+  useEffect(()=>{ if(email) save(uKey(email,"cf_settings"),settings); },[settings,email]);
 
   useEffect(()=>{
-    const slide = () => setTasks(prev => slideTasksToToday(prev));
+    const slide=()=>setTasks(prev=>slideTasksToToday(prev));
     slide();
-    const now = new Date();
-    const midnight = new Date(now); midnight.setHours(24,0,0,0);
-    const t = setTimeout(slide, midnight - now);
-    return () => clearTimeout(t);
+    const now=new Date(); const midnight=new Date(now); midnight.setHours(24,0,0,0);
+    const t=setTimeout(slide,midnight-now);
+    return()=>clearTimeout(t);
   },[]);
 
   useEffect(()=>{
-    const check = () => {
-      const in48h = new Date(Date.now()+48*60*60*1000);
-      const in48hISO = toISO(in48h);
-      const pending = events.filter(e=>e.status==="pending"&&e.startDate===in48hISO);
+    const check=()=>{
+      const in48h=new Date(Date.now()+48*60*60*1000);
+      const in48hISO=toISO(in48h);
+      const pending=events.filter(e=>e.status==="pending"&&e.startDate===in48hISO);
       if(pending.length>0){
-        const titles = pending.map(e=>e.title).join(", ");
+        const titles=pending.map(e=>e.title).join(", ");
         if(window.confirm(`⚠️ RDV à confirmer dans 48h :\n${titles}\n\nVoulez-vous les confirmer ?`)){
           setEvents(prev=>prev.map(e=>pending.find(p=>p.id===e.id)?{...e,status:"confirmed"}:e));
         }
       }
     };
     check();
-    const interval = setInterval(check, 60*60*1000);
-    return () => clearInterval(interval);
+    const interval=setInterval(check,60*60*1000);
+    return()=>clearInterval(interval);
   },[events]);
 
   useEffect(()=>{
     if(auth){ const t=setTimeout(()=>syncCalDAV(),300); return()=>clearTimeout(t); }
   },[auth]);
 
-  // ── Navigation semaine — simple et propre ─────────────────────────────────
-  function goToWeek(date) {
-    setWeekStart(getWeekStart(date));
-  }
-
-  function handleTouchStart(e) {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  }
-
-  function handleTouchEnd(e) {
-    if (!touchStartX.current) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
-    if (Math.abs(dx) > 50 && dy < 80) {
-      const n = new Date(weekStart);
-      n.setDate(n.getDate() + (dx < 0 ? 7 : -7));
-      setWeekStart(n);
+  // ── Navigation semaine ────────────────────────────────────────────────────
+  function handleTouchStart(e){ touchStartX.current=e.touches[0].clientX; touchStartY.current=e.touches[0].clientY; }
+  function handleTouchEnd(e){
+    if(!touchStartX.current) return;
+    const dx=e.changedTouches[0].clientX-touchStartX.current;
+    const dy=Math.abs(e.changedTouches[0].clientY-touchStartY.current);
+    if(Math.abs(dx)>50&&dy<80){
+      const n=new Date(weekStart); n.setDate(n.getDate()+(dx<0?7:-7)); setWeekStart(n);
     }
-    touchStartX.current = null;
+    touchStartX.current=null;
   }
 
   async function syncCalDAV(){
@@ -344,7 +354,7 @@ export default function App() {
       await caldavRequest("PROPFIND","/1012673262/principal/",authHeader,`<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>`,{Depth:"0"});
       const {text:calXml}=await caldavRequest("PROPFIND","/1012673262/calendars/",authHeader,`<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:a="http://apple.com/ns/ical/"><d:prop><d:displayname/><a:calendar-color/><d:resourcetype/></d:prop></d:propfind>`,{Depth:"1"});
       const cals=parseCalendars(calXml);
-      setCalendars(cals); save("cf_calendars",cals);
+      setCalendars(cals); save(uKey(email,"cf_calendars"),cals);
       const since=new Date(); since.setMonth(since.getMonth()-3);
       const until2=new Date(); until2.setFullYear(until2.getFullYear()+1);
       const untilStr=until2.toISOString().replace(/[-:]/g,"").slice(0,15)+"Z";
@@ -361,7 +371,7 @@ export default function App() {
           else allEvents.push(ev);
         });
       }
-      setEvents(allEvents); save("cf_events",allEvents);
+      setEvents(allEvents); save(uKey(email,"cf_events"),allEvents);
       setSyncOk(true);
     }catch(e){ setSyncOk(false); }
     setSyncing(false);
@@ -370,6 +380,11 @@ export default function App() {
   function handleLogin(email,password){
     const authObj={email,appPassword:password,auth:makeAuthHeader(email,password)};
     setAuth(authObj); save("cf_auth",authObj);
+    // Charger les données existantes de cet user
+    setEvents(load(uKey(email,"cf_events"),[]));
+    setTasks(load(uKey(email,"cf_tasks"),[]));
+    setCalendars(load(uKey(email,"cf_calendars"),[]));
+    setSettings(load(uKey(email,"cf_settings"),{startHour:"8",endHour:"20",showDone:false}));
   }
 
   function doneTask(task){
@@ -379,7 +394,7 @@ export default function App() {
     const doneEv={id:`done-${task.id}`,type:"task",done:true,title:task.title,startDate:completedDate,endDate:completedDate,startTime:completedTime,endTime:minutesToHHMM(timeToMinutes(completedTime)+30),calColor:C.green,calName:"Tâches",completedAt};
     const updatedTasks=tasks.map(t=>t.id===task.id?{...t,done:true,completedAt}:t);
     const updatedEvents=[...events,doneEv];
-    save("cf_tasks",updatedTasks); save("cf_events",updatedEvents);
+    save(uKey(email,"cf_tasks"),updatedTasks); save(uKey(email,"cf_events"),updatedEvents);
     setTasks(updatedTasks); setEvents(updatedEvents);
     if(navigator.vibrate) navigator.vibrate([10,50,20]);
     const toast=document.createElement("div");
@@ -391,7 +406,7 @@ export default function App() {
 
   function deleteTask(task){
     const u=tasks.filter(t=>t.id!==task.id);
-    save("cf_tasks",u); setTasks(u);
+    save(uKey(email,"cf_tasks"),u); setTasks(u);
   }
 
   function handleDeleteEvent(ev){
@@ -403,7 +418,10 @@ export default function App() {
   if(!auth) return <LoginScreen onLogin={handleLogin}/>;
   if(screen==="settings") return <Settings settings={settings} setSettings={setSettings} calendars={calendars} onBack={()=>setScreen("main")} auth={auth}/>;
 
-  const syntheseEvs=SYNTHESE_DEADLINES.map(s=>({id:`synth-${s.id}`,type:"event",allDay:true,title:s.label,startDate:s.date,endDate:s.date,calColor:"#2d7a4f",calName:"Synthèse"}));
+  // ── SYNTHESE_DEADLINES — uniquement pour le propriétaire ──────────────────
+  const syntheseEvs = auth.email === OWNER_EMAIL
+    ? SYNTHESE_DEADLINES.map(s=>({id:`synth-${s.id}`,type:"event",allDay:true,title:s.label,startDate:s.date,endDate:s.date,calColor:"#2d7a4f",calName:"Synthèse"}))
+    : [];
   const allEvs=[...events,...syntheseEvs];
 
   return (
@@ -416,27 +434,18 @@ export default function App() {
       )}
 
       <Header
-        weekDays={weekDays}
-        syncing={syncing}
-        syncOk={syncOk}
-        onSync={syncCalDAV}
-        onSettings={()=>setScreen("settings")}
+        weekDays={weekDays} syncing={syncing} syncOk={syncOk}
+        onSync={syncCalDAV} onSettings={()=>setScreen("settings")}
         onAddEvent={()=>{setEditEv(null);setFormOpen(true);}}
-        clipboard={clipboard}
-        onClearClipboard={()=>{setClipboard(null);setPasteTarget(null);}}
-        tasks={tasks}
-        onToggleDrawer={()=>setDrawerOpen(o=>!o)}
-        weekStart={weekStart}
-        weekNum={weekNum}
-        today={today}
-        fmtDay={fmtDay}
-        fmtDayNum={fmtDayNum}
+        clipboard={clipboard} onClearClipboard={()=>{setClipboard(null);setPasteTarget(null);}}
+        tasks={tasks} onToggleDrawer={()=>setDrawerOpen(o=>!o)}
+        weekStart={weekStart} weekNum={weekNum} today={today}
+        fmtDay={fmtDay} fmtDayNum={fmtDayNum}
         onToday={()=>{ setWeekStart(getWeekStart(new Date())); setCurrentView("week"); }}
-        onGoToDate={date=>goToWeek(date)}
+        onGoToDate={date=>setWeekStart(getWeekStart(date))}
         onChangeView={setCurrentView}
         onOpenFrais={date=>setFraisDate(date)}
-        currentView={currentView}
-        fmtWeekRange={fmtWeekRange}
+        currentView={currentView} fmtWeekRange={fmtWeekRange}
       />
 
       {/* Bannières all-day */}
