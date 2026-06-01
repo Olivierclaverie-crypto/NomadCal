@@ -365,6 +365,18 @@ export default function App() {
     if(auth){ const t=setTimeout(()=>syncCalDAV(),300); return()=>clearTimeout(t); }
   },[auth]);
 
+  // ── Re-sync au retour réseau ──────────────────────────────────────────────
+  useEffect(()=>{
+    const onOnline  = () => { setSyncOk(true);  if(auth) syncCalDAV(); };
+    const onOffline = () => { setSyncOk(false); };
+    window.addEventListener("online",  onOnline);
+    window.addEventListener("offline", onOffline);
+    return()=>{
+      window.removeEventListener("online",  onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  },[auth]);
+
   // ── Création silencieuse calendrier NomadCal au 1er login ─────────────────
   useEffect(()=>{
     if(!auth) return;
@@ -423,7 +435,15 @@ export default function App() {
           else allEvents.push(ev);
         });
       }
-      setEvents(allEvents); save(uKey(email,"cf_events"),allEvents);
+      // ── Merge intelligent — préserve les events locaux non-CalDAV ──────────
+      // (tâches terminées, events créés offline, etc.)
+      const localOnly = events.filter(e =>
+        e.id?.startsWith("done-") ||      // Tâches terminées
+        e.id?.startsWith("synth-") ||     // Synthèses
+        (e.id?.startsWith("calflow-") && !allEvents.find(ce => ce.id === e.id))
+      );
+      const merged = [...allEvents, ...localOnly];
+      setEvents(merged); save(uKey(email,"cf_events"),merged);
       setSyncOk(true);
     }catch(e){ setSyncOk(false); }
     setSyncing(false);
