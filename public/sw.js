@@ -43,9 +43,9 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // ── 2. Feedback API → Network only (pas de cache) ─────────────────────────
-  if (url.pathname.startsWith("/api/feedback")) {
-    return; // Laisse passer sans cache
+  // ── 2. Feedback + autres API → Network only, jamais intercepté ───────────
+  if (url.pathname.startsWith("/api/")) {
+    return fetch(event.request); // Laisse passer directement — pas de cache
   }
 
   // ── 3. Assets JS/CSS (hash Vite) → Cache-First immuables ─────────────────
