@@ -10,9 +10,9 @@ const IconSync = ({ color }) => (
 );
 
 const IconSettings = () => (
-  <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-    <circle cx="10" cy="10" r="3" stroke="#5a6e7f" strokeWidth="1.5"/>
-    <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="#5a6e7f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -102,7 +102,7 @@ export default function Header({
             <button onClick={onSync} style={{ background:"none", border:"none", cursor:"pointer", padding:2, lineHeight:1, display:"flex" }}>
               <IconSync color={C.muted}/>
             </button>
-            <div style={{ position:"absolute", top:0, right:0, width:7, height:7, borderRadius:"50%", background:syncColor, border:`1.5px solid ${C.surface}`, pointerEvents:"none" }}/>
+            <div style={{ position:"absolute", top:-2, right:-2, width:8, height:8, borderRadius:"50%", background:syncColor, border:`2px solid ${C.surface}`, pointerEvents:"none" }}/>
           </div>
           <button onClick={onSettings} style={{ background:"none", border:"none", cursor:"pointer", padding:2, display:"flex" }}>
             <IconSettings/>
@@ -130,7 +130,7 @@ export default function Header({
           <div style={{ position:"relative", flex:1 }} data-menu>
             <button onClick={()=>{ setShowDatePicker(v=>!v); setShowViewMenu(false); }} style={btnStyle}>Aller</button>
             {showDatePicker && (
-              <div data-menu style={{ position:"absolute", top:"calc(100% + 8px)", left:"50%", transform:"translateX(-50%)", background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:"16px", boxShadow:"0 8px 32px rgba(0,0,0,.18)", zIndex:499, width:300 }}>
+              <div data-menu style={{ position:"fixed", top:"auto", left:14, right:14, background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:"16px", boxShadow:"0 8px 32px rgba(0,0,0,.18)", zIndex:499 }}>
                 <div style={{ fontSize:12, color:C.muted, fontWeight:700, letterSpacing:.5, textAlign:"center", marginBottom:10 }}>ALLER À UNE DATE</div>
                 <div style={{ display:"flex", gap:4, marginBottom:10 }}>
                   <div style={{ flex:.8 }}><WheelPicker items={DAYS}   selectedIdx={pickDayIdx}   onChange={setPickDayIdx}/></div>
