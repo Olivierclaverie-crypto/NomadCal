@@ -55,7 +55,7 @@ export default function TaskDrawer({
 
   const MESSAGES = {
     notes: "NomadBook — Carnet de route terrain",
-    tasks: `${openTasks.length} tâche${openTasks.length > 1 ? "s" : ""} en cours`,
+    tasks: `${openTasks.length} todo${openTasks.length > 1 ? "s" : ""} en cours`,
   };
 
   function vibrate(ms = 10) {
