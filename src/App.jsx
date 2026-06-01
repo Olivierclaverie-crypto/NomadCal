@@ -8,6 +8,7 @@ import TaskDrawer from "./components/TaskDrawer.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
 import Settings from "./components/Settings.jsx";
 import NomadBook from "./components/NomadBook.jsx";
+import FeedbackButton from "./components/FeedbackButton.jsx";
 import { checkCalendarExists, createCalendar, calendarDisplayName } from "./utils/caldavCalendar.js";
 
 const USER_PLAN = "free";
@@ -697,6 +698,8 @@ export default function App() {
           Module Frais — bientôt disponible en Premium 🚀
         </div>
       </Modal>
+
+      <FeedbackButton auth={auth} currentPage={nomadBookOpen?"NomadBook":"NomadCal"}/>
 
     </div>
   );
