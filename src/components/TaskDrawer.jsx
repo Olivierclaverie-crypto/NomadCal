@@ -2,11 +2,20 @@ import { useState, useRef } from "react";
 import { C, PRIORITY } from '../utils/constants.js';
 
 // ── Icônes SVG ────────────────────────────────────────────────────────────────
-const IconNotes = () => (
+const IconNotes = ({ active=false }) => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <rect x="4" y="3" width="12" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
-    <path d="M7 7h6M7 10h6M7 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M12 13l3 3" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/>
+    <rect x="4" y="3" width="12" height="14" rx="1.5" stroke={active?"#fff":"currentColor"} strokeWidth="1.5"/>
+    <path d="M7 7h6M7 10h6M7 13h4" stroke={active?"#fff":"currentColor"} strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 13l3 3" stroke={active?"rgba(255,255,255,0.6)":"#F5C97A"} strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const IconFeed = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M6 7h8M6 10h5M6 13h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <circle cx="15" cy="13" r="3" fill="#F5C97A"/>
+    <path d="M14 13h2M15 12v2" stroke="#0F1D2B" strokeWidth="1" strokeLinecap="round"/>
   </svg>
 );
 
@@ -38,6 +47,8 @@ export default function TaskDrawer({
   onTaskDelete,
   onAddTask,
   onOpenNomadBook,
+  noteCount=0,
+  onOpenNomadFeed,
 }) {
   const [activeTab, setActiveTab] = useState(null);
   const openTasks = tasks.filter(t => !t.done);
@@ -107,13 +118,13 @@ export default function TaskDrawer({
               background: C.accent, border: "none",
               borderRadius: 8, padding: "6px 14px",
               cursor: "pointer", fontFamily: "inherit",
-            }}>+ Tâche</button>
+            }}>+ Todo</button>
           </div>
 
           <div style={{ overflowY: "auto", flex: 1, padding: "0 0 20px" }}>
             {openTasks.length === 0 && (
               <div style={{ textAlign: "center", padding: "20px", color: C.muted, fontSize: 13 }}>
-                Aucune tâche en cours 🎉
+                Tout est fait — belle journée terrain ! 🎯
               </div>
             )}
             {openTasks.map(task => {
@@ -172,7 +183,7 @@ export default function TaskDrawer({
                         )}
                       </div>
                     </div>
-                    <span style={{ color: C.muted, fontSize: 20, flexShrink: 0 }}>›</span>
+                    
                   </div>
                 </div>
               );
@@ -191,19 +202,27 @@ export default function TaskDrawer({
         <div style={{ display: "flex", gap: 12, padding: "8px 20px 4px" }}>
 
           {/* Notes */}
-          <button onClick={() => handleTabTap("notes")} style={tabStyle("notes")}>
+          <button onClick={() => handleTabTap("notes")} style={{ ...tabStyle("notes"), position:"relative" }}>
             <span style={{ color: activeTab === "notes" ? "#fff" : C.accent }}>
-              <IconNotes/>
+              <IconNotes active={activeTab === "notes"}/>
             </span>
             Notes
+            {noteCount > 0 && (
+              <span style={{
+                position:"absolute", top:4, right:6,
+                background: activeTab==="notes" ? "rgba(255,255,255,0.3)" : C.accent,
+                color:"#fff", borderRadius:10, fontSize:10, fontWeight:800,
+                padding:"1px 6px", lineHeight:1.4,
+              }}>{noteCount}</span>
+            )}
           </button>
 
-          {/* Tâches */}
+          {/* Todo */}
           <button onClick={() => handleTabTap("tasks")} style={{ ...tabStyle("tasks"), position: "relative" }}>
             <span style={{ color: activeTab === "tasks" ? "#fff" : C.accent }}>
               <IconTaches/>
             </span>
-            Tâches
+            Todo
             {openTasks.length > 0 && (
               <span style={{
                 position: "absolute", top: 4, right: 6,
@@ -213,6 +232,14 @@ export default function TaskDrawer({
               }}>{openTasks.length}</span>
             )}
           </button>
+          {/* NomadFeed */}
+          <button onClick={() => onOpenNomadFeed && onOpenNomadFeed()} style={{ ...tabStyle(null), opacity:.5 }}>
+            <span style={{ color: C.accent }}>
+              <IconFeed/>
+            </span>
+            Feed
+          </button>
+
         </div>
 
         {activeTab && (
