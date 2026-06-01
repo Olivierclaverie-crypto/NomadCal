@@ -407,31 +407,42 @@ export default function NomadBook({ onClose, auth }) {
   const voice = useVoice(t=>{setNoteText(t);setVoiceOpen(false);setCaptureOpen(true);});
 
   async function loadPeriods(silent=false) {
-    if(!silent) setLoadingPeriods(true);
-    // 1. Charge le cache local TOUJOURS en premier — jamais bloquant
+    // ── STEP 1 : Cache local → affichage IMMÉDIAT, jamais de spinner bloquant ──
     const cached = load("nb_periods_cache", []);
     if(cached.length > 0) {
       setPeriods(cached);
-      setLoadingPeriods(false);
+      setLoadingPeriods(false); // Spinner off dès que cache dispo
+    } else if(!silent) {
+      setLoadingPeriods(true); // Spinner seulement si vraiment vide
     }
-    // 2. Sync CalDAV — avec timeout 8 secondes pour éviter les blocages iOS
+
+    // ── STEP 2 : Sync CalDAV en arrière-plan — timeout 3s agressif ────────────
+    // Pattern Stale-While-Revalidate : on affiche le cache, on met à jour en silence
+    if(!navigator.onLine) {
+      setCalAvailable(false);
+      setLoadingPeriods(false);
+      return; // Pas de réseau → inutile d'essayer
+    }
     try {
-      const timeoutPromise = new Promise((_,reject) => setTimeout(()=>reject(new Error("timeout")), 8000));
-      const syncPromise = (async () => {
+      const timeout = new Promise((_,reject) => setTimeout(()=>reject(new Error("timeout")), 3000));
+      const sync    = (async () => {
         const calOk = await checkCalendarExists(auth);
-        if(calOk){
-          const evs = await getPeriodEvents(auth);
+        if(!calOk){ setCalAvailable(false); return; }
+        const evs = await getPeriodEvents(auth);
+        // Mise à jour silencieuse — pas de re-render visible si données identiques
+        const cachedStr = JSON.stringify(load("nb_periods_cache",[]));
+        const freshStr  = JSON.stringify(evs);
+        if(cachedStr !== freshStr) {
           setPeriods(evs);
           save("nb_periods_cache", evs);
-          setCalAvailable(true);
-        } else {
-          setCalAvailable(false);
         }
+        setCalAvailable(true);
       })();
-      await Promise.race([syncPromise, timeoutPromise]);
+      await Promise.race([sync, timeout]);
     } catch {
-      setCalAvailable(false);
-      // Pas bloquant — on garde le cache local
+      // Silencieux — réseau lent ou absent → on garde le cache, UI non bloquée
+      // calAvailable reste true si on a du cache — pas de bandeau amber intempestif
+      if(cached.length === 0) setCalAvailable(false);
     }
     setLoadingPeriods(false);
   }
@@ -527,11 +538,11 @@ export default function NomadBook({ onClose, auth }) {
         </div>
       </div>
 
-      {/* Bandeau calendrier indisponible */}
-      {!calAvailable&&!loadingPeriods&&(
+      {/* Bandeau amber — seulement si PAS de cache ET PAS de réseau */}
+      {!calAvailable&&!loadingPeriods&&periods.length===0&&(
         <div style={{background:C.amberLight,border:`1px solid ${C.gold}`,margin:"8px 16px",borderRadius:10,padding:"10px 14px",fontSize:12,color:C.amber,fontWeight:600}}>
-          📅 Calendrier iCloud indisponible — NomadCal fonctionne en mode local.
-          <button onClick={()=>{ setCalAvailable(true); setLoadingPeriods(true); setTimeout(loadPeriods,100); }} style={{background:"none",border:"none",color:C.accent,cursor:"pointer",fontSize:12,fontWeight:700,marginLeft:8}}>Réessayer</button>
+          📅 Mode hors ligne — vos données locales sont disponibles.
+          <button onClick={()=>{ setCalAvailable(true); loadPeriods(true); }} style={{background:"none",border:"none",color:C.accent,cursor:"pointer",fontSize:12,fontWeight:700,marginLeft:8}}>Réessayer</button>
         </div>
       )}
 
@@ -579,9 +590,9 @@ export default function NomadBook({ onClose, auth }) {
         {/* RAPPORT — Calendrier 2 ans */}
         {tab==="rapport"&&(
           <div>
-            {loadingPeriods&&(
+            {loadingPeriods&&periods.length===0&&(
               <div style={{textAlign:"center",color:C.muted,padding:"40px 0",fontSize:14}}>
-                Chargement des périodes depuis iCloud…
+                Chargement des périodes…
               </div>
             )}
 
