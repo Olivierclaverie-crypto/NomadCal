@@ -310,9 +310,14 @@ function NoteCard({note,onDelete,onEdit}){
             <div style={{display:"flex",alignItems:"center",gap:3}}><ChapterIcon id={ch.id} size={8}/><span style={{fontSize:11,color:C.muted}}>{ch.label}</span></div>
           </div>
         </div>
-        <button onClick={e=>{e.stopPropagation();setEditing(true);setSwiped(false);}} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",padding:4,borderRadius:6,lineHeight:1,flexShrink:0}}>
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M13 4l3 3-9 9H4v-3z" stroke="#5a6e7f" strokeWidth="1.5" strokeLinejoin="round"/><path d="M11 6l3 3" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/></svg>
-        </button>
+        <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
+          <button onClick={e=>{e.stopPropagation();setEditing(true);setSwiped(false);}} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",padding:4,borderRadius:6,lineHeight:1}}>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M13 4l3 3-9 9H4v-3z" stroke="#5a6e7f" strokeWidth="1.5" strokeLinejoin="round"/><path d="M11 6l3 3" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+          <button onClick={e=>{e.stopPropagation();navigator.clipboard.writeText(note.text).then(()=>{const t=e.currentTarget;t.style.color="#2d7a4f";setTimeout(()=>t.style.color="",1000);});}} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",padding:4,borderRadius:6,lineHeight:1}} title="Copier">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><rect x="7" y="7" width="10" height="10" rx="1.5" stroke="#5a6e7f" strokeWidth="1.5"/><path d="M13 7V5a1.5 1.5 0 00-1.5-1.5h-7A1.5 1.5 0 003 5v7A1.5 1.5 0 004.5 13.5H7" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -339,7 +344,6 @@ export default function NomadBook({ onClose, auth }) {
   const [viewSynthese,setViewSynthese]         = useState(null);
   const [noteText,setNoteText]     = useState("");
   const [noteChapter,setNoteChapter] = useState("marche");
-  const touchStartX = useRef(null);
   const currentCardRef = useRef(null);
 
   // Période courante
@@ -479,14 +483,7 @@ export default function NomadBook({ onClose, auth }) {
     setConfirmDelPeriod(null);
   }
 
-  // Swipe droite = retour NomadCal
-  function handleTouchStart(e){ touchStartX.current=e.touches[0].clientX; }
-  function handleTouchEnd(e){
-    if(!touchStartX.current) return;
-    const dx=e.changedTouches[0].clientX-touchStartX.current;
-    if(dx>80){ onClose?onClose():window.location.href="https://cal-flow-jade.vercel.app"; }
-    touchStartX.current=null;
-  }
+  // Retour NomadCal via icône calendrier dans le header
 
   const btnBase    = { fontSize:13, fontWeight:700, borderRadius:9, padding:"7px 4px", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flex:1, textAlign:"center", width:"100%", boxSizing:"border-box" };
   const btnStyle   = { ...btnBase, border:`1px solid ${C.accentBorder}`, background:C.accentLight, color:C.accent };
@@ -496,8 +493,7 @@ export default function NomadBook({ onClose, auth }) {
   const lastEndISO = sortedPeriods.length > 0 ? sortedPeriods[sortedPeriods.length-1].endISO : null;
 
   return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:"'Phenomena','Nunito',sans-serif",position:"relative"}}
-      onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+    <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:"'Phenomena','Nunito',sans-serif",position:"relative"}}>
 
       {/* ── Header jumeau NomadCal ── */}
       <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,zIndex:100}}>
