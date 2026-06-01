@@ -324,7 +324,7 @@ export default function NomadBook({ onClose, auth }) {
   const [notes,setNotes]           = useState(()=>load("nb_notes",[]));
   // Recharge les notes à chaque ouverture de NomadBook
   useEffect(()=>{ setNotes(load("nb_notes",[])); },[]);
-  const [periods,setPeriods]       = useState([]);
+  const [periods,setPeriods]       = useState(()=>load("nb_periods_cache",[]));
   const [syntheses,setSyntheses]   = useState(()=>load("nb_syntheses",{}));
   const [loadingPeriods,setLoadingPeriods] = useState(true);
   const [calAvailable,setCalAvailable]     = useState(true);
@@ -376,19 +376,36 @@ export default function NomadBook({ onClose, auth }) {
 
   useEffect(()=>{ const h=e=>{if(e.ctrlKey&&e.key===" "){e.preventDefault();setCaptureOpen(true);}}; window.addEventListener("keydown",h); return()=>window.removeEventListener("keydown",h); },[]);
 
+  // Re-sync CalDAV quand app redevient visible — retour réseau ou ouverture iPhone
+  useEffect(()=>{
+    if(!auth) return;
+    const onVisible=()=>{ if(document.visibilityState==="visible") loadPeriods(); };
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>document.removeEventListener("visibilitychange",onVisible);
+  },[auth]);
+
   const voice = useVoice(t=>{setNoteText(t);setVoiceOpen(false);setCaptureOpen(true);});
 
   async function loadPeriods() {
     setLoadingPeriods(true);
+    // Charge le cache local immédiatement — jamais bloquant
+    const cached = load("nb_periods_cache", []);
+    if(cached.length > 0) {
+      setPeriods(cached);
+      setLoadingPeriods(false); // Affiche immédiatement depuis le cache
+    }
+    // Sync CalDAV en arrière-plan
     try {
       const calOk = await checkCalendarExists(auth);
       setCalAvailable(calOk);
       if(calOk){
         const evs = await getPeriodEvents(auth);
         setPeriods(evs);
+        save("nb_periods_cache", evs); // Met à jour le cache
       }
     } catch {
       setCalAvailable(false);
+      // Pas bloquant — on garde le cache local
     }
     setLoadingPeriods(false);
   }
