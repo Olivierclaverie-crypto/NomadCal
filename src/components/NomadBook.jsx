@@ -376,33 +376,55 @@ export default function NomadBook({ onClose, auth }) {
 
   useEffect(()=>{ const h=e=>{if(e.ctrlKey&&e.key===" "){e.preventDefault();setCaptureOpen(true);}}; window.addEventListener("keydown",h); return()=>window.removeEventListener("keydown",h); },[]);
 
-  // Re-sync CalDAV quand app redevient visible — retour réseau ou ouverture iPhone
+  // Re-sync CalDAV — multi-stratégie pour iOS Safari PWA
   useEffect(()=>{
     if(!auth) return;
-    const onVisible=()=>{ if(document.visibilityState==="visible") loadPeriods(); };
+    // Stratégie 1 : visibilitychange (app rouverte)
+    const onVisible=()=>{ if(document.visibilityState==="visible") loadPeriods(true); };
     document.addEventListener("visibilitychange",onVisible);
-    return()=>document.removeEventListener("visibilitychange",onVisible);
+    // Stratégie 2 : online (retour réseau)
+    const onOnline=()=>{ loadPeriods(true); };
+    window.addEventListener("online",onOnline);
+    // Stratégie 3 : offline (indique à l'user)
+    const onOffline=()=>{ setCalAvailable(false); };
+    window.addEventListener("offline",onOffline);
+    // Stratégie 4 : polling toutes les 90 secondes si app active
+    const poll = setInterval(()=>{
+      if(document.visibilityState==="visible" && navigator.onLine) loadPeriods(true);
+    }, 90000);
+    return()=>{
+      document.removeEventListener("visibilitychange",onVisible);
+      window.removeEventListener("online",onOnline);
+      window.removeEventListener("offline",onOffline);
+      clearInterval(poll);
+    };
   },[auth]);
 
   const voice = useVoice(t=>{setNoteText(t);setVoiceOpen(false);setCaptureOpen(true);});
 
-  async function loadPeriods() {
-    setLoadingPeriods(true);
-    // Charge le cache local immédiatement — jamais bloquant
+  async function loadPeriods(silent=false) {
+    if(!silent) setLoadingPeriods(true);
+    // 1. Charge le cache local TOUJOURS en premier — jamais bloquant
     const cached = load("nb_periods_cache", []);
     if(cached.length > 0) {
       setPeriods(cached);
-      setLoadingPeriods(false); // Affiche immédiatement depuis le cache
+      setLoadingPeriods(false);
     }
-    // Sync CalDAV en arrière-plan
+    // 2. Sync CalDAV — avec timeout 8 secondes pour éviter les blocages iOS
     try {
-      const calOk = await checkCalendarExists(auth);
-      setCalAvailable(calOk);
-      if(calOk){
-        const evs = await getPeriodEvents(auth);
-        setPeriods(evs);
-        save("nb_periods_cache", evs); // Met à jour le cache
-      }
+      const timeoutPromise = new Promise((_,reject) => setTimeout(()=>reject(new Error("timeout")), 8000));
+      const syncPromise = (async () => {
+        const calOk = await checkCalendarExists(auth);
+        if(calOk){
+          const evs = await getPeriodEvents(auth);
+          setPeriods(evs);
+          save("nb_periods_cache", evs);
+          setCalAvailable(true);
+        } else {
+          setCalAvailable(false);
+        }
+      })();
+      await Promise.race([syncPromise, timeoutPromise]);
     } catch {
       setCalAvailable(false);
       // Pas bloquant — on garde le cache local
@@ -411,8 +433,10 @@ export default function NomadBook({ onClose, auth }) {
   }
 
   function addNote(){
-    if(!noteText.trim()||!currentPeriod) return;
-    const note={id:Date.now(),text:noteText.trim(),chapter:noteChapter,createdAt:new Date().toISOString(),periodId:currentPeriod.uid};
+    if(!noteText.trim()) return;
+    // Si pas de période encore chargée → note en attente rattachée à "pending"
+    const periodId = currentPeriod?.uid || "pending";
+    const note={id:Date.now(),text:noteText.trim(),chapter:noteChapter,createdAt:new Date().toISOString(),periodId};
     setNotes(prev=>[note,...prev]);
     setNoteText(""); setCaptureOpen(false);
     // Sync nb notes dans l'event CalDAV
@@ -731,7 +755,9 @@ export default function NomadBook({ onClose, auth }) {
         <textarea value={noteText} onChange={e=>setNoteText(e.target.value)} rows={4} placeholder="Ta note terrain…" autoFocus onKeyDown={e=>{if(e.metaKey&&e.key==="Enter")addNote();}} style={{...inputStyle,resize:"vertical",marginBottom:16,lineHeight:1.6}}/>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <Btn onClick={()=>setCaptureOpen(false)}>Annuler</Btn>
-          <Btn onClick={addNote} variant="primary" disabled={!noteText.trim()||!currentPeriod}>Enregistrer</Btn>
+          <Btn onClick={addNote} variant="primary" disabled={!noteText.trim()}>
+            {!currentPeriod?"⏳ En attente période…":"Enregistrer"}
+          </Btn>
         </div>
       </Modal>
 
