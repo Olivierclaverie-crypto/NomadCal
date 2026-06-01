@@ -1,11 +1,11 @@
 // api/feedback.js — NomadCal Feedback
-// Stocke les feedbacks dans les logs Vercel — lisibles par Claude avant chaque session
+// Log structuré multi-lignes pour lecture complète dans les logs Vercel
 
 export const config = { maxDuration: 10 };
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") { res.status(200).end(); return; }
@@ -15,20 +15,19 @@ export default async function handler(req, res) {
     for await (const chunk of req) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString());
 
-    const feedback = {
-      id:        `fb-${Date.now()}`,
-      timestamp: new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" }),
-      user:      body.user     || "Anonyme",
-      page:      body.page     || "NomadCal",
-      type:      body.type     || "note",
-      message:   body.message  || "",
-      version:   body.appVersion || "v1",
-    };
+    const id = `fb-${Date.now()}`;
+    const ts = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" });
 
-    // Log structuré — lisible par Claude via get_runtime_logs
-    console.log("NOMADCAL_FEEDBACK:" + JSON.stringify(feedback));
+    // Log en lignes courtes — jamais tronquées par Vercel
+    console.log(`[FB_START] ${id}`);
+    console.log(`[FB_TIME] ${ts}`);
+    console.log(`[FB_USER] ${body.user || "Anonyme"}`);
+    console.log(`[FB_PAGE] ${body.page || "NomadCal"}`);
+    console.log(`[FB_TYPE] ${body.type || "note"}`);
+    console.log(`[FB_MSG] ${body.message || ""}`);
+    console.log(`[FB_END] ${id}`);
 
-    res.status(200).json({ success: true, id: feedback.id });
+    res.status(200).json({ success: true, id });
     return;
   }
 
