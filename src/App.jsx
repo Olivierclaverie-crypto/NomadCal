@@ -606,6 +606,8 @@ export default function App() {
         onTaskDelete={t=>setConfirmDel({...t,type:"task"})}
         onAddTask={()=>setTaskFormOpen(true)}
         onOpenNomadBook={()=>setNomadBookOpen(true)}
+        noteCount={(() => { try { const n=JSON.parse(localStorage.getItem("nb_notes")||"[]"); return n.filter(note=>note.periodId!=="pending").length; } catch { return 0; } })()}
+        onOpenNomadFeed={()=>alert("NomadFeed — bientôt disponible ! 🚀")}
       />
 
       <Modal open={formOpen} onClose={()=>{setFormOpen(false);setEditEv(null);}} title={editEv?"Modifier l'événement":"+ Nouvel événement"}>
