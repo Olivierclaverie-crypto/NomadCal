@@ -501,10 +501,9 @@ export default function App() {
       }
       // ── Merge intelligent — préserve les events locaux non-CalDAV ──────────
       // (tâches terminées, events créés offline, etc.)
-      const localOnly = events.filter(e =>
-        e.id?.startsWith("done-") ||      // Tâches terminées
-        (e.id?.startsWith("calflow-") && !allEvents.find(ce => ce.id === e.id))
-      );
+      // Merge intelligent — garde uniquement les tâches terminées locales
+      // Les events calflow- qui ne sont plus dans iCloud sont supprimés → pas de résurrection !
+      const localOnly = events.filter(e => e.id?.startsWith("done-"));
       const merged = [...allEvents, ...localOnly];
       setEvents(merged); save(uKey(email,"cf_events"),merged);
       setSyncOk(true);
