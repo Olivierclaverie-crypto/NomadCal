@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { C, PRIORITY, SYNTHESE_DEADLINES, GRID_START, GRID_END, GRID_TOTAL, SLOT_H, GRID_H, GRID_DEFAULT_SCROLL, RECURRENCE_OPTIONS } from "./utils/constants.js";
+import { C, PRIORITY, GRID_START, GRID_END, GRID_TOTAL, SLOT_H, GRID_H, GRID_DEFAULT_SCROLL, RECURRENCE_OPTIONS } from "./utils/constants.js";
 import { load, save, toISO, todayISO, getWeekStart, getWeekDays, fmtDay, fmtDayNum, fmtWeekRange, timeToMinutes, minutesToHHMM, timeToY, durationToH, slideTasksToToday, rruleToFr, makeAuthHeader } from "./utils/helpers.js";
 import { caldavRequest, parseCalendars, parseEvents, expandRecurring } from "./utils/caldav.js";
 import Modal, { Btn } from "./components/Modal.jsx";
@@ -12,9 +12,6 @@ import FeedbackButton from "./components/FeedbackButton.jsx";
 import { checkCalendarExists, createCalendar, calendarDisplayName } from "./utils/caldavCalendar.js";
 
 const USER_PLAN = "free";
-
-// ── Email propriétaire — SYNTHESE_DEADLINES visibles uniquement pour lui ──────
-const OWNER_EMAIL = "olivierclaverie@me.com";
 
 // ── Préfixage clés localStorage par user ──────────────────────────────────────
 // Format : nompartie@email + JJMMAAAA de 1ère connexion → ex: olivierclaverie31052026_
@@ -54,25 +51,53 @@ function migrateOldKeys(email) {
   });
 }
 
-async function pushEvent(ev, auth) {
+async function pushEvent(ev, auth, invalidateCache=true) {
   if (!auth || !ev.calHref) return;
   const uid = ev.id?.startsWith("calflow-") ? ev.id : `calflow-${Date.now()}@nomadcal`;
   const allDay = ev.allDay;
   const fmt = s => s ? s.replace(/-/g, "") : "";
-  const dtstart = allDay ? `DTSTART;VALUE=DATE:${fmt(ev.startDate)}` : `DTSTART:${fmt(ev.startDate)}T${(ev.startTime||"09:00").replace(":","")+"00"}`;
-  const dtend   = allDay ? `DTEND;VALUE=DATE:${fmt(ev.endDate||ev.startDate)}` : `DTEND:${fmt(ev.endDate||ev.startDate)}T${(ev.endTime||"10:00").replace(":","")+"00"}`;
+
+  // ── TZID=Europe/Paris — RFC 5545 correct ──────────────────────────────────
+  const dtstart = allDay
+    ? `DTSTART;VALUE=DATE:${fmt(ev.startDate)}`
+    : `DTSTART;TZID=Europe/Paris:${fmt(ev.startDate)}T${(ev.startTime||"09:00").replace(":","")+"00"}`;
+  const dtend = allDay
+    ? `DTEND;VALUE=DATE:${fmt(ev.endDate||ev.startDate)}`
+    : `DTEND;TZID=Europe/Paris:${fmt(ev.endDate||ev.startDate)}T${(ev.endTime||"10:00").replace(":","")+"00"}`;
+
+  // ── STATUS ICS — RFC 5545 ─────────────────────────────────────────────────
+  const icsStatus = ev.status === "tentative" ? "STATUS:TENTATIVE"
+    : ev.status === "cancelled" ? "STATUS:CANCELLED"
+    : "STATUS:CONFIRMED";
+
   const ics = [
-    "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//NomadCal//FR",
-    "BEGIN:VEVENT",`UID:${uid}`,dtstart,dtend,
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//NomadCal//FR",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g,"").slice(0,15)}Z`,
+    dtstart,
+    dtend,
     `SUMMARY:${ev.title}`,
+    icsStatus,
     ev.rrule&&!ev.isRecurring?`RRULE:${ev.rrule}`:"",
     ev.location?`LOCATION:${ev.location}`:"",
     ev.notes?`DESCRIPTION:${ev.notes.replace(/\n/g,"\\n")}`:"",
-    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g,"").slice(0,15)}Z`,
-    "END:VEVENT","END:VCALENDAR"
+    "END:VEVENT",
+    "END:VCALENDAR"
   ].filter(Boolean).join("\r\n");
+
   const path = ev.calHref + uid + ".ics";
   await caldavRequest("PUT", path, makeAuthHeader(auth.email, auth.appPassword), ics, {"Content-Type":"text/calendar; charset=utf-8"});
+
+  // ── Cache invalidation — force sync fraîche après chaque write ────────────
+  if (invalidateCache) {
+    const cacheKey = Object.keys(localStorage).find(k => k.endsWith("_cf_events"));
+    if (cacheKey) localStorage.removeItem(cacheKey);
+  }
 }
 
 async function deleteEvent(ev, auth) {
@@ -170,7 +195,7 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref }) {
       </div>}
       <div style={{display:"flex",gap:8}}>
         <button onClick={()=>setStatus("confirmed")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="confirmed"?C.green:C.border}`,background:status==="confirmed"?C.greenLight:"transparent",color:status==="confirmed"?C.green:C.muted,fontSize:12,fontWeight:700}}>✅ Confirmé</button>
-        <button onClick={()=>setStatus("pending")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="pending"?"#F5A623":C.border}`,background:status==="pending"?"#FFF8ED":"transparent",color:status==="pending"?"#B8741A":C.muted,fontSize:12,fontWeight:700}}>🟠 À confirmer</button>
+        <button onClick={()=>setStatus("tentative")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="tentative"?"#F5A623":C.border}`,background:status==="tentative"?"#FFF8ED":"transparent",color:status==="tentative"?"#B8741A":C.muted,fontSize:12,fontWeight:700}}>🟠 À confirmer</button>
       </div>
       <div style={{position:"relative"}}>
         <input value={location} onChange={e=>setLoc(e.target.value)} placeholder="Adresse / Lieu" style={{...iStyle,paddingRight:36}}/>
@@ -231,7 +256,7 @@ function TaskForm({ initial, onSave, onCancel }) {
 
 function EventPopover({ ev, onInfo, onShare, onDelete, onClose, position }) {
   if (!ev || !position) return null;
-  const isPending = ev.status === "pending";
+  const isPending = ev.status === "tentative";
   return (
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:299}}/>
@@ -253,11 +278,11 @@ function EventPopover({ ev, onInfo, onShare, onDelete, onClose, position }) {
 function EventDetail({ ev, onEdit, onDelete, onCopy, onDone }) {
   if (!ev) return null;
   const isTask = ev.type === "task";
-  const isSynthese = ev.id?.startsWith("synth-");
+  const isSynthese = false; // Synthèses supprimées
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <div style={{fontSize:20,fontWeight:800,color:C.ink,fontFamily:"Phenomena,sans-serif",lineHeight:1.3}}>{ev.title}</div>
-      {ev.status==="pending"&&<div style={{fontSize:12,color:"#B8741A",background:"#FFF8ED",border:"1px solid #F5A623",borderRadius:8,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}>🟠 À confirmer</div>}
+      {ev.status==="tentative"&&<div style={{fontSize:12,color:"#B8741A",background:"#FFF8ED",border:"1px solid #F5A623",borderRadius:8,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}>🟠 À confirmer</div>}
       {ev.isRecurring&&<div style={{fontSize:12,color:C.accent,background:C.accentLight,border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}>🔁 Événement récurrent</div>}
       {ev.rrule&&!ev.isRecurring&&<div style={{fontSize:12,color:C.accent,background:C.accentLight,border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}>🔁 {rruleToFr(ev.rrule)}</div>}
       <div style={{fontSize:14,color:C.muted}}>
@@ -348,11 +373,11 @@ export default function App() {
     const check=()=>{
       const in48h=new Date(Date.now()+48*60*60*1000);
       const in48hISO=toISO(in48h);
-      const pending=events.filter(e=>e.status==="pending"&&e.startDate===in48hISO);
+      const pending=events.filter(e=>e.status==="tentative"&&e.startDate===in48hISO);
       if(pending.length>0){
         const titles=pending.map(e=>e.title).join(", ");
         if(window.confirm(`⚠️ RDV à confirmer dans 48h :\n${titles}\n\nVoulez-vous les confirmer ?`)){
-          setEvents(prev=>prev.map(e=>pending.find(p=>p.id===e.id)?{...e,status:"confirmed"}:e));
+          setEvents(prev=>prev.map(e=>pend.find(p=>p.id===e.id)?{...e,status:"confirmed"}:e));
         }
       }
     };
@@ -439,7 +464,6 @@ export default function App() {
       // (tâches terminées, events créés offline, etc.)
       const localOnly = events.filter(e =>
         e.id?.startsWith("done-") ||      // Tâches terminées
-        e.id?.startsWith("synth-") ||     // Synthèses
         (e.id?.startsWith("calflow-") && !allEvents.find(ce => ce.id === e.id))
       );
       const merged = [...allEvents, ...localOnly];
@@ -502,11 +526,8 @@ export default function App() {
   if(!auth) return <LoginScreen onLogin={handleLogin}/>;
   if(screen==="settings") return <Settings settings={settings} setSettings={setSettings} calendars={calendars} onBack={()=>setScreen("main")} auth={auth}/>;
 
-  // ── SYNTHESE_DEADLINES — uniquement pour le propriétaire ──────────────────
-  const syntheseEvs = auth.email === OWNER_EMAIL
-    ? SYNTHESE_DEADLINES.map(s=>({id:`synth-${s.id}`,type:"event",allDay:true,title:s.label,startDate:s.date,endDate:s.date,calColor:"#2d7a4f",calName:"Synthèse"}))
-    : [];
-  const allEvs=[...events,...syntheseEvs];
+  // ── Filtre les events synthèse obsolètes du cache local ─────────────────
+  const allEvs = events.filter(e => !e.id?.startsWith("synth-"));
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,overflow:"hidden",fontFamily:"Phenomena,Nunito,sans-serif"}}>
@@ -582,7 +603,7 @@ export default function App() {
                   const y=timeToY(ev.startTime||"09:00");
                   const h=Math.max(20,durationToH(ev.startTime||"09:00",ev.endTime||"10:00"));
                   const isTask=ev.type==="task";
-                  const isPending=ev.status==="pending";
+                  const isPending=ev.status==="tentative";
                   const evColor=isTask?C.gold:(ev.calColor||C.accent);
                   const colW=100/(ev.totalCols||1);
                   const leftPct=(ev.col||0)*colW;
