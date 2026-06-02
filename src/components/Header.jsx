@@ -3,9 +3,9 @@ import { C } from '../utils/constants.js';
 
 const IconSync = ({ color }) => (
   <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-    <path d="M4 10a6 6 0 016-6 6 6 0 014.2 1.8" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M16 10a6 6 0 01-10.2 4.2" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M14 4l.2 3.8-3.8-.2" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M4 10a6 6 0 016-6 6 6 0 014.2 1.8" stroke={color} strokeWidth="2.2" strokeLinecap="round"/>
+    <path d="M16 10a6 6 0 01-10.2 4.2" stroke={color} strokeWidth="2.2" strokeLinecap="round"/>
+    <path d="M14 4l.2 3.8-3.8-.2" stroke="#F5C97A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -98,12 +98,9 @@ export default function Header({
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px 4px" }}>
         <span style={{ fontSize:34, fontWeight:800, color:C.accent, fontFamily:"Phenomena, sans-serif", letterSpacing:-1, lineHeight:1 }}>NomadCal</span>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <div style={{ position:"relative", display:"inline-flex" }}>
-            <button onClick={onSync} style={{ background:"none", border:"none", cursor:"pointer", padding:2, lineHeight:1, display:"flex" }}>
-              <IconSync color={C.muted}/>
+          <button onClick={onSync} style={{ background:"none", border:"none", cursor:"pointer", padding:2, lineHeight:1, display:"flex" }}>
+              <IconSync color={syncColor}/>
             </button>
-            <div style={{ position:"absolute", top:-2, right:-2, width:8, height:8, borderRadius:"50%", background:syncColor, border:`2px solid ${C.surface}`, pointerEvents:"none" }}/>
-          </div>
           <button onClick={onSettings} style={{ background:"none", border:"none", cursor:"pointer", padding:2, display:"flex" }}>
             <IconSettings/>
           </button>
@@ -167,8 +164,10 @@ export default function Header({
           <button onClick={onAddEvent} style={btnPrimary}>+RDV</button>
         </div>
 
-        {/* ── Ligne 4 — Jours + numéros + € CSS ── */}
+        {/* ── Ligne 4 — Jours + numéros + € CSS — aligné sur colonnes grille ── */}
         <div style={{ display:"flex", borderTop:`0.5px solid ${C.border}` }}>
+          {/* Espace 36px pour colonne heures — alignement avec grille */}
+          <div style={{ width:36, flexShrink:0 }}/>
           {weekDays.map(day=>{
             const isToday = day === today;
             return(
