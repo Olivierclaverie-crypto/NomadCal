@@ -210,7 +210,7 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref }) {
       <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Notes (optionnel)" rows={3} style={{...iStyle,resize:"none",lineHeight:1.6}}/>
       <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
         <Btn onClick={onCancel}>Annuler</Btn>
-        <Btn onClick={save} variant="primary">Créer l'événement</Btn>
+        <Btn onClick={save} variant="primary" disabled={saving}>Créer l'événement</Btn>
       </div>
     </div>
   );
@@ -327,6 +327,7 @@ export default function App() {
   const [currentView,setCurrentView] = useState("week");
   const [syncing,setSyncing]         = useState(false);
   const [syncOk,setSyncOk]           = useState(true);
+  const [saving,setSaving]           = useState(false); // Anti-doublon bouton Créer/Supprimer
   const [formOpen,setFormOpen]       = useState(false);
   const [taskFormOpen,setTaskFormOpen] = useState(false);
   const [detailEv,setDetailEv]       = useState(null);
@@ -439,6 +440,38 @@ export default function App() {
       const n=new Date(weekStart); n.setDate(n.getDate()+(dx<0?7:-7)); setWeekStart(n);
     }
     touchStartX.current=null;
+  }
+
+  // ── Sync légère — fetch uniquement 1 calendrier (après création/suppression) ──
+  async function syncCalendar(calHref) {
+    if(!auth || !calHref) return;
+    try {
+      const authHeader = makeAuthHeader(auth.email, auth.appPassword);
+      const since = new Date(); since.setHours(since.getHours() - 1); // Dernière heure
+      const until = new Date(); until.setFullYear(until.getFullYear() + 1);
+      const sinceStr = since.toISOString().replace(/[-:]/g,"").slice(0,15) + "Z";
+      const untilStr = until.toISOString().replace(/[-:]/g,"").slice(0,15) + "Z";
+      const {text:evXml} = await caldavRequest("REPORT", calHref, authHeader,
+        `<?xml version="1.0"?><c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/><c:calendar-data/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT"><c:time-range start="${sinceStr}" end="${untilStr}"/></c:comp-filter></c:comp-filter></c:filter></c:calendar-query>`,
+        {Depth:"1","Content-Type":"application/xml"});
+      const cal = calendars.find(c => c.href === calHref);
+      if(!cal) return;
+      const evs = parseEvents(evXml, cal.href, cal.color, cal.displayName);
+      const rStart = toISO(since); const rEnd = toISO(until);
+      const freshEvs = [];
+      evs.forEach(ev => {
+        if(ev.rrule) freshEvs.push(...expandRecurring(ev, rStart, rEnd));
+        else freshEvs.push(ev);
+      });
+      // Merge — remplace les events de ce calendrier uniquement
+      setEvents(prev => {
+        const otherCals = prev.filter(e => e.calHref !== calHref || e.id?.startsWith("done-"));
+        const merged = [...otherCals, ...freshEvs];
+        save(uKey(email,"cf_events"), merged);
+        return merged;
+      });
+      setSyncOk(true);
+    } catch { /* silencieux */ }
   }
 
   async function syncCalDAV(){
@@ -659,7 +692,16 @@ export default function App() {
       />
 
       <Modal open={formOpen} onClose={()=>{setFormOpen(false);setEditEv(null);}} title={editEv?"Modifier l'événement":"+ Nouvel événement"}>
-        <EventForm initial={editEv} calendars={calendars} defaultCalHref={settings.defaultCalHref} onCancel={()=>{setFormOpen(false);setEditEv(null);}} onSave={async ev=>{const newEv={...ev,id:editEv?.id||`calflow-${Date.now()}`,calColor:calendars.find(c=>c.href===ev.calHref)?.color||C.accent,calName:calendars.find(c=>c.href===ev.calHref)?.displayName||"",type:"event"};setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]);await pushEvent(newEv,auth);await syncCalDAV();setFormOpen(false);setEditEv(null);}}/>
+        <EventForm initial={editEv} calendars={calendars} defaultCalHref={settings.defaultCalHref} onCancel={()=>{setFormOpen(false);setEditEv(null);}} onSave={async ev=>{
+  if(saving) return; // Anti-doublon
+  setSaving(true);
+  const newEv={...ev,id:editEv?.id||`calflow-${Date.now()}`,calColor:calendars.find(c=>c.href===ev.calHref)?.color||C.accent,calName:calendars.find(c=>c.href===ev.calHref)?.displayName||"",type:"event"};
+  setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]); // Cache local immédiat
+  setFormOpen(false); setEditEv(null); // Ferme IMMÉDIATEMENT
+  setSaving(false);
+  await pushEvent(newEv,auth); // Push iCloud
+  syncCalendar(newEv.calHref); // Sync légère arrière-plan
+}}/>
       </Modal>
 
       <Modal open={taskFormOpen} onClose={()=>{setTaskFormOpen(false);setEditTask(null);}} title={editTask?"Modifier la tâche":"↻ Nouvelle tâche glissante"}>
@@ -712,10 +754,18 @@ export default function App() {
           )}
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
             <Btn onClick={()=>setConfirmDel(null)}>Annuler</Btn>
-            <Btn variant="danger" onClick={async()=>{
-              if(confirmDel.type==="task") deleteTask(confirmDel);
-              else{setEvents(prev=>prev.filter(e=>e.id!==confirmDel.id));await deleteEvent(confirmDel,auth);await syncCalDAV();}
-              setConfirmDel(null);
+            <Btn variant="danger" disabled={saving} onClick={async()=>{
+              if(saving) return; // Anti-doublon
+              setSaving(true);
+              if(confirmDel.type==="task") { deleteTask(confirmDel); setSaving(false); }
+              else {
+                const calHref = confirmDel.calHref;
+                setEvents(prev=>prev.filter(e=>e.id!==confirmDel.id)); // Cache local immédiat
+                setConfirmDel(null); // Ferme IMMÉDIATEMENT
+                setSaving(false);
+                deleteEvent(confirmDel,auth).then(()=>syncCalendar(calHref)); // Arrière-plan
+              }
+              if(confirmDel) setConfirmDel(null);
             }}>Supprimer</Btn>
           </div>
         </div>}
@@ -732,10 +782,10 @@ export default function App() {
             <Btn variant="primary" onClick={async()=>{
               const duration=timeToMinutes(clipboard.endTime||"10:00")-timeToMinutes(clipboard.startTime||"09:00");
               const newEv={...clipboard,id:`calflow-${Date.now()}`,masterUid:undefined,isRecurring:false,startDate:pasteTarget.date,endDate:pasteTarget.date,startTime:pasteTarget.time,endTime:minutesToHHMM(timeToMinutes(pasteTarget.time)+Math.max(30,duration))};
-              setEvents(prev=>[...prev,newEv]);
+              setEvents(prev=>[...prev,newEv]); // Cache local immédiat
+              setClipboard(null); setPasteTarget(null); // Ferme IMMÉDIATEMENT
               await pushEvent(newEv,auth);
-              await syncCalDAV();
-              setClipboard(null);setPasteTarget(null);
+              syncCalendar(newEv.calHref); // Sync légère arrière-plan
             }}>Coller ici</Btn>
           </div>
         </div>}
