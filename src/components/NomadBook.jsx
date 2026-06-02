@@ -29,6 +29,7 @@ const ICONS = {
   saisonnalite: <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="1.5" stroke="#2B5A9E" strokeWidth="1.5"/><path d="M3 8h14" stroke="#2B5A9E" strokeWidth="1.5"/><path d="M7 2v4M13 2v4" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/><rect x="6" y="11" width="3" height="3" rx=".5" fill="#2B5A9E" opacity=".5"/><rect x="11" y="11" width="3" height="3" rx=".5" fill="#2B5A9E" opacity=".5"/></svg>,
   dedicaces:    <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M15 3c-4 0-8 4-9 9l5-2 1-5" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><path d="M6 12c1 2 2 3 3 4" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/><path d="M4 17l2-4" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round"/></svg>,
   outils:       <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="10" rx="1.5" stroke="#2B5A9E" strokeWidth="1.5"/><rect x="4" y="6" width="12" height="6" rx=".5" fill="#eaf1fb" stroke="#2B5A9E" strokeWidth=".5"/><path d="M7 17h6" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round"/><path d="M10 14v3" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round"/><circle cx="10" cy="9" r="1.5" fill="#F5C97A"/></svg>,
+  client:       <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="4" stroke="#2B5A9E" strokeWidth="1.5"/><path d="M3 18c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/></svg>,
 };
 
 const IconCalendar = () => (
@@ -73,6 +74,7 @@ const IconRapport = () => (
 );
 
 const CHAPTERS = [
+  { id:"client",       label:"Client" },
   { id:"marche",       label:"Marché" },
   { id:"nouveautes",   label:"Nouveautés" },
   { id:"logistique",   label:"Logistique" },
@@ -314,7 +316,7 @@ function NoteCard({note,onDelete,onEdit}){
           <button onClick={e=>{e.stopPropagation();setEditing(true);setSwiped(false);}} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",padding:4,borderRadius:6,lineHeight:1}}>
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M13 4l3 3-9 9H4v-3z" stroke="#5a6e7f" strokeWidth="1.5" strokeLinejoin="round"/><path d="M11 6l3 3" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
-          <button onClick={e=>{e.stopPropagation();navigator.clipboard.writeText(note.text).then(()=>{const t=e.currentTarget;t.style.color="#2d7a4f";setTimeout(()=>t.style.color="",1000);});}} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",padding:4,borderRadius:6,lineHeight:1}} title="Copier">
+          <button onClick={e=>{e.stopPropagation();navigator.clipboard.writeText(note.text).then(()=>{const t=e.currentTarget;t.style.color="#2d7a4f";setTimeout(()=>t.style.color="",1000);if(navigator.vibrate)navigator.vibrate(10);});}} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",padding:4,borderRadius:6,lineHeight:1}} title="Copié !">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><rect x="7" y="7" width="10" height="10" rx="1.5" stroke="#5a6e7f" strokeWidth="1.5"/><path d="M13 7V5a1.5 1.5 0 00-1.5-1.5h-7A1.5 1.5 0 003 5v7A1.5 1.5 0 004.5 13.5H7" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
@@ -327,8 +329,17 @@ function NoteCard({note,onDelete,onEdit}){
 export default function NomadBook({ onClose, auth }) {
   const [tab,setTab]               = useState("notes");
   const [notes,setNotes]           = useState(()=>load("nb_notes",[]));
-  // Recharge les notes à chaque ouverture de NomadBook
-  useEffect(()=>{ setNotes(load("nb_notes",[])); },[]);
+  // Recharge les notes à chaque ouverture ET retour de veille
+  useEffect(()=>{
+    setNotes(load("nb_notes",[]));
+    const onVisible = () => {
+      if(document.visibilityState === "visible") {
+        setNotes(load("nb_notes",[]));
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  },[]);
   const [periods,setPeriods]       = useState(()=>load("nb_periods_cache",[]));
   const [syntheses,setSyntheses]   = useState(()=>load("nb_syntheses",{}));
   const [loadingPeriods,setLoadingPeriods] = useState(true);
@@ -351,11 +362,15 @@ export default function NomadBook({ onClose, auth }) {
   const daysToCompile = currentPeriod ? daysLeft(currentPeriod.endISO) : 0;
   const urg           = urgencyStyle(daysToCompile);
 
-  // Notes de la période courante
-  const periodNotes = currentPeriod ? notes.filter(n=>n.periodId===currentPeriod.uid) : [];
+  // Notes de la période courante — recalcul forcé à chaque changement de notes ou périodes
+  const periodNotes = currentPeriod
+    ? notes.filter(n => n.periodId === currentPeriod.uid && n.periodId !== "pending")
+    : [];
   const chapterCounts = {};
   periodNotes.forEach(n=>{chapterCounts[n.chapter]=(chapterCounts[n.chapter]||0)+1;});
   const notesByChapter = CHAPTERS.map(ch=>({chapter:ch,notes:periodNotes.filter(n=>n.chapter===ch.id)})).filter(g=>g.notes.length>0);
+  // Total réel pour l'onglet Notes — exclut les notes "pending"
+  const totalNotesCount = notes.filter(n => currentPeriod && n.periodId === currentPeriod.uid && n.periodId !== "pending").length;
 
   // Tri périodes
   const sortedPeriods  = [...periods].sort((a,b)=>new Date(a.startISO)-new Date(b.startISO));
@@ -468,6 +483,16 @@ export default function NomadBook({ onClose, auth }) {
 
   async function handleSavePeriod({startISO,endISO,label,rrule}){
     if(!auth||!startISO||!endISO) return;
+    // ── Interdit le chevauchement de périodes ─────────────────────────────────
+    const overlap = periods.find(p => {
+      if(editingPeriod && p.uid === editingPeriod.uid) return false; // Ignore la période en cours d'édition
+      return startISO < p.endISO && endISO > p.startISO;
+    });
+    if(overlap) {
+      alert(`⚠️ Cette période chevauche "${overlap.label}".
+Veuillez choisir des dates sans chevauchement.`);
+      return;
+    }
     setSavingPeriod(true);
     try{
       if(editingPeriod){
@@ -527,7 +552,7 @@ export default function NomadBook({ onClose, auth }) {
           </button>
           <button onClick={()=>setTab("notes")} style={{...(tab==="notes"?btnActive:btnStyle),display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
             <IconNotes active={tab==="notes"}/>Notes
-            {periodNotes.length>0&&<span style={{background:tab==="notes"?"rgba(255,255,255,0.3)":C.accent,color:"#fff",borderRadius:10,fontSize:10,fontWeight:800,padding:"1px 5px",lineHeight:1.4}}>{periodNotes.length}</span>}
+            {totalNotesCount>0&&<span style={{background:tab==="notes"?"rgba(255,255,255,0.3)":C.accent,color:"#fff",borderRadius:10,fontSize:10,fontWeight:800,padding:"1px 5px",lineHeight:1.4}}>{totalNotesCount}</span>}
           </button>
           <button onClick={()=>setTab("rapport")} style={{...(tab==="rapport"?btnActive:btnStyle),display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
             <IconRapport/>Rapport
