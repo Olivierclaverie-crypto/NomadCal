@@ -143,7 +143,7 @@ function getWeekNum(date) {
   return 1 + Math.round(((d-week1)/86400000 - 3 + (week1.getDay()+6)%7)/7);
 }
 
-function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref }) {
+function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, saving=false }) {
   const [title,setTitle]       = useState(initial?.title||"");
   const [allDay,setAllDay]     = useState(initial?.allDay||false);
   const [startDate,setSD]      = useState(initial?.startDate||todayISO());
@@ -691,15 +691,15 @@ export default function App() {
       />
 
       <Modal open={formOpen} onClose={()=>{setFormOpen(false);setEditEv(null);}} title={editEv?"Modifier l'événement":"+ Nouvel événement"}>
-        <EventForm initial={editEv} calendars={calendars} defaultCalHref={settings.defaultCalHref} onCancel={()=>{setFormOpen(false);setEditEv(null);}} onSave={async ev=>{
-  if(saving) return; // Anti-doublon
+        <EventForm initial={editEv} calendars={calendars} defaultCalHref={settings.defaultCalHref} saving={saving} onCancel={()=>{setFormOpen(false);setEditEv(null);}} onSave={async ev=>{
+  if(saving) return;
   setSaving(true);
   const newEv={...ev,id:editEv?.id||`calflow-${Date.now()}`,calColor:calendars.find(c=>c.href===ev.calHref)?.color||C.accent,calName:calendars.find(c=>c.href===ev.calHref)?.displayName||"",type:"event"};
-  setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]); // Cache local immédiat
-  setFormOpen(false); setEditEv(null); // Ferme IMMÉDIATEMENT
+  setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]);
+  setFormOpen(false); setEditEv(null);
   setSaving(false);
-  await pushEvent(newEv,auth); // Push iCloud
-  syncCalendar(newEv.calHref); // Sync légère arrière-plan
+  await pushEvent(newEv,auth);
+  syncCalendar(newEv.calHref);
 }}/>
       </Modal>
 
