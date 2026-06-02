@@ -101,7 +101,13 @@ async function pushEvent(ev, auth, invalidateCache=true) {
 }
 
 async function deleteEvent(ev, auth) {
-  if (!auth || !ev.href) return;
+  if (!auth) return;
+  // Si pas de href local → cherche le vrai href via UID dans iCloud
+  // Le syncCalDAV() après cette fonction récupère l'état réel
+  if (!ev.href) {
+    console.warn("[deleteEvent] Pas de href pour:", ev.id, "— sync forcée");
+    return; // syncCalDAV() après va nettoyer
+  }
   await caldavRequest("DELETE", ev.href, makeAuthHeader(auth.email, auth.appPassword));
 }
 
@@ -653,7 +659,7 @@ export default function App() {
       />
 
       <Modal open={formOpen} onClose={()=>{setFormOpen(false);setEditEv(null);}} title={editEv?"Modifier l'événement":"+ Nouvel événement"}>
-        <EventForm initial={editEv} calendars={calendars} defaultCalHref={settings.defaultCalHref} onCancel={()=>{setFormOpen(false);setEditEv(null);}} onSave={async ev=>{const newEv={...ev,id:editEv?.id||`calflow-${Date.now()}`,calColor:calendars.find(c=>c.href===ev.calHref)?.color||C.accent,calName:calendars.find(c=>c.href===ev.calHref)?.displayName||"",type:"event"};setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]);await pushEvent(newEv,auth);setFormOpen(false);setEditEv(null);}}/>
+        <EventForm initial={editEv} calendars={calendars} defaultCalHref={settings.defaultCalHref} onCancel={()=>{setFormOpen(false);setEditEv(null);}} onSave={async ev=>{const newEv={...ev,id:editEv?.id||`calflow-${Date.now()}`,calColor:calendars.find(c=>c.href===ev.calHref)?.color||C.accent,calName:calendars.find(c=>c.href===ev.calHref)?.displayName||"",type:"event"};setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]);await pushEvent(newEv,auth);await syncCalDAV();setFormOpen(false);setEditEv(null);}}/>
       </Modal>
 
       <Modal open={taskFormOpen} onClose={()=>{setTaskFormOpen(false);setEditTask(null);}} title={editTask?"Modifier la tâche":"↻ Nouvelle tâche glissante"}>
@@ -708,7 +714,7 @@ export default function App() {
             <Btn onClick={()=>setConfirmDel(null)}>Annuler</Btn>
             <Btn variant="danger" onClick={async()=>{
               if(confirmDel.type==="task") deleteTask(confirmDel);
-              else{setEvents(prev=>prev.filter(e=>e.id!==confirmDel.id));await deleteEvent(confirmDel,auth);}
+              else{setEvents(prev=>prev.filter(e=>e.id!==confirmDel.id));await deleteEvent(confirmDel,auth);await syncCalDAV();}
               setConfirmDel(null);
             }}>Supprimer</Btn>
           </div>
@@ -728,6 +734,7 @@ export default function App() {
               const newEv={...clipboard,id:`calflow-${Date.now()}`,masterUid:undefined,isRecurring:false,startDate:pasteTarget.date,endDate:pasteTarget.date,startTime:pasteTarget.time,endTime:minutesToHHMM(timeToMinutes(pasteTarget.time)+Math.max(30,duration))};
               setEvents(prev=>[...prev,newEv]);
               await pushEvent(newEv,auth);
+              await syncCalDAV();
               setClipboard(null);setPasteTarget(null);
             }}>Coller ici</Btn>
           </div>
