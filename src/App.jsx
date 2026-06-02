@@ -167,7 +167,37 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titre…" style={{...iStyle,fontSize:16,fontWeight:700}} autoFocus/>
+      <div style={{position:"relative",display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titre / Client…" style={{...iStyle,fontSize:16,fontWeight:700,marginBottom:0,flex:1}} autoFocus/>
+        {"contacts" in navigator && (
+          <button type="button" onClick={async()=>{
+            try {
+              const contacts = await navigator.contacts.select(
+                ["name","address","tel","email"],
+                {multiple:false}
+              );
+              if(!contacts||contacts.length===0) return;
+              const c = contacts[0];
+              if(c.name?.[0])    setTitle(c.name[0]);
+              if(c.address?.[0]) setLoc(c.address[0].city
+                ? [c.address[0].streetAddress, c.address[0].city, c.address[0].country].filter(Boolean).join(", ")
+                : c.address[0].addressLine?.[0] || "");
+              if(c.email?.[0])   setNotes(prev => prev ? prev + "\n" + c.email[0] : c.email[0]);
+              if(c.tel?.[0])     setNotes(prev => prev ? prev + "\n" + c.tel[0] : c.tel[0]);
+            } catch(e) { console.log("Contact picker annulé"); }
+          }} style={{
+            background:"none", border:`1.5px solid ${C.accentBorder}`,
+            borderRadius:10, cursor:"pointer", padding:"10px 12px",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            flexShrink:0, color:C.accent,
+          }} title="Importer un contact">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="7" r="4" stroke="#2B5A9E" strokeWidth="1.5"/>
+              <path d="M3 18c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
+      </div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"2px 0"}}>
         <span style={{fontSize:14,color:C.ink}}>Jour entier</span>
         <div onClick={()=>setAllDay(a=>!a)} style={{width:44,height:26,borderRadius:13,background:allDay?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s"}}>
@@ -457,19 +487,9 @@ export default function App() {
       const cal = calendars.find(c => c.href === calHref);
       if(!cal) return;
       const evs = parseEvents(evXml, cal.href, cal.color, cal.displayName);
-      const rStart = toISO(since); const rEnd = toISO(until);
-      const freshEvs = [];
-      evs.forEach(ev => {
-        if(ev.rrule) freshEvs.push(...expandRecurring(ev, rStart, rEnd));
-        else freshEvs.push(ev);
-      });
-      // Merge — remplace les events de ce calendrier uniquement
-      setEvents(prev => {
-        const otherCals = prev.filter(e => e.calHref !== calHref || e.id?.startsWith("done-"));
-        const merged = [...otherCals, ...freshEvs];
-        save(uKey(email,"cf_events"), merged);
-        return merged;
-      });
+      // iCloud confirme → sync complète silencieuse pour vrais hrefs
+      // Pas de mise à jour UI ici → évite le re-render intermédiaire
+      if(evs.length > 0) syncCalDAV();
       setSyncOk(true);
     } catch { /* silencieux */ }
   }
