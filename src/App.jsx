@@ -759,11 +759,12 @@ export default function App() {
               setSaving(true);
               if(confirmDel.type==="task") { deleteTask(confirmDel); setSaving(false); }
               else {
-                const calHref = confirmDel.calHref;
                 setEvents(prev=>prev.filter(e=>e.id!==confirmDel.id)); // Cache local immédiat
                 setConfirmDel(null); // Ferme IMMÉDIATEMENT
                 setSaving(false);
-                deleteEvent(confirmDel,auth).then(()=>syncCalendar(calHref)); // Arrière-plan
+                // Suppression → syncCalDAV() COMPLET obligatoire
+                // syncCalendar() ne détecte pas les suppressions (fetch dernière heure seulement)
+                deleteEvent(confirmDel,auth).then(()=>syncCalDAV());
               }
               if(confirmDel) setConfirmDel(null);
             }}>Supprimer</Btn>
