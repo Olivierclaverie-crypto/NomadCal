@@ -151,46 +151,117 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
   const [startTime,setST]      = useState(initial?.startTime||"09:00");
   const [endTime,setET]        = useState(initial?.endTime||"10:00");
   const [calHref,setCal]       = useState(initial?.calHref||defaultCalHref||calendars[0]?.href||"");
-  const [location,setLoc]      = useState(initial?.location||"");
+  // Champs ICS structurés
+  const [rue,setRue]           = useState(initial?.rue||initial?.location||"");
+  const [cp,setCp]             = useState(initial?.cp||"");
+  const [ville,setVille]       = useState(initial?.ville||"");
+  const [email,setEmail]       = useState(initial?.email||"");
+  const [tel,setTel]           = useState(initial?.tel||"");
   const [notes,setNotes]       = useState(initial?.notes||"");
   const [rrule,setRrule]       = useState(initial?.rrule||"");
   const [editMode,setEditMode] = useState("this");
   const [status,setStatus]     = useState(initial?.status||"confirmed");
 
   const iStyle = { width:"100%", padding:"10px 12px", borderRadius:10, border:`1.5px solid ${C.border}`, background:C.bg, color:C.ink, fontSize:14, fontFamily:"inherit", outline:"none", marginBottom:10, boxSizing:"border-box" };
+  const lblStyle = { fontSize:11, color:C.muted, fontWeight:700, display:"block", marginBottom:4, letterSpacing:.3 };
   const calColor = calendars.find(c=>c.href===calHref)?.color || C.accent;
+
+  // Adresse composée (pour LOCATION ICS + bouton Plans)
+  const composedLoc = [rue.trim(), [cp.trim(), ville.trim()].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const durMin = Math.max(0, timeToMinutes(endTime) - timeToMinutes(startTime));
+  function applyDuration(mins){ setET(minutesToHHMM(Math.min(GRID_END, timeToMinutes(startTime)+mins))); }
 
   function save() {
     if (!title.trim()) return;
-    onSave({title:title.trim(),allDay,startDate,startTime:allDay?null:startTime,endDate,endTime:allDay?null:endTime,calHref,location,notes,rrule,editMode,status});
+    // Notes = notes libres + contact (composition pour DESCRIPTION ICS)
+    const contactLines = [];
+    if (email.trim()) contactLines.push("✉️ " + email.trim());
+    if (tel.trim())   contactLines.push("📞 " + tel.trim());
+    const fullNotes = [notes.trim(), ...contactLines].filter(Boolean).join("\n");
+    onSave({
+      title:title.trim(), allDay,
+      startDate, startTime:allDay?null:startTime, endDate, endTime:allDay?null:endTime,
+      calHref, location:composedLoc, notes:fullNotes, rrule, editMode, status,
+      // champs structurés conservés en cache local
+      rue, cp, ville, email, tel,
+    });
   }
+
+  const DURATIONS = [["15 min",15],["30 min",30],["45 min",45],["1 h",60],["2 h",120]];
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titre…" style={{...iStyle,fontSize:16,fontWeight:700}} autoFocus/>
+
+      {/* Titre = Nom du client */}
+      <div>
+        <label style={lblStyle}>TITRE / CLIENT</label>
+        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Nom du client…" style={{...iStyle,fontSize:16,fontWeight:700,marginBottom:0,borderColor:C.accentBorder}} autoFocus/>
+      </div>
+
+      {/* Jour entier */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"2px 0"}}>
         <span style={{fontSize:14,color:C.ink}}>Jour entier</span>
         <div onClick={()=>setAllDay(a=>!a)} style={{width:44,height:26,borderRadius:13,background:allDay?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s"}}>
           <div style={{position:"absolute",top:3,left:allDay?21:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}/>
         </div>
       </div>
-      <div style={{display:"flex",gap:8}}>
-        <div style={{flex:1}}><label style={{fontSize:11,color:C.muted,fontWeight:700,display:"block",marginBottom:4}}>DÉBUT</label><input type="date" value={startDate} onChange={e=>setSD(e.target.value)} style={iStyle}/></div>
-        <div style={{flex:1}}><label style={{fontSize:11,color:C.muted,fontWeight:700,display:"block",marginBottom:4}}>FIN</label><input type="date" value={endDate} onChange={e=>setED(e.target.value)} style={iStyle}/></div>
+
+      {/* Bloc date/heure — carte ORCHARD */}
+      <div style={{background:C.surface,border:`1.5px solid ${C.accentBorder}`,borderRadius:14,padding:"12px",display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{display:"flex",gap:8}}>
+          <div style={{flex:1}}><label style={lblStyle}>DÉBUT</label><input type="date" value={startDate} onChange={e=>setSD(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
+          <div style={{flex:1}}><label style={lblStyle}>FIN</label><input type="date" value={endDate} onChange={e=>setED(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
+        </div>
+        {!allDay&&<>
+          <div style={{display:"flex",gap:8}}>
+            <div style={{flex:1}}><label style={lblStyle}>HEURE DÉBUT</label><input type="time" value={startTime} onChange={e=>setST(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
+            <div style={{flex:1}}><label style={lblStyle}>HEURE FIN</label><input type="time" value={endTime} onChange={e=>setET(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
+          </div>
+          {/* Puces durée rapide façon iOS, déclinées ORCHARD */}
+          <div style={{display:"flex",gap:6}}>
+            {DURATIONS.map(([lbl,mins])=>{
+              const active = durMin===mins && startDate===endDate;
+              return (
+                <button key={mins} onClick={()=>applyDuration(mins)} style={{flex:1,padding:"7px 2px",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,border:`1.5px solid ${active?C.gold:C.border}`,background:active?C.goldLight:"transparent",color:active?C.goldDark:C.muted}}>{lbl}</button>
+              );
+            })}
+          </div>
+        </>}
       </div>
-      {!allDay&&<div style={{display:"flex",gap:8}}>
-        <div style={{flex:1}}><label style={{fontSize:11,color:C.muted,fontWeight:700,display:"block",marginBottom:4}}>HEURE DÉBUT</label><input type="time" value={startTime} onChange={e=>setST(e.target.value)} style={iStyle}/></div>
-        <div style={{flex:1}}><label style={{fontSize:11,color:C.muted,fontWeight:700,display:"block",marginBottom:4}}>HEURE FIN</label><input type="time" value={endTime} onChange={e=>setET(e.target.value)} style={iStyle}/></div>
-      </div>}
+
+      {/* Calendrier (défaut depuis réglages) */}
       <div>
-        <label style={{fontSize:11,color:C.muted,fontWeight:700,display:"block",marginBottom:4}}>CALENDRIER</label>
-        <select value={calHref} onChange={e=>setCal(e.target.value)} style={{...iStyle,borderColor:calColor,borderWidth:2,background:calColor+"15"}}>
+        <label style={lblStyle}>CALENDRIER</label>
+        <select value={calHref} onChange={e=>setCal(e.target.value)} style={{...iStyle,borderColor:calColor,borderWidth:2,background:calColor+"15",marginBottom:0}}>
           {calendars.map(c=><option key={c.href} value={c.href}>{c.displayName}</option>)}
         </select>
       </div>
+
+      {/* Statut */}
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>setStatus("confirmed")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="confirmed"?C.green:C.border}`,background:status==="confirmed"?C.greenLight:"transparent",color:status==="confirmed"?C.green:C.muted,fontSize:12,fontWeight:700}}>✅ Confirmé</button>
+        <button onClick={()=>setStatus("tentative")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="tentative"?"#F5A623":C.border}`,background:status==="tentative"?"#FFF8ED":"transparent",color:status==="tentative"?"#B8741A":C.muted,fontSize:12,fontWeight:700}}>🟠 À confirmer</button>
+      </div>
+
+      {/* Coordonnées client — champs ICS structurés */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:"12px",display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{fontSize:11,color:C.accent,fontWeight:800,letterSpacing:.3,marginBottom:2}}>COORDONNÉES</div>
+        <div style={{position:"relative"}}>
+          <input value={rue} onChange={e=>setRue(e.target.value)} placeholder="Rue" style={{...iStyle,marginBottom:0,paddingRight:36}}/>
+          {composedLoc&&<button onClick={()=>{const a=encodeURIComponent(composedLoc);const w=confirm("OK = Plans Apple\nAnnuler = Waze/Google");if(w)window.open(`maps://?q=${a}`,"_blank");else{const g=confirm("OK = Waze\nAnnuler = Google Maps");if(g)window.open(`waze://?q=${a}&navigate=yes`,"_blank");else window.open(`https://maps.google.com/?q=${a}`,"_blank");}}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:18}}>📍</button>}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <input value={cp} onChange={e=>setCp(e.target.value)} placeholder="CP" inputMode="numeric" style={{...iStyle,marginBottom:0,flex:".5"}}/>
+          <input value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville" style={{...iStyle,marginBottom:0,flex:"1"}}/>
+        </div>
+        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" inputMode="email" style={{...iStyle,marginBottom:0}}/>
+        <input value={tel} onChange={e=>setTel(e.target.value)} placeholder="Téléphone principal" inputMode="tel" style={{...iStyle,marginBottom:0}}/>
+      </div>
+
+      {/* Récurrence */}
       <div>
-        <label style={{fontSize:11,color:C.muted,fontWeight:700,display:"block",marginBottom:4}}>RÉCURRENCE <button onClick={()=>alert("Récurrence vs Tâche glissante\n\nLa RÉCURRENCE recrée l'événement à la fréquence choisie.\n\nLa TÂCHE GLISSANTE glisse au lendemain si non faite.")} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:"50%",width:16,height:16,fontSize:10,cursor:"pointer",color:C.muted}}>?</button></label>
-        <select value={rrule} onChange={e=>setRrule(e.target.value)} style={iStyle}>
+        <label style={lblStyle}>RÉCURRENCE <button onClick={()=>alert("Récurrence vs Tâche glissante\n\nLa RÉCURRENCE recrée l'événement à la fréquence choisie.\n\nLa TÂCHE GLISSANTE glisse au lendemain si non faite.")} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:"50%",width:16,height:16,fontSize:10,cursor:"pointer",color:C.muted}}>?</button></label>
+        <select value={rrule} onChange={e=>setRrule(e.target.value)} style={{...iStyle,marginBottom:0}}>
           {RECURRENCE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
@@ -199,15 +270,10 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
           <button key={v} onClick={()=>setEditMode(v)} style={{flex:1,padding:"8px 4px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${editMode===v?C.accent:C.border}`,background:editMode===v?C.accentLight:"transparent",color:editMode===v?C.accent:C.muted,fontSize:11,fontWeight:700}}>{l}</button>
         ))}
       </div>}
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>setStatus("confirmed")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="confirmed"?C.green:C.border}`,background:status==="confirmed"?C.greenLight:"transparent",color:status==="confirmed"?C.green:C.muted,fontSize:12,fontWeight:700}}>✅ Confirmé</button>
-        <button onClick={()=>setStatus("tentative")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="tentative"?"#F5A623":C.border}`,background:status==="tentative"?"#FFF8ED":"transparent",color:status==="tentative"?"#B8741A":C.muted,fontSize:12,fontWeight:700}}>🟠 À confirmer</button>
-      </div>
-      <div style={{position:"relative"}}>
-        <input value={location} onChange={e=>setLoc(e.target.value)} placeholder="Adresse / Lieu" style={{...iStyle,paddingRight:36}}/>
-        {location&&<button onClick={()=>{const a=encodeURIComponent(location);const w=confirm("OK = Plans Apple\nAnnuler = Waze/Google");if(w)window.open(`maps://?q=${a}`,"_blank");else{const g=confirm("OK = Waze\nAnnuler = Google Maps");if(g)window.open(`waze://?q=${a}&navigate=yes`,"_blank");else window.open(`https://maps.google.com/?q=${a}`,"_blank");}}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-60%)",background:"none",border:"none",cursor:"pointer",fontSize:18}}>📍</button>}
-      </div>
-      <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Notes (optionnel)" rows={3} style={{...iStyle,resize:"none",lineHeight:1.6}}/>
+
+      {/* Notes libres */}
+      <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Notes (optionnel)" rows={2} style={{...iStyle,resize:"none",lineHeight:1.6}}/>
+
       <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
         <Btn onClick={onCancel}>Annuler</Btn>
         <Btn onClick={save} variant="primary" disabled={saving}>Créer l'événement</Btn>
