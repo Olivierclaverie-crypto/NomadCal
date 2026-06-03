@@ -7,7 +7,7 @@ const PROTECTED_KEYS = ["cf_auth"];
 // ── Clés à exporter/importer ──────────────────────────────────────────────────
 const EXPORT_KEYS = [
   "cf_tasks", "cf_events", "cf_calendars", "cf_settings",
-  "nf4_notes", "nb_notes", "nb_periods", "nb_syntheses",
+  "nf4_notes", "nb_notes", "nb_periods", "nb_periods_cache", "nb_syntheses",
 ];
 
 export default function Settings({ settings, setSettings, calendars, onBack, auth }) {
@@ -39,13 +39,20 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
     window.location.reload();
   }
 
-  // ── Export JSON — toutes les données ─────────────────────────────────────
+  // ── Export JSON — toutes les données (clés brutes + clés préfixées user) ──
   function handleExport() {
     const data = {};
-    EXPORT_KEYS.forEach(k => {
-      const v = localStorage.getItem(k);
-      if (v) data[k] = JSON.parse(v);
-    });
+    // Parcourt TOUTES les clés localStorage → capture aussi les clés préfixées
+    for (let i = 0; i < localStorage.length; i++) {
+      const fullKey = localStorage.key(i);
+      if (fullKey === "cf_auth") continue; // Jamais exporter les identifiants
+      const isRelevant = EXPORT_KEYS.some(k => fullKey === k || fullKey.endsWith("_" + k))
+        || fullKey.startsWith("nb_") || fullKey.startsWith("nf4_");
+      if (isRelevant) {
+        try { data[fullKey] = JSON.parse(localStorage.getItem(fullKey)); }
+        catch { data[fullKey] = localStorage.getItem(fullKey); }
+      }
+    }
     data._exportDate = new Date().toISOString();
     data._email = auth?.email || "unknown";
 
@@ -67,11 +74,10 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
       try {
         const data = JSON.parse(ev.target.result);
         let restored = 0;
-        EXPORT_KEYS.forEach(k => {
-          if (data[k] !== undefined) {
-            localStorage.setItem(k, JSON.stringify(data[k]));
-            restored++;
-          }
+        Object.keys(data).forEach(k => {
+          if (k.startsWith("_")) return; // Ignore _exportDate, _email
+          localStorage.setItem(k, typeof data[k] === "string" ? data[k] : JSON.stringify(data[k]));
+          restored++;
         });
         setImportStatus("success");
         setTimeout(() => { setImportStatus(null); window.location.reload(); }, 1500);
@@ -84,7 +90,7 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
   }
 
   return (
-    <div style={{ minHeight: "100dvh", background: C.bg, display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100dvh", background: C.bg, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* Header */}
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
@@ -95,7 +101,7 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
         </span>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px", paddingBottom: 60 }}>
 
         {/* AFFICHAGE */}
         <div style={{ ...sectionStyle }}>
@@ -187,7 +193,7 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
         <button onClick={handleLogout} style={{ width: "100%", padding: "12px", borderRadius: 12, border: `1px solid ${C.red}44`, background: C.redLight, color: C.red, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginTop: 8 }}>
           Se déconnecter
         </button>
-        <div style={{ fontSize: 11, color: C.muted, textAlign: "center", marginTop: 8 }}>
+        <div style={{ fontSize: 11, color: C.muted, textAlign: "center", marginTop: 8, marginBottom: 20 }}>
           La déconnexion ne supprime pas tes données locales.
         </div>
 
