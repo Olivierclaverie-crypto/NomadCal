@@ -340,6 +340,8 @@ export default function App() {
   const [drawerOpen,setDrawerOpen]   = useState(false);
   const [swipeTaskId,setSwipeTaskId] = useState(null);
   const [popover,setPopover]         = useState(null);
+  const [slotPrefill,setSlotPrefill] = useState(null); // Pré-remplissage tap long grille
+  const [pulseCell,setPulseCell]     = useState(null); // Feedback visuel tap long
   const [fraisDate,setFraisDate]     = useState(null);
   const [nomadBookOpen,setNomadBookOpen] = useState(false);
 
@@ -349,6 +351,8 @@ export default function App() {
   const touchStartX   = useRef(null);
   const touchStartY   = useRef(null);
   const gridScrollRef = useRef(null);
+  const longPressTimer = useRef(null);
+  const longPressFired = useRef(false);
 
   const weekDays = getWeekDays(weekStart);
   const weekNum  = getWeekNum(weekStart);
@@ -569,6 +573,12 @@ export default function App() {
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,overflow:"hidden",fontFamily:"Phenomena,Nunito,sans-serif"}}>
+      <style>{`@keyframes nbload{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}`}</style>
+      {syncing&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,height:3,zIndex:9999,background:C.accentLight,overflow:"hidden"}}>
+          <div style={{height:"100%",width:"30%",background:C.accent,animation:"nbload 1.1s ease-in-out infinite"}}/>
+        </div>
+      )}
 
       {nomadBookOpen&&(
         <div style={{position:"fixed",inset:0,zIndex:400,background:C.bg,overflowY:"auto"}}>
@@ -579,7 +589,7 @@ export default function App() {
       <Header
         weekDays={weekDays} syncing={syncing} syncOk={syncOk}
         onSync={syncCalDAV} onSettings={()=>setScreen("settings")}
-        onAddEvent={()=>{setEditEv(null);setFormOpen(true);}}
+        onAddEvent={()=>{setEditEv(null);setSlotPrefill(null);setFormOpen(true);}}
         clipboard={clipboard} onClearClipboard={()=>{setClipboard(null);setPasteTarget(null);}}
         tasks={tasks} onToggleDrawer={()=>setDrawerOpen(o=>!o)}
         weekStart={weekStart} weekNum={weekNum} today={today}
@@ -627,7 +637,26 @@ export default function App() {
             const nowPct=isToday?(new Date().getHours()*60+new Date().getMinutes())/GRID_TOTAL:null;
             return(
               <div key={day} style={{flex:1,borderLeft:`1px solid ${C.border}`,position:"relative",background:isToday?"#2B5A9E08":"transparent"}}
+                onTouchStart={e=>{
+                  if(e.target!==e.currentTarget) return; // seulement zone vide, pas sur un event
+                  const rect=e.currentTarget.getBoundingClientRect();
+                  const relY=e.touches[0].clientY-rect.top;
+                  const min=Math.round((relY/GRID_H)*GRID_TOTAL/30)*30;
+                  const time=minutesToHHMM(Math.max(0,Math.min(GRID_END-30,min)));
+                  longPressFired.current=false;
+                  longPressTimer.current=setTimeout(()=>{
+                    longPressFired.current=true;
+                    setSlotPrefill({startDate:day,endDate:day,startTime:time,endTime:minutesToHHMM(Math.min(GRID_END,min+60))});
+                    setEditEv(null);
+                    setPulseCell({day,top:relY});
+                    setTimeout(()=>setPulseCell(null),350);
+                    setFormOpen(true);
+                  },450);
+                }}
+                onTouchMove={()=>{ if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;} }}
+                onTouchEnd={()=>{ if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;} }}
                 onClick={e=>{
+                  if(longPressFired.current){longPressFired.current=false;return;}
                   if(popover){setPopover(null);return;}
                   const rect=e.currentTarget.getBoundingClientRect();
                   const relY=e.clientY-rect.top;
@@ -636,6 +665,7 @@ export default function App() {
                   if(clipboard) setPasteTarget({date:day,time});
                   else { setEditEv(null); setFormOpen(true); }
                 }}>
+                {pulseCell&&pulseCell.day===day&&<div style={{position:"absolute",top:pulseCell.top-16,left:2,right:2,height:32,background:C.gold+"44",border:`2px solid ${C.gold}`,borderRadius:8,pointerEvents:"none",zIndex:11}}/>}
                 {nowPct&&<div style={{position:"absolute",top:`${nowPct*100}%`,left:0,right:0,height:2,background:C.red,zIndex:10}}><div style={{position:"absolute",left:-4,top:-3,width:8,height:8,borderRadius:"50%",background:C.red}}/></div>}
                 {layoutEvents(dayEvs).map(ev=>{
                   const y=timeToY(ev.startTime||"09:00");
@@ -690,8 +720,8 @@ export default function App() {
         onOpenNomadFeed={()=>alert("NomadFeed — bientôt disponible ! 🚀")}
       />
 
-      <Modal open={formOpen} onClose={()=>{setFormOpen(false);setEditEv(null);}} title={editEv?"Modifier l'événement":"+ Nouvel événement"}>
-        <EventForm initial={editEv} calendars={calendars} defaultCalHref={settings.defaultCalHref} saving={saving} onCancel={()=>{setFormOpen(false);setEditEv(null);}} onSave={async ev=>{
+      <Modal open={formOpen} onClose={()=>{setFormOpen(false);setEditEv(null);setSlotPrefill(null);}} title={editEv?"Modifier l'événement":"+ Nouvel événement"}>
+        <EventForm initial={editEv||slotPrefill} calendars={calendars} defaultCalHref={settings.defaultCalHref} saving={saving} onCancel={()=>{setFormOpen(false);setEditEv(null);setSlotPrefill(null);}} onSave={async ev=>{
   if(saving) return;
   setSaving(true);
   const newEv={...ev,id:editEv?.id||`calflow-${Date.now()}`,calColor:calendars.find(c=>c.href===ev.calHref)?.color||C.accent,calName:calendars.find(c=>c.href===ev.calHref)?.displayName||"",type:"event"};
