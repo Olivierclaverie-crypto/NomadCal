@@ -208,25 +208,30 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
 
       {/* Bloc date/heure — carte ORCHARD */}
       <div style={{background:C.surface,border:`1.5px solid ${C.accentBorder}`,borderRadius:14,padding:"12px",display:"flex",flexDirection:"column",gap:10}}>
-        <div style={{display:"flex",gap:8}}>
-          <div style={{flex:1}}><label style={lblStyle}>DÉBUT</label><input type="date" value={startDate} onChange={e=>setSD(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
-          <div style={{flex:1}}><label style={lblStyle}>FIN</label><input type="date" value={endDate} onChange={e=>setED(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
-        </div>
-        {!allDay&&<>
+        {!allDay ? (
+          <>
+            {/* Event horaire : 1 seule date + heures début/fin (défaut 1h) */}
+            <div><label style={lblStyle}>DATE</label><input type="date" value={startDate} onChange={e=>{setSD(e.target.value);setED(e.target.value);}} style={{...iStyle,marginBottom:0}}/></div>
+            <div style={{display:"flex",gap:8}}>
+              <div style={{flex:1}}><label style={lblStyle}>HEURE DÉBUT</label><input type="time" value={startTime} onChange={e=>setST(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
+              <div style={{flex:1}}><label style={lblStyle}>HEURE FIN</label><input type="time" value={endTime} onChange={e=>setET(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              {DURATIONS.map(([lbl,mins])=>{
+                const active = durMin===mins;
+                return (
+                  <button key={mins} onClick={()=>applyDuration(mins)} style={{flex:1,padding:"7px 2px",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,border:`1.5px solid ${active?C.gold:C.border}`,background:active?C.goldLight:"transparent",color:active?C.goldDark:C.muted}}>{lbl}</button>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          /* Jour entier : date de début (DU) + date de fin (AU), pas d'heures */
           <div style={{display:"flex",gap:8}}>
-            <div style={{flex:1}}><label style={lblStyle}>HEURE DÉBUT</label><input type="time" value={startTime} onChange={e=>setST(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
-            <div style={{flex:1}}><label style={lblStyle}>HEURE FIN</label><input type="time" value={endTime} onChange={e=>setET(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
+            <div style={{flex:1}}><label style={lblStyle}>DU</label><input type="date" value={startDate} onChange={e=>setSD(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
+            <div style={{flex:1}}><label style={lblStyle}>AU</label><input type="date" value={endDate} onChange={e=>setED(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
           </div>
-          {/* Puces durée rapide façon iOS, déclinées ORCHARD */}
-          <div style={{display:"flex",gap:6}}>
-            {DURATIONS.map(([lbl,mins])=>{
-              const active = durMin===mins && startDate===endDate;
-              return (
-                <button key={mins} onClick={()=>applyDuration(mins)} style={{flex:1,padding:"7px 2px",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,border:`1.5px solid ${active?C.gold:C.border}`,background:active?C.goldLight:"transparent",color:active?C.goldDark:C.muted}}>{lbl}</button>
-              );
-            })}
-          </div>
-        </>}
+        )}
       </div>
 
       {/* Calendrier (défaut depuis réglages) */}
