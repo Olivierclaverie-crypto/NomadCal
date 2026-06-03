@@ -331,21 +331,25 @@ function TaskForm({ initial, onSave, onCancel }) {
   );
 }
 
-function EventPopover({ ev, onInfo, onShare, onDelete, onClose, position }) {
+function EventPopover({ ev, onCopy, onEdit, onDelete, onClose, position }) {
   if (!ev || !position) return null;
   const isPending = ev.status === "tentative";
+  const Item = ({label,icon,onClick,color}) => (
+    <button onClick={onClick} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"6px 12px",color,fontSize:11,fontWeight:700}}>
+      <span style={{fontSize:18}}>{icon}</span>{label}
+    </button>
+  );
   return (
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:299}}/>
-      <div style={{position:"fixed",top:position.y,left:Math.min(position.x,window.innerWidth-180),zIndex:300,background:C.surface,border:`1.5px solid ${isPending?"#F5A623":C.border}`,borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",padding:"10px 14px",minWidth:160}}>
-        <div style={{position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"8px solid transparent",borderRight:"8px solid transparent",borderTop:`8px solid ${isPending?"#F5A623":C.border}`}}/>
-        <div style={{fontSize:12,fontWeight:800,color:isPending?"#B8741A":C.ink,marginBottom:8,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:140}}>
+      <div style={{position:"fixed",top:position.y,left:Math.min(Math.max(8,position.x),window.innerWidth-200),zIndex:300,background:C.surface,border:`1.5px solid ${isPending?"#F5A623":C.border}`,borderRadius:14,boxShadow:"0 6px 24px rgba(0,0,0,.2)",padding:"10px 8px",minWidth:190}}>
+        <div style={{fontSize:12,fontWeight:800,color:isPending?"#B8741A":C.ink,marginBottom:6,padding:"0 8px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:180}}>
           {isPending&&<span style={{marginRight:4}}>🟠</span>}{ev.title}
         </div>
-        <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-          <button onClick={onInfo}   style={{background:"none",border:"none",cursor:"pointer",fontSize:20,padding:4}}>ℹ️</button>
-          <button onClick={onShare}  style={{background:"none",border:"none",cursor:"pointer",fontSize:20,padding:4}}>↗️</button>
-          <button onClick={onDelete} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,padding:4}}>🗑️</button>
+        <div style={{display:"flex",justifyContent:"space-around"}}>
+          <Item label="Copier"   icon="📋" onClick={onCopy}   color={C.accent}/>
+          <Item label="Modifier" icon="✎"  onClick={onEdit}   color={C.ink}/>
+          <Item label="Suppr."   icon="🗑"  onClick={onDelete} color={C.red}/>
         </div>
       </div>
     </>
@@ -424,6 +428,8 @@ export default function App() {
   const gridScrollRef = useRef(null);
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
+  const evPressTimer = useRef(null);   // tap long sur un EVENT
+  const evPressFired = useRef(false);
 
   const weekDays = getWeekDays(weekStart);
   const weekNum  = getWeekNum(weekStart);
@@ -717,11 +723,15 @@ export default function App() {
                   longPressFired.current=false;
                   longPressTimer.current=setTimeout(()=>{
                     longPressFired.current=true;
-                    setSlotPrefill({startDate:day,endDate:day,startTime:time,endTime:minutesToHHMM(Math.min(GRID_END,min+60))});
-                    setEditEv(null);
                     setPulseCell({day,top:relY});
                     setTimeout(()=>setPulseCell(null),350);
-                    setFormOpen(true);
+                    if(clipboard){
+                      setPasteTarget({date:day,time}); // flux coller
+                    } else {
+                      setSlotPrefill({startDate:day,endDate:day,startTime:time,endTime:minutesToHHMM(Math.min(GRID_END,min+60))});
+                      setEditEv(null);
+                      setFormOpen(true);
+                    }
                   },450);
                 }}
                 onTouchMove={()=>{ if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;} }}
@@ -748,11 +758,22 @@ export default function App() {
                   const leftPct=(ev.col||0)*colW;
                   return(
                     <div key={ev.id+ev.col}
+                      onTouchStart={e=>{
+                        if(isTask) return;
+                        const rect=e.currentTarget.getBoundingClientRect();
+                        evPressFired.current=false;
+                        evPressTimer.current=setTimeout(()=>{
+                          evPressFired.current=true;
+                          setPopover({ev,x:rect.left+rect.width/2-90,y:rect.top-92});
+                        },450);
+                      }}
+                      onTouchMove={()=>{ if(evPressTimer.current){clearTimeout(evPressTimer.current);evPressTimer.current=null;} }}
+                      onTouchEnd={()=>{ if(evPressTimer.current){clearTimeout(evPressTimer.current);evPressTimer.current=null;} }}
                       onClick={e=>{
                         e.stopPropagation();
+                        if(evPressFired.current){evPressFired.current=false;return;}
                         if(isTask){setDrawerOpen(false);setTimeout(()=>setDetailEv({...ev,type:"task"}),50);return;}
-                        const rect=e.currentTarget.getBoundingClientRect();
-                        setPopover({ev,x:rect.left+rect.width/2-80,y:rect.top-80});
+                        setDetailEv(ev);
                       }}
                       style={{position:"absolute",top:y+1,left:`${leftPct+0.5}%`,width:`${colW-1}%`,height:h-2,background:isTask?(ev.done?C.green+"22":C.gold+"15"):"transparent",border:`2px solid ${isPending?"#F5A623":evColor}`,borderRadius:6,padding:"3px 4px",cursor:"pointer",overflow:"hidden",opacity:ev.done?.7:1,boxSizing:"border-box"}}>
                       {isPending&&<div style={{position:"absolute",top:2,right:2,width:6,height:6,borderRadius:"50%",background:"#F5A623"}}/>}
@@ -773,8 +794,8 @@ export default function App() {
       {popover&&(
         <EventPopover ev={popover.ev} position={{x:popover.x,y:popover.y}}
           onClose={()=>setPopover(null)}
-          onInfo={()=>{setDetailEv(popover.ev);setPopover(null);}}
-          onShare={()=>{if(navigator.share)navigator.share({title:popover.ev.title,text:`${popover.ev.startDate} ${popover.ev.startTime||""} — ${popover.ev.title}`});setPopover(null);}}
+          onCopy={()=>{setClipboard(popover.ev);setPopover(null);showToast("📋 Copié — tap long sur un créneau pour coller","amber");}}
+          onEdit={()=>{setEditEv(popover.ev);setSlotPrefill(null);setFormOpen(true);setPopover(null);}}
           onDelete={()=>{handleDeleteEvent(popover.ev);setPopover(null);}}
         />
       )}
@@ -880,13 +901,19 @@ export default function App() {
           </div>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
             <Btn onClick={()=>setPasteTarget(null)}>Annuler</Btn>
-            <Btn variant="primary" onClick={async()=>{
-              const duration=timeToMinutes(clipboard.endTime||"10:00")-timeToMinutes(clipboard.startTime||"09:00");
-              const newEv={...clipboard,id:`calflow-${Date.now()}`,masterUid:undefined,isRecurring:false,startDate:pasteTarget.date,endDate:pasteTarget.date,startTime:pasteTarget.time,endTime:minutesToHHMM(timeToMinutes(pasteTarget.time)+Math.max(30,duration))};
-              setEvents(prev=>[...prev,newEv]); // Cache local immédiat
-              setClipboard(null); setPasteTarget(null); // Ferme IMMÉDIATEMENT
-              await pushEvent(newEv,auth);
-              syncCalendar(newEv.calHref); // Sync légère arrière-plan
+            <Btn variant="primary" onClick={()=>{
+              const duration=Math.max(30,timeToMinutes(clipboard.endTime||"10:00")-timeToMinutes(clipboard.startTime||"09:00"));
+              // Ouvre la fenêtre de création PRÉ-REMPLIE (nouvelle date/heure) — l'user valide
+              setSlotPrefill({
+                title:clipboard.title, allDay:clipboard.allDay, status:clipboard.status,
+                calHref:clipboard.calHref, location:clipboard.location, notes:clipboard.notes,
+                rue:clipboard.rue, cp:clipboard.cp, ville:clipboard.ville, email:clipboard.email, tel:clipboard.tel,
+                startDate:pasteTarget.date, endDate:pasteTarget.date,
+                startTime:pasteTarget.time, endTime:minutesToHHMM(timeToMinutes(pasteTarget.time)+duration),
+              });
+              setEditEv(null);
+              setClipboard(null); setPasteTarget(null);
+              setFormOpen(true);
             }}>Coller ici</Btn>
           </div>
         </div>}
