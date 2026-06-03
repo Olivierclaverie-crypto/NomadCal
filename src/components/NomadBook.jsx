@@ -3,6 +3,7 @@ import {
   getPeriodEvents, createPeriodEvent, updatePeriodEvent,
   deletePeriodEvent, autoLabel, calendarDisplayName, checkCalendarExists
 } from "../utils/caldavCalendar.js";
+import { compressImage, savePhoto, getPhotoURL, requestPersistentStorage } from "../utils/photoStore.js";
 
 const C = {
   bg:"#fdf8f0", surface:"#ffffff", card:"#fffcf7",
@@ -262,6 +263,29 @@ function PeriodForm({ initial, lastEndISO, onSave, onCancel, loading }) {
   );
 }
 
+// ── Vignette photo ────────────────────────────────────────────────────────────
+// Si "url" est fourni (aperçu en cours de création) on l'affiche directement.
+// Sinon on charge le blob depuis le vestiaire IndexedDB via son ticket "id".
+function PhotoThumb({ id, url, size=60, onRemove }){
+  const [src,setSrc] = useState(url||null);
+  useEffect(()=>{
+    if(url){ setSrc(url); return; }
+    let alive=true, made=null;
+    getPhotoURL(id).then(u=>{ if(alive){ made=u; setSrc(u); } });
+    return ()=>{ alive=false; if(made) URL.revokeObjectURL(made); };
+  },[id,url]);
+  return(
+    <div style={{position:"relative",flexShrink:0}}>
+      {src
+        ? <img src={src} alt="" style={{width:size,height:size,objectFit:"cover",borderRadius:8,border:`1px solid ${C.border}`,display:"block"}}/>
+        : <div style={{width:size,height:size,borderRadius:8,background:C.bg,border:`1px solid ${C.border}`}}/>}
+      {onRemove&&(
+        <button onClick={onRemove} style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:"50%",background:C.red,color:"#fff",border:"2px solid #fff",cursor:"pointer",fontSize:11,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>
+      )}
+    </div>
+  );
+}
+
 // ── Carte note ────────────────────────────────────────────────────────────────
 function NoteCard({note,onDelete,onEdit}){
   const [editing,setEditing]=useState(false);
@@ -306,6 +330,11 @@ function NoteCard({note,onDelete,onEdit}){
         <ChapterIcon id={ch.id} size={16}/>
         <div style={{flex:1,minWidth:0}}>
           <p style={{margin:"0 0 6px",fontSize:14,lineHeight:1.65,color:C.ink,fontFamily:"Phenomena, sans-serif"}}>{note.text}</p>
+          {note.photos&&note.photos.length>0&&(
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+              {note.photos.map(pid=><PhotoThumb key={pid} id={pid} size={56}/>)}
+            </div>
+          )}
           <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
             <span style={{fontSize:11,color:C.subtle,fontFamily:"monospace"}}>{new Date(note.createdAt).toLocaleDateString("fr-FR")}</span>
             <span style={{fontSize:11,color:C.subtle}}>·</span>
@@ -355,6 +384,9 @@ export default function NomadBook({ onClose, auth }) {
   const [viewSynthese,setViewSynthese]         = useState(null);
   const [noteText,setNoteText]     = useState("");
   const [noteChapter,setNoteChapter] = useState("marche");
+  const [notePhotos,setNotePhotos] = useState([]); // photos en cours d'ajout : {url, blob}
+  const galleryInputRef = useRef(null);
+  const cameraInputRef  = useRef(null);
   const currentCardRef = useRef(null);
 
   // Période courante
@@ -378,6 +410,8 @@ export default function NomadBook({ onClose, auth }) {
   const futurePeriods  = sortedPeriods.filter(p=>getPeriodStatus(p)==="future");
 
   useEffect(()=>save("nb_notes",notes),[notes]);
+  // Demande a iOS de proteger nos donnees locales (photos comprises) de l'effacement auto.
+  useEffect(()=>{ requestPersistentStorage(); },[]);
   useEffect(()=>save("nb_syntheses",syntheses),[syntheses]);
 
   // Charge les périodes depuis CalDAV
@@ -462,13 +496,40 @@ export default function NomadBook({ onClose, auth }) {
     setLoadingPeriods(false);
   }
 
-  function addNote(){
+  // ── Photos de la note en cours de creation ──
+  async function handlePhotoFiles(fileList){
+    const files = Array.from(fileList||[]);
+    for(const file of files){
+      try{
+        const blob = await compressImage(file);   // reduit le poids avant stockage
+        const url  = URL.createObjectURL(blob);    // apercu instantane
+        setNotePhotos(prev=>[...prev,{url,blob}]);
+      }catch(e){ /* image illisible : on ignore ce fichier */ }
+    }
+  }
+  function removeNotePhoto(index){
+    setNotePhotos(prev=>{
+      const p=prev[index]; if(p) URL.revokeObjectURL(p.url);
+      return prev.filter((_,i)=>i!==index);
+    });
+  }
+  function clearNotePhotos(){
+    setNotePhotos(prev=>{ prev.forEach(p=>URL.revokeObjectURL(p.url)); return []; });
+  }
+  function closeCapture(){ clearNotePhotos(); setCaptureOpen(false); }
+
+  async function addNote(){
     if(!noteText.trim()) return;
+    // Range les photos au vestiaire (IndexedDB) -> un ticket par photo.
+    const photoIds=[];
+    for(const p of notePhotos){
+      try{ const pid=await savePhoto(p.blob); photoIds.push(pid); }catch(e){ /* echec stockage : photo ignoree */ }
+    }
     // Si pas de période encore chargée → note en attente rattachée à "pending"
     const periodId = currentPeriod?.uid || "pending";
-    const note={id:Date.now(),text:noteText.trim(),chapter:noteChapter,createdAt:new Date().toISOString(),periodId};
+    const note={id:Date.now(),text:noteText.trim(),chapter:noteChapter,createdAt:new Date().toISOString(),periodId,photos:photoIds};
     setNotes(prev=>[note,...prev]);
-    setNoteText(""); setCaptureOpen(false);
+    setNoteText(""); clearNotePhotos(); setCaptureOpen(false);
     // Sync nb notes dans l'event CalDAV
     if(auth&&currentPeriod?.href){
       import("../utils/caldavCalendar.js").then(({syncNoteCount})=>{
@@ -763,7 +824,7 @@ Veuillez choisir des dates sans chevauchement.`);
       )}
 
       {/* Capture note */}
-      <Modal open={captureOpen} onClose={()=>setCaptureOpen(false)} title="Nouvelle note">
+      <Modal open={captureOpen} onClose={closeCapture} title="Nouvelle note">
         {!currentPeriod&&(
           <div style={{background:C.amberLight,border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.amber,fontWeight:600}}>
             Aucune période active — crée une période d'abord via ⚙️
@@ -784,9 +845,27 @@ Veuillez choisir des dates sans chevauchement.`);
             ))}
           </div>
         </div>
-        <textarea value={noteText} onChange={e=>setNoteText(e.target.value)} rows={4} placeholder="Ta note terrain…" autoFocus onKeyDown={e=>{if(e.metaKey&&e.key==="Enter")addNote();}} style={{...inputStyle,resize:"vertical",marginBottom:16,lineHeight:1.6}}/>
+        <textarea value={noteText} onChange={e=>setNoteText(e.target.value)} rows={4} placeholder="Ta note terrain…" autoFocus onKeyDown={e=>{if(e.metaKey&&e.key==="Enter")addNote();}} style={{...inputStyle,resize:"vertical",marginBottom:12,lineHeight:1.6}}/>
+        {/* ── Photos ── */}
+        <input ref={galleryInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{handlePhotoFiles(e.target.files); e.target.value="";}}/>
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{handlePhotoFiles(e.target.files); e.target.value="";}}/>
+        <div style={{display:"flex",gap:8,marginBottom:notePhotos.length>0?12:16}}>
+          <button onClick={()=>galleryInputRef.current?.click()} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,fontSize:13,fontWeight:600,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${C.accentBorder}`,background:C.accentLight,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="2.5" y="4" width="15" height="12" rx="2" stroke="#2B5A9E" strokeWidth="1.5"/><circle cx="7" cy="8.5" r="1.5" fill="#F5C97A"/><path d="M3 14l4-4 3 3 3-3 4 4" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Ajouter photo
+          </button>
+          <button onClick={()=>cameraInputRef.current?.click()} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,fontSize:13,fontWeight:600,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${C.accentBorder}`,background:C.accentLight,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M3 6.5h2.5L7 4.5h6L14.5 6.5H17a1 1 0 011 1V15a1 1 0 01-1 1H3a1 1 0 01-1-1V7.5a1 1 0 011-1z" stroke="#2B5A9E" strokeWidth="1.5" strokeLinejoin="round"/><circle cx="10" cy="11" r="3" stroke="#F5C97A" strokeWidth="1.5"/></svg>
+            Prendre photo
+          </button>
+        </div>
+        {notePhotos.length>0&&(
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>
+            {notePhotos.map((p,i)=><PhotoThumb key={i} url={p.url} size={64} onRemove={()=>removeNotePhoto(i)}/>)}
+          </div>
+        )}
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-          <Btn onClick={()=>setCaptureOpen(false)}>Annuler</Btn>
+          <Btn onClick={closeCapture}>Annuler</Btn>
           <Btn onClick={addNote} variant="primary" disabled={!noteText.trim()}>
             {!currentPeriod?"⏳ En attente période…":"Enregistrer"}
           </Btn>
