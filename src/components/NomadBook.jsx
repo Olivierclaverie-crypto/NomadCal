@@ -3,7 +3,7 @@ import {
   getPeriodEvents, createPeriodEvent, updatePeriodEvent,
   deletePeriodEvent, autoLabel, calendarDisplayName, checkCalendarExists
 } from "../utils/caldavCalendar.js";
-import { compressImage, savePhoto, getPhotoURL, requestPersistentStorage } from "../utils/photoStore.js";
+import { compressImage, savePhoto, getPhotoURL, deletePhoto, requestPersistentStorage } from "../utils/photoStore.js";
 
 const C = {
   bg:"#fdf8f0", surface:"#ffffff", card:"#fffcf7",
@@ -291,12 +291,52 @@ function NoteCard({note,onDelete,onEdit}){
   const [editing,setEditing]=useState(false);
   const [editText,setEditText]=useState(note.text);
   const [editChapter,setEditChapter]=useState(note.chapter);
+  const [editKept,setEditKept]=useState(note.photos||[]);   // photos existantes conservees (ids)
+  const [editNew,setEditNew]=useState([]);                   // photos ajoutees : {url, blob}
+  const editGalleryRef=useRef(null);
+  const editCameraRef=useRef(null);
   const [swiped,setSwiped]=useState(false);
   const touchStartX=useRef(null);
   const ch=chapterById(note.chapter);
 
-  function saveEdit(){ if(!editText.trim()) return; onEdit(note.id,{text:editText.trim(),chapter:editChapter}); setEditing(false); }
-  function cancelEdit(){ setEditText(note.text); setEditChapter(note.chapter); setEditing(false); }
+  async function handleEditPhotoFiles(fileList){
+    const files=Array.from(fileList||[]);
+    for(const file of files){
+      try{
+        const blob=await compressImage(file);
+        const url=URL.createObjectURL(blob);
+        setEditNew(prev=>[...prev,{url,blob}]);
+      }catch(e){ /* image illisible : ignoree */ }
+    }
+  }
+  function removeKept(id){ setEditKept(prev=>prev.filter(x=>x!==id)); }
+  function removeNew(index){
+    setEditNew(prev=>{ const p=prev[index]; if(p) URL.revokeObjectURL(p.url); return prev.filter((_,i)=>i!==index); });
+  }
+
+  async function saveEdit(){
+    if(!editText.trim()) return;
+    // Range les nouvelles photos au vestiaire -> on recupere leurs tickets.
+    const newIds=[];
+    for(const p of editNew){
+      try{ const pid=await savePhoto(p.blob); newIds.push(pid); }catch(e){ /* echec stockage : ignoree */ }
+    }
+    // Photos retirees = celles qui etaient la mais ne sont plus conservees -> effacees du vestiaire.
+    const original=note.photos||[];
+    const removed=original.filter(id=>!editKept.includes(id));
+    for(const id of removed){ try{ await deletePhoto(id); }catch(e){ /* ignore */ } }
+    const finalPhotos=[...editKept,...newIds];
+    editNew.forEach(p=>URL.revokeObjectURL(p.url));
+    setEditNew([]);
+    onEdit(note.id,{text:editText.trim(),chapter:editChapter,photos:finalPhotos});
+    setEditing(false);
+  }
+  function cancelEdit(){
+    editNew.forEach(p=>URL.revokeObjectURL(p.url));  // rien n'a ete stocke -> aucune perte
+    setEditNew([]);
+    setEditKept(note.photos||[]);
+    setEditText(note.text); setEditChapter(note.chapter); setEditing(false);
+  }
 
   if(editing){
     return(
@@ -308,6 +348,25 @@ function NoteCard({note,onDelete,onEdit}){
           </div>
         </div>
         <textarea value={editText} onChange={e=>setEditText(e.target.value)} rows={3} autoFocus style={{...inputStyle,resize:"vertical",marginBottom:12,lineHeight:1.6}}/>
+        {/* ── Photos (modification) ── */}
+        <input ref={editGalleryRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{handleEditPhotoFiles(e.target.files); e.target.value="";}}/>
+        <input ref={editCameraRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{handleEditPhotoFiles(e.target.files); e.target.value="";}}/>
+        {(editKept.length>0||editNew.length>0)&&(
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+            {editKept.map(pid=><PhotoThumb key={pid} id={pid} size={56} onRemove={()=>removeKept(pid)}/>)}
+            {editNew.map((p,i)=><PhotoThumb key={"new"+i} url={p.url} size={56} onRemove={()=>removeNew(i)}/>)}
+          </div>
+        )}
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <button onClick={()=>editGalleryRef.current?.click()} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,fontSize:12,fontWeight:600,padding:"7px 10px",borderRadius:10,border:`1.5px solid ${C.accentBorder}`,background:C.accentLight,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><rect x="2.5" y="4" width="15" height="12" rx="2" stroke="#2B5A9E" strokeWidth="1.5"/><circle cx="7" cy="8.5" r="1.5" fill="#F5C97A"/><path d="M3 14l4-4 3 3 3-3 4 4" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Ajouter
+          </button>
+          <button onClick={()=>editCameraRef.current?.click()} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,fontSize:12,fontWeight:600,padding:"7px 10px",borderRadius:10,border:`1.5px solid ${C.accentBorder}`,background:C.accentLight,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M3 6.5h2.5L7 4.5h6L14.5 6.5H17a1 1 0 011 1V15a1 1 0 01-1 1H3a1 1 0 01-1-1V7.5a1 1 0 011-1z" stroke="#2B5A9E" strokeWidth="1.5" strokeLinejoin="round"/><circle cx="10" cy="11" r="3" stroke="#F5C97A" strokeWidth="1.5"/></svg>
+            Photo
+          </button>
+        </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <Btn onClick={cancelEdit} variant="ghost" style={{fontSize:12,padding:"6px 12px"}}>Annuler</Btn>
           <Btn onClick={saveEdit} variant="primary" style={{fontSize:12,padding:"6px 14px"}} disabled={!editText.trim()}>Enregistrer</Btn>
@@ -538,8 +597,8 @@ export default function NomadBook({ onClose, auth }) {
     }
   }
 
-  function editNote(id,{text,chapter}){
-    setNotes(prev=>prev.map(n=>n.id===id?{...n,text,chapter,editedAt:new Date().toISOString()}:n));
+  function editNote(id,{text,chapter,photos}){
+    setNotes(prev=>prev.map(n=>n.id===id?{...n,text,chapter,...(photos!==undefined?{photos}:{}),editedAt:new Date().toISOString()}:n));
   }
 
   async function handleSavePeriod({startISO,endISO,label,rrule}){
