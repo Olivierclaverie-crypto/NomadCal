@@ -107,12 +107,13 @@ export default function Header({
         </div>
       </div>
 
-      {clipboard ? (
-        <div style={{ display:"flex", alignItems:"center", gap:8, background:C.goldLight, border:`1px solid ${C.gold}`, borderRadius:10, margin:"0 14px 8px", padding:"8px 12px" }}>
-          <span style={{ fontSize:12, color:C.goldDark, flex:1, fontWeight:700 }}>📋 {clipboard.title} — Tap sur un créneau pour coller</span>
+      {clipboard && (
+        <div style={{ display:"flex", alignItems:"center", gap:8, background:C.goldLight, border:`1px solid ${C.gold}`, borderRadius:10, margin:"0 14px 8px", padding:"6px 12px" }}>
+          <span style={{ fontSize:12, color:C.goldDark, flex:1, fontWeight:700 }}>📋 {clipboard.title} — Tap un créneau pour coller</span>
           <button onClick={onClearClipboard} style={{ background:"none", border:"none", color:C.goldDark, cursor:"pointer", fontSize:16, padding:"0 4px", fontWeight:700 }}>✕</button>
         </div>
-      ) : (<>
+      )}
+      {(<>
 
         {/* ── Ligne 2 — Sem XX | Mois Année ── */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 14px 6px" }}>
