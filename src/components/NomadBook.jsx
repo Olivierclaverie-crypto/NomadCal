@@ -19,6 +19,7 @@ const C = {
 
 // ── Icônes SVG ────────────────────────────────────────────────────────────────
 const ICONS = {
+  concurrence:  <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 3v14" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round"/><path d="M4 4l6 2-6 2z" fill="#2B5A9E"/><path d="M16 3v14" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round"/><path d="M16 4l-6 2 6 2z" fill="#F5C97A"/></svg>,
   marche:       <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="3" height="8" rx="1" fill="#2B5A9E"/><rect x="7" y="6" width="3" height="12" rx="1" fill="#2B5A9E"/><rect x="12" y="2" width="3" height="16" rx="1" fill="#2B5A9E"/><path d="M2 16 Q8 8 17 4" stroke="#F5C97A" strokeWidth="1.5" fill="none" strokeLinecap="round"/></svg>,
   nouveautes:   <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="#2B5A9E" strokeWidth="1.5"/><path d="M10 6v4l3 2" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round"/><circle cx="15" cy="5" r="3" fill="#F5C97A"/><path d="M14 5h2M15 4v2" stroke="#0F1D2B" strokeWidth="1" strokeLinecap="round"/></svg>,
   logistique:   <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="1" y="9" width="11" height="7" rx="1.5" stroke="#2B5A9E" strokeWidth="1.5"/><path d="M12 11h3l3 2v3h-3" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="5" cy="17" r="1.5" fill="#2B5A9E"/><circle cx="14" cy="17" r="1.5" fill="#2B5A9E"/><path d="M4 9V6a3 3 0 016 0v3" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/></svg>,
@@ -77,6 +78,7 @@ const IconRapport = () => (
 const CHAPTERS = [
   { id:"client",       label:"Client" },
   { id:"marche",       label:"Marché" },
+  { id:"concurrence",  label:"Concurrence" },
   { id:"nouveautes",   label:"Nouveautés" },
   { id:"logistique",   label:"Logistique" },
   { id:"propositions", label:"Propositions" },
