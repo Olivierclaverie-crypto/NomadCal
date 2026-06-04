@@ -563,6 +563,8 @@ export default function App() {
       await caldavRequest("PROPFIND","/1012673262/principal/",authHeader,`<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>`,{Depth:"0"});
       const {text:calXml}=await caldavRequest("PROPFIND","/1012673262/calendars/",authHeader,`<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:a="http://apple.com/ns/ical/"><d:prop><d:displayname/><a:calendar-color/><d:resourcetype/></d:prop></d:propfind>`,{Depth:"1"});
       const cals=parseCalendars(calXml);
+      // ── GARDE-FOU 1 : synchro revenue sans aucun calendrier ? On garde tout. ──
+      if(cals.length===0 && calendars.length>0){ setSyncOk(false); setSyncing(false); return; }
       setCalendars(cals); save(uKey(email,"cf_calendars"),cals);
       const since=new Date(); since.setMonth(since.getMonth()-3);
       const until2=new Date(); until2.setFullYear(until2.getFullYear()+1);
@@ -584,6 +586,8 @@ export default function App() {
       // (tâches terminées, events créés offline, etc.)
       // Merge intelligent — garde uniquement les tâches terminées locales
       // Les events calflow- qui ne sont plus dans iCloud sont supprimés → pas de résurrection !
+      // ── GARDE-FOU 2 : synchro revenue sans aucun event ? On garde le cache. ──
+      if(allEvents.length===0 && events.length>0){ setSyncOk(false); setSyncing(false); return; }
       const localOnly = events.filter(e => e.id?.startsWith("done-"));
       const merged = [...allEvents, ...localOnly];
       setEvents(merged); save(uKey(email,"cf_events"),merged);
