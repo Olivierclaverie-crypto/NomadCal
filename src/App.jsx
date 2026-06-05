@@ -591,7 +591,8 @@ export default function App() {
       // Les events calflow- qui ne sont plus dans iCloud sont supprimés → pas de résurrection !
       // ── GARDE-FOU 2 : synchro revenue sans aucun event ? On garde le cache. ──
       if(allEvents.length===0 && events.length>0){ setSyncOk(false); setSyncing(false); return; }
-      const localOnly = events.filter(e => e.id?.startsWith("done-"));
+      // ── Tâches terminées : lues depuis le cache FRAIS, jamais une photo périmée ──
+      const localOnly = load(uKey(email,"cf_events"),[]).filter(e => e.id?.startsWith("done-"));
       const merged = [...allEvents, ...localOnly];
       setEvents(merged); save(uKey(email,"cf_events"),merged);
       setSyncOk(true);
