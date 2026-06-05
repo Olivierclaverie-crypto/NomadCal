@@ -546,6 +546,9 @@ export default function App() {
       });
       // Merge — remplace les events de ce calendrier uniquement
       setEvents(prev => {
+        // ── GARDE-FOU : re-téléchargement vide alors qu'on avait des events ici ? On garde. ──
+        const hadEvents = prev.some(e => e.calHref === calHref && !e.id?.startsWith("done-"));
+        if(freshEvs.length === 0 && hadEvents) return prev;
         const otherCals = prev.filter(e => e.calHref !== calHref || e.id?.startsWith("done-"));
         const merged = [...otherCals, ...freshEvs];
         save(uKey(email,"cf_events"), merged);
