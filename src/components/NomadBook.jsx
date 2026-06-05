@@ -539,6 +539,8 @@ export default function NomadBook({ onClose, auth }) {
         const calOk = await checkCalendarExists(auth);
         if(!calOk){ setCalAvailable(false); return; }
         const evs = await getPeriodEvents(auth);
+        // ── GARDE-FOU : synchro revenue sans aucune période ? On garde le cache. ──
+        if(evs.length===0 && load("nb_periods_cache",[]).length>0){ setCalAvailable(true); return; }
         // Mise à jour silencieuse — pas de re-render visible si données identiques
         const cachedStr = JSON.stringify(load("nb_periods_cache",[]));
         const freshStr  = JSON.stringify(evs);
@@ -635,9 +637,14 @@ Veuillez choisir des dates sans chevauchement.`);
   async function handleDeletePeriod(p){
     if(!auth||!p.href) return;
     await deletePeriodEvent(auth,p.href);
+    // ── Suppression optimiste : on retire la période du cache TOUT DE SUITE ──
+    // (la synchro suivante ne fait que confirmer ; le garde-fou ne peut plus la "ressusciter")
+    const pruned = load("nb_periods_cache",[]).filter(x=>x.uid!==p.uid);
+    setPeriods(pruned);
+    save("nb_periods_cache", pruned);
     // Supprime aussi les notes locales de cette période
     setNotes(prev=>prev.filter(n=>n.periodId!==p.uid));
-    await loadPeriods();
+    await loadPeriods(true);
     setConfirmDelPeriod(null);
   }
 
