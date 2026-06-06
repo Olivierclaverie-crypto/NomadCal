@@ -51,7 +51,30 @@ function migrateOldKeys(email) {
   });
 }
 
-async function pushEvent(ev, auth, invalidateCache=true) {
+// ════════════════════════════════════════════════════════════════════════
+// BOÎTE D'ENVOI — file d'attente des écritures faites hors-ligne.
+// Une écriture impossible faute de réseau est rangée ici, puis rejouée
+// automatiquement au retour du réseau (onOnline + au démarrage).
+// ════════════════════════════════════════════════════════════════════════
+function loadQueue(email){ try{ return JSON.parse(localStorage.getItem(`${email}_cf_pending`)||"[]"); }catch{ return []; } }
+function saveQueue(email,q){ try{ localStorage.setItem(`${email}_cf_pending`, JSON.stringify(q)); }catch{} }
+function enqueueWrite(email,entry){ const q=loadQueue(email); q.push({...entry, ts:Date.now()}); saveQueue(email,q); }
+
+async function flushQueue(auth){
+  if(!auth || !navigator.onLine) return;
+  const q = loadQueue(auth.email);
+  if(!q.length) return;
+  const remaining=[];
+  for(const item of q){
+    try{
+      if(item.op==="put")         await pushEvent(item.ev, auth, false, false);
+      else if(item.op==="delete") await deleteEvent(item.ev, auth, false);
+    }catch(e){ remaining.push(item); }   // échec → on garde pour la prochaine tentative
+  }
+  saveQueue(auth.email, remaining);
+}
+
+async function pushEvent(ev, auth, invalidateCache=true, queueable=true) {
   if (!auth || !ev.calHref) return;
   const uid = ev.id?.startsWith("calflow-") ? ev.id : `calflow-${Date.now()}@nomadcal`;
   const allDay = ev.allDay;
@@ -91,7 +114,14 @@ async function pushEvent(ev, auth, invalidateCache=true) {
   ].filter(Boolean).join("\r\n");
 
   const path = ev.calHref + uid + ".ics";
-  await caldavRequest("PUT", path, makeAuthHeader(auth.email, auth.appPassword), ics, {"Content-Type":"text/calendar; charset=utf-8"});
+  // ── BOÎTE D'ENVOI : hors-ligne → on range l'écriture au lieu de la perdre ──
+  if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return; }
+  try {
+    await caldavRequest("PUT", path, makeAuthHeader(auth.email, auth.appPassword), ics, {"Content-Type":"text/calendar; charset=utf-8"});
+  } catch(e) {
+    if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return; }
+    throw e;
+  }
 
   // ── Cache invalidation — force sync fraîche après chaque write ────────────
   if (invalidateCache) {
@@ -100,7 +130,7 @@ async function pushEvent(ev, auth, invalidateCache=true) {
   }
 }
 
-async function deleteEvent(ev, auth) {
+async function deleteEvent(ev, auth, queueable=true) {
   if (!auth) return;
   // Si pas de href local → cherche le vrai href via UID dans iCloud
   // Le syncCalDAV() après cette fonction récupère l'état réel
@@ -108,7 +138,14 @@ async function deleteEvent(ev, auth) {
     console.warn("[deleteEvent] Pas de href pour:", ev.id, "— sync forcée");
     return; // syncCalDAV() après va nettoyer
   }
-  await caldavRequest("DELETE", ev.href, makeAuthHeader(auth.email, auth.appPassword));
+  // ── BOÎTE D'ENVOI : hors-ligne → on range la suppression au lieu de la perdre ──
+  if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"delete", ev}); return; }
+  try {
+    await caldavRequest("DELETE", ev.href, makeAuthHeader(auth.email, auth.appPassword));
+  } catch(e) {
+    if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"delete", ev}); return; }
+    throw e;
+  }
 }
 
 function layoutEvents(dayEvs) {
@@ -475,12 +512,12 @@ export default function App() {
   },[events]);
 
   useEffect(()=>{
-    if(auth){ const t=setTimeout(()=>syncCalDAV(),300); return()=>clearTimeout(t); }
+    if(auth){ const t=setTimeout(()=>{ flushQueue(auth).then(()=>syncCalDAV()); },300); return()=>clearTimeout(t); }
   },[auth]);
 
   // ── Re-sync au retour réseau ──────────────────────────────────────────────
   useEffect(()=>{
-    const onOnline  = () => { setSyncOk(true);  if(auth) syncCalDAV(); };
+    const onOnline  = () => { setSyncOk(true);  if(auth){ flushQueue(auth).then(()=>syncCalDAV()); } };
     const onOffline = () => { setSyncOk(false); };
     window.addEventListener("online",  onOnline);
     window.addEventListener("offline", onOffline);
