@@ -820,9 +820,10 @@ export default function App() {
                         if(isTask){setDrawerOpen(false);setTimeout(()=>setDetailEv({...ev,type:"task"}),50);return;}
                         setDetailEv(ev);
                       }}
-                      style={{position:"absolute",top:y+1,left:`${leftPct+0.5}%`,width:`${colW-1}%`,height:h-2,background:isTask?(ev.done?C.green+"22":C.gold+"15"):"transparent",border:`2px solid ${isPending?"#F5A623":evColor}`,borderRadius:6,padding:"3px 4px",cursor:"pointer",overflow:"hidden",opacity:ev.done?.7:1,boxSizing:"border-box"}}>
+                      style={{position:"absolute",top:y+1,left:`${leftPct+0.5}%`,width:`${colW-1}%`,height:h-2,background:isTask?(ev.done?C.green+"22":C.gold+"15"):"#fff",border:isTask?`2px solid ${evColor}`:`1px solid ${C.border}`,borderRadius:6,padding:isTask?"3px 4px":"3px 4px 3px 11px",cursor:"pointer",overflow:"hidden",opacity:ev.done?.7:1,boxSizing:"border-box"}}>
+                      {!isTask&&<div style={{position:"absolute",left:0,top:0,bottom:0,width:6,background:isPending?"#F5A623":evColor}}/>}
                       {isPending&&<div style={{position:"absolute",top:2,right:2,width:6,height:6,borderRadius:"50%",background:"#F5A623"}}/>}
-                      <div style={{fontSize:10,fontWeight:800,color:isPending?"#B8741A":evColor,lineHeight:1.3,textDecoration:ev.done?"line-through":"none"}}>
+                      <div style={{fontSize:10,fontWeight:800,color:isPending?"#B8741A":(isTask?evColor:C.accent),lineHeight:1.3,textDecoration:ev.done?"line-through":"none"}}>
                         {isTask&&<span style={{marginRight:2}}>{ev.done?"✓ ":"↻ "}</span>}
                         <span style={{fontSize:10,opacity:.9}}>{ev.startTime} </span>
                         <span style={{wordBreak:"break-word",whiteSpace:"pre-wrap"}}>{ev.title}</span>
