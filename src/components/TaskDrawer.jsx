@@ -69,7 +69,7 @@ export default function TaskDrawer({
         vibrate(10);
       } else if (tab === "tasks") {
         setSwipeTaskId(null);
-        setDrawerOpen(true);
+        setDrawerOpen(prev => !prev);   // 2e tap ouvre, 3e tap ferme (toggle)
         vibrate(10);
       }
     } else {
@@ -101,18 +101,18 @@ export default function TaskDrawer({
   return (
     <>
       {drawerOpen && (
+        <div onClick={() => { setDrawerOpen(false); vibrate(8); }}
+          style={{ position: "fixed", inset: 0, zIndex: 199, background: "transparent" }} />
+      )}
+
+      {drawerOpen && (
         <div style={{
           position: "fixed", bottom: 110, left: 0, right: 0, zIndex: 200,
           maxHeight: "50vh", display: "flex", flexDirection: "column",
           background: C.surface, borderTop: `2px solid ${C.gold}`,
           borderRadius: "16px 16px 0 0", boxShadow: "0 -4px 20px rgba(0,0,0,.12)",
         }}>
-          <div onClick={() => { setDrawerOpen(false); vibrate(8); }}
-            style={{ padding: "8px 16px 6px", cursor: "pointer", flexShrink: 0, textAlign: "center" }}>
-            <div style={{ fontSize: 20, color: C.gold, fontWeight: 700 }}>↓</div>
-          </div>
-
-          <div style={{ padding: "0 16px 8px", display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+          <div style={{ padding: "12px 16px 8px", display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
             <button onClick={() => { onAddTask(); vibrate(10); }} style={{
               fontSize: 12, fontWeight: 700, color: "#fff",
               background: C.accent, border: "none",
@@ -121,7 +121,7 @@ export default function TaskDrawer({
             }}>+ Todo</button>
           </div>
 
-          <div style={{ overflowY: "auto", flex: 1, padding: "0 0 20px" }}>
+          <div style={{ overflowY: "auto", maxHeight: 210, padding: "0 0 20px" }}>
             {openTasks.length === 0 && (
               <div style={{ textAlign: "center", padding: "20px", color: C.muted, fontSize: 13 }}>
                 Tout est fait — belle journée terrain ! 🎯
