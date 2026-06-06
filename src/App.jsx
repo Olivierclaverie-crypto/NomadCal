@@ -854,7 +854,14 @@ export default function App() {
         onTaskDelete={t=>setConfirmDel({...t,type:"task"})}
         onAddTask={()=>setTaskFormOpen(true)}
         onOpenNomadBook={()=>setNomadBookOpen(true)}
-        noteCount={(() => { try { const n=JSON.parse(localStorage.getItem("nb_notes")||"[]"); return n.filter(note=>note.periodId!=="pending").length; } catch { return 0; } })()}
+        noteCount={(() => { try {
+          const notes=JSON.parse(localStorage.getItem("nb_notes")||"[]");
+          const periods=JSON.parse(localStorage.getItem("nb_periods_cache")||"[]");
+          const now=new Date();
+          const cur=periods.find(p=>now>=new Date(p.startISO)&&now<new Date(p.endISO))||periods[0];
+          if(!cur) return 0;
+          return notes.filter(n=>n.periodId===cur.uid&&n.periodId!=="pending").length;
+        } catch { return 0; } })()}
         onOpenNomadFeed={()=>alert("NomadFeed — bientôt disponible ! 🚀")}
       />
 
