@@ -318,7 +318,7 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
 
       <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
         <Btn onClick={onCancel}>Annuler</Btn>
-        <Btn onClick={save} variant="primary" disabled={saving}>Créer l'événement</Btn>
+        <Btn onClick={save} variant="primary" disabled={saving}>Enregistrer l'événement</Btn>
       </div>
     </div>
   );
@@ -362,7 +362,7 @@ function TaskForm({ initial, onSave, onCancel }) {
       </select>
       <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
         <Btn onClick={onCancel}>Annuler</Btn>
-        <Btn onClick={()=>{if(!title.trim())return;onSave({title:title.trim(),notes,priority,effectiveDate,dueDate,recurrence,type:"task",done:false,id:`task-${Date.now()}`,createdAt:new Date().toISOString()});}} variant="primary">Créer la tâche</Btn>
+        <Btn onClick={()=>{if(!title.trim())return;onSave({title:title.trim(),notes,priority,effectiveDate,dueDate,recurrence,type:"task",done:false,id:`task-${Date.now()}`,createdAt:new Date().toISOString()});}} variant="primary">Enregistrer la tâche</Btn>
       </div>
     </div>
   );
@@ -821,10 +821,10 @@ export default function App() {
                         setDetailEv(ev);
                       }}
                       style={{position:"absolute",top:y+1,left:`${leftPct+0.5}%`,width:`${colW-1}%`,height:h-2,background:isTask?(ev.done?C.green+"22":C.gold+"15"):"#fff",border:isTask?`2px solid ${evColor}`:`1px solid ${C.border}`,borderRadius:6,padding:isTask?"3px 4px":"3px 4px 3px 11px",cursor:"pointer",overflow:"hidden",opacity:ev.done?.7:1,boxSizing:"border-box"}}>
-                      {!isTask&&<div style={{position:"absolute",left:0,top:0,bottom:0,width:6,background:isPending?"#F5A623":evColor}}/>}
-                      {isPending&&<div style={{position:"absolute",top:2,right:2,width:6,height:6,borderRadius:"50%",background:"#F5A623"}}/>}
-                      <div style={{fontSize:10,fontWeight:800,color:isPending?"#B8741A":(isTask?evColor:C.accent),lineHeight:1.3,textDecoration:ev.done?"line-through":"none"}}>
+                      {!isTask&&<div style={{position:"absolute",left:0,top:0,bottom:0,width:6,background:evColor}}/>}
+                      <div style={{fontSize:10,fontWeight:800,color:isPending?"#E07B17":(isTask?evColor:C.accent),lineHeight:1.3,textDecoration:ev.done?"line-through":"none"}}>
                         {isTask&&<span style={{marginRight:2}}>{ev.done?"✓ ":"↻ "}</span>}
+                        {isPending&&<svg width="11" height="11" viewBox="0 0 20 20" fill="none" style={{verticalAlign:"-1px",marginRight:2}}><circle cx="10" cy="10" r="7" stroke="#E07B17" strokeWidth="1.8"/><path d="M10 6.3V10l2.6 1.6" stroke="#E07B17" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                         <span style={{fontSize:10,opacity:.9}}>{ev.startTime} </span>
                         <span style={{wordBreak:"break-word",whiteSpace:"pre-wrap"}}>{ev.title}</span>
                       </div>
