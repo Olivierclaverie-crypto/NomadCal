@@ -52,7 +52,10 @@ export function parseEvents(xml, calHref, calColor, calName) {
 export function parseICS(ics, href, calHref, calColor, calName) {
   // ── Fix iOS : unfold les lignes continues ──────────────────────────────────
   const unfolded = ics.replace(/\r\n[ \t]/g, "").replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
-  const lines = unfolded.split("\n");
+  // ── Fix « Annuel fantôme » : isoler le bloc VEVENT ──────────────────────────
+  // (sinon le RRULE du VTIMEZONE — règle du changement d'heure, annuelle — est capté à tort)
+  const veventMatch = unfolded.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/);
+  const lines = (veventMatch ? veventMatch[0] : unfolded).split("\n");
 
   const get = key => {
     const line = lines.find(l => l.startsWith(key + ":") || l.startsWith(key + ";"));
