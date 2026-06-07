@@ -207,6 +207,9 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
   const composedLoc = [rue.trim(), [cp.trim(), ville.trim()].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   const durMin = Math.max(0, timeToMinutes(endTime) - timeToMinutes(startTime));
   function applyDuration(mins){ setET(minutesToHHMM(Math.min(GRID_END, timeToMinutes(startTime)+mins))); }
+  // S3 — fin impossible empêchée : déplacer le début garde la durée ; une fin ≤ début saute juste après
+  function changeStart(v){ const dur=Math.max(15, timeToMinutes(endTime)-timeToMinutes(startTime)); setST(v); setET(minutesToHHMM(Math.min(GRID_END, timeToMinutes(v)+dur))); }
+  function changeEnd(v){ const sMin=timeToMinutes(startTime); setET(timeToMinutes(v)<=sMin ? minutesToHHMM(Math.min(GRID_END, sMin+15)) : v); }
 
   function save() {
     if (!title.trim()) return;
@@ -250,8 +253,8 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
             {/* Event horaire : 1 seule date + heures début/fin (défaut 1h) */}
             <div><label style={lblStyle}>DATE</label><input type="date" value={startDate} onChange={e=>{setSD(e.target.value);setED(e.target.value);}} style={{...iStyle,marginBottom:0}}/></div>
             <div style={{display:"flex",gap:8}}>
-              <div style={{flex:1}}><label style={lblStyle}>HEURE DÉBUT</label><input type="time" value={startTime} onChange={e=>setST(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
-              <div style={{flex:1}}><label style={lblStyle}>HEURE FIN</label><input type="time" value={endTime} onChange={e=>setET(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
+              <div style={{flex:1}}><label style={lblStyle}>HEURE DÉBUT</label><input type="time" value={startTime} onChange={e=>changeStart(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
+              <div style={{flex:1}}><label style={lblStyle}>HEURE FIN</label><input type="time" value={endTime} min={startTime} onChange={e=>changeEnd(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
             </div>
             <div style={{display:"flex",gap:6}}>
               {DURATIONS.map(([lbl,mins])=>{
