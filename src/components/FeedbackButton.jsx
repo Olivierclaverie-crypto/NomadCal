@@ -21,10 +21,14 @@ const BETA_EMAILS = [
 ];
 
 const FEEDBACK_TYPES = [
-  { id:"bug",         emoji:"🐛", label:"Bug",        color:C.red,   bg:C.redLight },
-  { id:"idee",        emoji:"💡", label:"Idée",       color:C.accent,bg:C.accentLight },
-  { id:"super",       emoji:"👍", label:"Super !",    color:C.green, bg:C.greenLight },
-  { id:"frustration", emoji:"😤", label:"Frustrant",  color:C.amber, bg:C.amberLight },
+  { id:"bug",         label:"Bug",       color:C.red,    bg:C.redLight,
+    icon:(c)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="8" height="10" rx="4" stroke={c} strokeWidth="1.6"/><path d="M9 5l1.5 2M15 5l-1.5 2M8 11H4M16 11h4M8 15H4M16 15h4M8 18l-2 2M16 18l2 2" stroke={c} strokeWidth="1.5" strokeLinecap="round"/></svg>) },
+  { id:"idee",        label:"Idée",      color:C.accent, bg:C.accentLight,
+    icon:(c)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 17h6M10 20h4" stroke={c} strokeWidth="1.6" strokeLinecap="round"/><path d="M12 3a6 6 0 00-3.5 10.9c.6.4.9 1 .9 1.6v.5h5.2v-.5c0-.6.3-1.2.9-1.6A6 6 0 0012 3z" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/></svg>) },
+  { id:"super",       label:"Super !",   color:C.green,  bg:C.greenLight,
+    icon:(c)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 11v8H4v-8h3zM7 11l4-7c1.2 0 2 .9 2 2v3h4.5a2 2 0 012 2.3l-1 5a2 2 0 01-2 1.7H7" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/></svg>) },
+  { id:"frustration", label:"Frustrant", color:C.amber,  bg:C.amberLight,
+    icon:(c)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.6"/><path d="M8 15.5c1-1.2 2.3-1.8 4-1.8s3 .6 4 1.8" stroke={c} strokeWidth="1.6" strokeLinecap="round"/><path d="M8.5 9.5l1.8.9M15.5 9.5l-1.8.9" stroke={c} strokeWidth="1.6" strokeLinecap="round"/></svg>) },
 ];
 
 export default function FeedbackButton({ auth, currentPage = "NomadCal" }) {
@@ -37,32 +41,26 @@ export default function FeedbackButton({ auth, currentPage = "NomadCal" }) {
   // Visible uniquement pour les beta users
   if (!auth?.email || !BETA_EMAILS.includes(auth.email)) return null;
 
-  async function sendFeedback() {
+  function sendFeedback() {
     if (!message.trim()) return;
-    setSending(true);
-    try {
-      await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user:       auth.email,
-          page:       currentPage,
-          type,
-          message:    message.trim(),
-          appVersion: "v1-beta",
-        }),
-      });
-      setSent(true);
-      setTimeout(() => {
-        setSent(false);
-        setOpen(false);
-        setMessage("");
-        setType("idee");
-      }, 2000);
-    } catch {
-      // Silencieux
-    }
-    setSending(false);
+    const t = FEEDBACK_TYPES.find(x => x.id === type);
+    const subject = `[NomadCal] ${t ? t.label : type} — ${currentPage}`;
+    const body =
+      `${message.trim()}\n\n` +
+      `— — — — —\n` +
+      `Type : ${t ? t.label : type}\n` +
+      `Page : ${currentPage}\n` +
+      `Utilisateur : ${auth?.email || "?"}\n` +
+      `Version : v1-beta`;
+    window.location.href =
+      `mailto:olivierclaverie@me.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setSent(true);
+    setTimeout(() => {
+      setSent(false);
+      setOpen(false);
+      setMessage("");
+      setType("idee");
+    }, 2000);
   }
 
   return (
@@ -85,14 +83,17 @@ export default function FeedbackButton({ auth, currentPage = "NomadCal" }) {
         }}>
           {sent ? (
             <div style={{ textAlign:"center", padding:"20px 0" }}>
-              <div style={{ fontSize:40, marginBottom:8 }}>✅</div>
-              <div style={{ fontWeight:700, color:C.green, fontSize:15 }}>Merci Olivier !</div>
-              <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>Feedback envoyé</div>
+              <div style={{ marginBottom:10, display:"flex", justifyContent:"center" }}>
+                <svg width="42" height="42" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={C.green} strokeWidth="1.6"/><path d="M8 12.5l2.5 2.5L16 9" stroke={C.green} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <div style={{ fontWeight:700, color:C.green, fontSize:15 }}>Merci pour votre aide</div>
+              <div style={{ fontSize:12, color:C.muted, marginTop:6, lineHeight:1.5 }}>NomadCal traite vos informations au plus vite</div>
             </div>
           ) : (
             <>
-              <div style={{ fontSize:15, fontWeight:700, color:C.ink, marginBottom:14 }}>
-                💬 Feedback Beta
+              <div style={{ fontSize:15, fontWeight:700, color:C.ink, marginBottom:14, display:"flex", alignItems:"center", gap:7 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H8l-4 3z" stroke={C.accent} strokeWidth="1.6" strokeLinejoin="round"/></svg>
+                Feedback Beta
               </div>
 
               {/* Type */}
@@ -105,16 +106,17 @@ export default function FeedbackButton({ auth, currentPage = "NomadCal" }) {
                     borderRadius:10, cursor:"pointer",
                     fontFamily:"inherit", fontSize:11, fontWeight:700,
                     color: type===t.id ? t.color : C.muted,
-                    textAlign:"center",
+                    display:"flex", flexDirection:"column", alignItems:"center", gap:4,
                   }}>
-                    {t.emoji}<br/>{t.label}
+                    {t.icon(type===t.id ? t.color : C.muted)}{t.label}
                   </button>
                 ))}
               </div>
 
               {/* Page */}
-              <div style={{ fontSize:11, color:C.muted, marginBottom:6 }}>
-                📍 Page : <strong style={{color:C.accent}}>{currentPage}</strong>
+              <div style={{ fontSize:11, color:C.muted, marginBottom:6, display:"flex", alignItems:"center", gap:5 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z" stroke={C.muted} strokeWidth="1.6" strokeLinejoin="round"/><circle cx="12" cy="10" r="2.4" stroke={C.muted} strokeWidth="1.6"/></svg>
+                Page : <strong style={{color:C.accent}}>{currentPage}</strong>
               </div>
 
               {/* Message */}
@@ -143,14 +145,15 @@ export default function FeedbackButton({ auth, currentPage = "NomadCal" }) {
                   color:C.muted, cursor:"pointer", fontFamily:"inherit",
                   fontSize:13, fontWeight:600,
                 }}>Annuler</button>
-                <button onClick={sendFeedback} disabled={!message.trim() || sending} style={{
+                <button onClick={sendFeedback} disabled={!message.trim()} style={{
                   flex:2, padding:"10px", borderRadius:10,
                   border:"none", background: message.trim() ? C.accent : C.border,
                   color:"#fff", cursor: message.trim() ? "pointer" : "not-allowed",
                   fontFamily:"inherit", fontSize:13, fontWeight:700,
-                  opacity: sending ? .7 : 1,
+                  display:"flex", alignItems:"center", justifyContent:"center", gap:7,
                 }}>
-                  {sending ? "Envoi…" : "Envoyer 🚀"}
+                  Envoyer
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 12l16-7-7 16-2.5-6.5L4 12z" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round"/></svg>
                 </button>
               </div>
             </>
@@ -172,7 +175,9 @@ export default function FeedbackButton({ auth, currentPage = "NomadCal" }) {
           fontSize:20, transition:"all .2s",
         }}
       >
-        {open ? "✕" : "💬"}
+        {open
+          ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
+          : <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H8l-4 3z" stroke={C.accent} strokeWidth="1.8" strokeLinejoin="round"/></svg>}
       </button>
     </>
   );
