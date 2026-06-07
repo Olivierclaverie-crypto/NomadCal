@@ -123,8 +123,9 @@ export default function TaskDrawer({
 
           <div style={{ overflowY: "auto", maxHeight: 210, padding: "0 0 20px" }}>
             {openTasks.length === 0 && (
-              <div style={{ textAlign: "center", padding: "20px", color: C.muted, fontSize: 13 }}>
-                Tout est fait — belle journée terrain ! 🎯
+              <div style={{ textAlign: "center", padding: "20px", color: C.muted, fontSize: 13, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={C.muted} strokeWidth="1.6"/><circle cx="12" cy="12" r="5" stroke={C.muted} strokeWidth="1.6"/><circle cx="12" cy="12" r="1.4" fill={C.muted}/></svg>
+                Tout est fait — belle journée terrain !
               </div>
             )}
             {openTasks.map(task => {
@@ -177,9 +178,9 @@ export default function TaskDrawer({
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <span style={{ fontSize: 11, color: pr.color, fontWeight: 600 }}>{pr.label}</span>
-                        {task.dueDate && <span style={{ fontSize: 11, color: C.muted }}>· ⚠ {task.dueDate}</span>}
+                        {task.dueDate && <span style={{ fontSize: 11, color: C.muted, display: "inline-flex", alignItems: "center", gap: 3 }}>·<svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 4l9 16H3L12 4z" stroke={C.goldDark} strokeWidth="1.7" strokeLinejoin="round"/><path d="M12 10v4" stroke={C.goldDark} strokeWidth="1.7" strokeLinecap="round"/><circle cx="12" cy="16.8" r=".5" fill={C.goldDark}/></svg>{task.dueDate}</span>}
                         {task.recurrence && task.recurrence !== "none" && (
-                          <span style={{ fontSize: 11, color: C.accent }}>· ↻</span>
+                          <span style={{ fontSize: 11, color: C.accent, display: "inline-flex", alignItems: "center", gap: 3 }}>·<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M4.5 10a7.5 7.5 0 0112.6-3.2L20 9.5" stroke={C.accent} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/><path d="M19.5 14a7.5 7.5 0 01-12.6 3.2L4 14.5" stroke={C.accent} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/><path d="M20 5.5v4h-4M4 18.5v-4h4" stroke={C.accent} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
                         )}
                       </div>
                     </div>
