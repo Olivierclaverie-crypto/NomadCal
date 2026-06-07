@@ -809,7 +809,7 @@ Veuillez choisir des dates sans chevauchement.`);
                       Brainstorming
                     </div>
                     {/* Copier — actif (copie le rapport de la période si présent) */}
-                    <button onClick={e=>{ const s=syntheses[currentPeriod.uid]; const t=e.currentTarget; if(s&&s.text){ navigator.clipboard.writeText(s.text); t.style.color=C.green; t.style.borderColor=C.green; setTimeout(()=>{t.style.color=C.accent;t.style.borderColor=C.accentBorder;},1200); if(navigator.vibrate)navigator.vibrate(10);} }}
+                    <button onClick={e=>{ const t=e.currentTarget; const byChapter={}; periodNotes.forEach(n=>{ (byChapter[n.chapter]=byChapter[n.chapter]||[]).push(n.text); }); const body=CHAPTERS.filter(c=>byChapter[c.id]).map(c=>`${c.label.toUpperCase()}\n${byChapter[c.id].map(x=>`- ${x}`).join("\n")}`).join("\n\n"); const txt=`${currentPeriod.label} (${fmt(currentPeriod.startISO)} → ${fmt(currentPeriod.endISO)})\n\n${body||"(aucune note)"}`; navigator.clipboard.writeText(txt); t.style.color=C.green; t.style.borderColor=C.green; setTimeout(()=>{t.style.color=C.accent;t.style.borderColor=C.accentBorder;},1200); if(navigator.vibrate)navigator.vibrate(10); }}
                       style={{borderRadius:11,padding:"13px 8px",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:"#fff",color:C.accent,border:`1.5px solid ${C.accentBorder}`,cursor:"pointer"}}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="11" height="12" rx="2" stroke="#2B5A9E" strokeWidth="1.6"/><path d="M5 16V5a2 2 0 012-2h9" stroke="#F5C97A" strokeWidth="1.6" strokeLinecap="round"/></svg>
                       Copier
