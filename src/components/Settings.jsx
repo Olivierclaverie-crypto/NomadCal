@@ -142,7 +142,10 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
         {/* FRAIS PREMIUM */}
         <div style={{ ...sectionStyle, borderColor: C.gold, borderWidth: 1.5 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: C.goldDark, fontFamily: "Phenomena, sans-serif", letterSpacing: .5 }}>💰 Frais — Premium</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: C.goldDark, fontFamily: "Phenomena, sans-serif", letterSpacing: .5, display: "flex", alignItems: "center", gap: 6 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={C.goldDark} strokeWidth="1.6"/><path d="M15 9.3A4 4 0 0012 8c-2.2 0-3.8 1.8-3.8 4s1.6 4 3.8 4a4 4 0 003-1.3M7.6 11h6M7.6 13.2h5" stroke={C.goldDark} strokeWidth="1.5" strokeLinecap="round"/></svg>
+              Frais — Premium
+            </div>
             <span style={{ fontSize: 10, background: C.goldLight, color: C.goldDark, border: `1px solid ${C.gold}`, borderRadius: 10, padding: "2px 8px", fontWeight: 700 }}>Bientôt</span>
           </div>
           {[
