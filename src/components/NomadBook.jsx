@@ -666,7 +666,6 @@ Veuillez choisir des dates sans chevauchement.`);
           <span style={{fontSize:34,fontWeight:800,color:C.accent,fontFamily:"Phenomena,sans-serif",letterSpacing:-1,lineHeight:1}}>NomadBook</span>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <button onClick={()=>onClose?onClose():window.location.href="https://cal-flow-jade.vercel.app"} style={{background:"none",border:"none",cursor:"pointer",padding:2,display:"flex"}}><IconCalendar/></button>
-            <button onClick={()=>{setEditingPeriod(null);setPeriodFormOpen(true);}} style={{background:"none",border:"none",cursor:"pointer",padding:2,display:"flex"}}><IconSettings/></button>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px 6px"}}>
@@ -709,7 +708,7 @@ Veuillez choisir des dates sans chevauchement.`);
               <div style={{textAlign:"center",color:C.subtle,padding:"60px 0",fontSize:15}}>
                 <div style={{fontSize:40,marginBottom:16}}>📋</div>
                 Aucune période de rapport.<br/>
-                <span style={{fontSize:13}}>Crée ta première période via ⚙️</span>
+                <span style={{fontSize:13}}>Crée ta première période ci-dessous.</span>
                 <div style={{marginTop:20}}>
                   <Btn variant="primary" onClick={()=>{setEditingPeriod(null);setPeriodFormOpen(true);}}>+ Créer une période</Btn>
                 </div>
@@ -797,13 +796,37 @@ Veuillez choisir des dates sans chevauchement.`);
                     chapterCounts={chapterCounts} totalNotes={periodNotes.length}
                     synthese={syntheses[currentPeriod.uid]}
                     index={sortedPeriods.findIndex(p=>p.uid===currentPeriod.uid)} total={periods.length}
-                    onTap={()=>setChatOpen(true)}
+                    onTap={()=>{ if(syntheses[currentPeriod.uid]) setViewSynthese({period:currentPeriod,text:syntheses[currentPeriod.uid].text,date:syntheses[currentPeriod.uid].date}); }}
                     onEdit={p=>{ setEditingPeriod(p); setPeriodFormOpen(true); }}
                     onDelete={p=>setConfirmDelPeriod(p)}
                   />
-                  <Btn onClick={()=>setChatOpen(true)} variant="primary" style={{width:"100%",justifyContent:"center",display:"flex",marginBottom:8}}>
-                    Lancer le brainstorming & générer le rapport
-                  </Btn>
+                  {/* ── Pavé d'actions de la période en cours ── */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4,marginBottom:8}}>
+                    {/* Brainstorming — version payante (à venir) */}
+                    <div style={{position:"relative",borderRadius:11,padding:"13px 8px",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:C.bg,color:C.subtle,border:`1.5px solid ${C.border}`}}>
+                      <span style={{position:"absolute",top:-7,right:8,background:C.gold,color:"#5a3c00",fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:6,letterSpacing:.3}}>à venir</span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.7 4.6L18.5 9l-4.8 1.4L12 15l-1.7-4.6L5.5 9l4.8-1.4L12 3z" stroke={C.subtle} strokeWidth="1.5" strokeLinejoin="round"/></svg>
+                      Brainstorming
+                    </div>
+                    {/* Copier — actif (copie le rapport de la période si présent) */}
+                    <button onClick={e=>{ const s=syntheses[currentPeriod.uid]; const t=e.currentTarget; if(s&&s.text){ navigator.clipboard.writeText(s.text); t.style.color=C.green; t.style.borderColor=C.green; setTimeout(()=>{t.style.color=C.accent;t.style.borderColor=C.accentBorder;},1200); if(navigator.vibrate)navigator.vibrate(10);} }}
+                      style={{borderRadius:11,padding:"13px 8px",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:"#fff",color:C.accent,border:`1.5px solid ${C.accentBorder}`,cursor:"pointer"}}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="11" height="12" rx="2" stroke="#2B5A9E" strokeWidth="1.6"/><path d="M5 16V5a2 2 0 012-2h9" stroke="#F5C97A" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                      Copier
+                    </button>
+                    {/* Export PDF — réservé (V2) */}
+                    <div style={{position:"relative",borderRadius:11,padding:"13px 8px",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:C.bg,color:C.subtle,border:`1.5px solid ${C.border}`}}>
+                      <span style={{position:"absolute",top:-7,right:8,background:C.gold,color:"#5a3c00",fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:6,letterSpacing:.3}}>à venir</span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 4v9m0 0l-3-3m3 3l3-3" stroke={C.subtle} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 16v2a2 2 0 002 2h10a2 2 0 002-2v-2" stroke={C.subtle} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      Export PDF
+                    </div>
+                    {/* Archives — réservé */}
+                    <div style={{position:"relative",borderRadius:11,padding:"13px 8px",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:C.bg,color:C.subtle,border:`1.5px solid ${C.border}`}}>
+                      <span style={{position:"absolute",top:-7,right:8,background:C.gold,color:"#5a3c00",fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:6,letterSpacing:.3}}>à venir</span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="14" rx="2" stroke={C.subtle} strokeWidth="1.5"/><path d="M4 10h16M9.5 14h5" stroke={C.subtle} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      Archives
+                    </div>
+                  </div>
                 </div>
               </>)}
 
@@ -828,7 +851,7 @@ Veuillez choisir des dates sans chevauchement.`);
               </>)}
 
               <Btn onClick={()=>{setEditingPeriod(null);setPeriodFormOpen(true);}} variant="soft" style={{width:"100%",justifyContent:"center",display:"flex",marginTop:8}}>
-                + Ajouter une période
+                + Nouvelle période
               </Btn>
             </>)}
           </div>
@@ -895,7 +918,7 @@ Veuillez choisir des dates sans chevauchement.`);
       <Modal open={captureOpen} onClose={closeCapture} title="Nouvelle note">
         {!currentPeriod&&(
           <div style={{background:C.amberLight,border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.amber,fontWeight:600}}>
-            Aucune période active — crée une période d'abord via ⚙️
+            Aucune période active — crée une période d'abord dans l'onglet Rapport
           </div>
         )}
         {currentPeriod&&(
