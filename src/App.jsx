@@ -245,11 +245,11 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
       {/* CONTACT */}
       <div style={secLbl}>Contact</div>
       <div style={card}>
-        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Nom du client\u2026" style={{...cellIn,fontSize:17,fontWeight:700}} autoFocus/>
+        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Nom du client…" style={{...cellIn,fontSize:17,fontWeight:700}}/>
       </div>
 
-      {/* LIEU & COORDONN\u00c9ES */}
-      <div style={secLbl}>Lieu &amp; coordonn\u00e9es</div>
+      {/* LIEU & COORDONNÉES */}
+      <div style={secLbl}>Lieu &amp; coordonnées</div>
       <div style={card}>
         <div style={{position:"relative"}}>
           <input value={rue} onChange={e=>setRue(e.target.value)} placeholder="Rue" style={{...cellIn,paddingRight:44}}/>
@@ -260,14 +260,14 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
           <input value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville" style={{...cellIn,flex:"1"}}/>
         </div>
         <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" inputMode="email" style={{...cellIn,...div1}}/>
-        <input value={tel} onChange={e=>setTel(e.target.value)} placeholder="T\u00e9l\u00e9phone" inputMode="tel" style={{...cellIn,...div1}}/>
+        <input value={tel} onChange={e=>setTel(e.target.value)} placeholder="Téléphone" inputMode="tel" style={{...cellIn,...div1}}/>
       </div>
 
       {/* QUAND */}
       <div style={secLbl}>Quand</div>
       <div style={card}>
         <div style={rowR}>
-          <span style={{fontSize:15,color:C.ink}}>Journ\u00e9e enti\u00e8re</span>
+          <span style={{fontSize:15,color:C.ink}}>Journée entière</span>
           <div onClick={()=>setAllDay(a=>!a)} style={{marginLeft:"auto",width:46,height:28,borderRadius:14,background:allDay?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s"}}>
             <div style={{position:"absolute",top:3,left:allDay?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}/>
           </div>
@@ -275,7 +275,7 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
         {!allDay ? (
           <>
             <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Date</span><input type="date" value={startDate} onChange={e=>{setSD(e.target.value);setED(e.target.value);}} style={valIn}/></div>
-            <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>D\u00e9but</span><input type="time" value={startTime} onChange={e=>changeStart(e.target.value)} style={valIn}/></div>
+            <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Début</span><input type="time" value={startTime} onChange={e=>changeStart(e.target.value)} style={valIn}/></div>
             <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Fin</span><input type="time" value={endTime} min={startTime} onChange={e=>changeEnd(e.target.value)} style={valIn}/></div>
             <div style={{display:"flex",gap:6,padding:"10px 12px",...div1}}>
               {DURATIONS.map(([lbl,mins])=>{const active=durMin===mins;return (<button key={mins} onClick={()=>applyDuration(mins)} style={{flex:1,padding:"7px 2px",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,border:`1.5px solid ${active?C.gold:C.border}`,background:active?C.goldLight:"transparent",color:active?C.goldDark:C.muted}}>{lbl}</button>);})}
@@ -299,35 +299,35 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
           </select>
         </div>
         <div style={{display:"flex",gap:8,padding:"10px 12px",...div1}}>
-          <button onClick={()=>setStatus("confirmed")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="confirmed"?C.green:C.border}`,background:status==="confirmed"?C.greenLight:"transparent",color:status==="confirmed"?C.green:C.muted,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={status==="confirmed"?C.green:C.muted} strokeWidth="1.7"/><path d="M8 12.5l2.5 2.5L16 9" stroke={status==="confirmed"?C.green:C.muted} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>Confirm\u00e9</button>
-          <button onClick={()=>setStatus("tentative")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="tentative"?"#E07B17":C.border}`,background:status==="tentative"?"#FFF4E6":"transparent",color:status==="tentative"?"#B8741A":C.muted,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={status==="tentative"?"#E07B17":C.muted} strokeWidth="1.7"/><path d="M12 7v5l3.3 2" stroke={status==="tentative"?"#E07B17":C.muted} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>\u00c0 confirmer</button>
+          <button onClick={()=>setStatus("confirmed")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="confirmed"?C.green:C.border}`,background:status==="confirmed"?C.greenLight:"transparent",color:status==="confirmed"?C.green:C.muted,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={status==="confirmed"?C.green:C.muted} strokeWidth="1.7"/><path d="M8 12.5l2.5 2.5L16 9" stroke={status==="confirmed"?C.green:C.muted} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>Confirmé</button>
+          <button onClick={()=>setStatus("tentative")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="tentative"?"#E07B17":C.border}`,background:status==="tentative"?"#FFF4E6":"transparent",color:status==="tentative"?"#B8741A":C.muted,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={status==="tentative"?"#E07B17":C.muted} strokeWidth="1.7"/><path d="M12 7v5l3.3 2" stroke={status==="tentative"?"#E07B17":C.muted} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>À confirmer</button>
         </div>
       </div>
 
-      {/* R\u00c9CURRENCE */}
-      <div style={secLbl}>R\u00e9currence</div>
+      {/* RÉCURRENCE */}
+      <div style={secLbl}>Récurrence</div>
       <div style={card}>
         <div style={{display:"flex",alignItems:"center",padding:"8px 12px"}}>
-          <span style={{fontSize:15,color:C.ink}}>R\u00e9p\u00e9ter</span>
+          <span style={{fontSize:15,color:C.ink}}>Répéter</span>
           <select value={rrule} onChange={e=>setRrule(e.target.value)} style={{marginLeft:"auto",border:`1.5px solid ${C.border}`,background:C.bg,borderRadius:9,padding:"7px 10px",color:C.ink,fontSize:14,fontFamily:"inherit",outline:"none",maxWidth:200}}>
             {RECURRENCE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         {initial?.rrule&&<div style={{display:"flex",gap:6,padding:"10px 12px",...div1}}>
-          {[["this","Cet \u00e9v\u00e9nement"],["following","Suivants"],["all","Tous"]].map(([v,l])=>(
+          {[["this","Cet événement"],["following","Suivants"],["all","Tous"]].map(([v,l])=>(
             <button key={v} onClick={()=>setEditMode(v)} style={{flex:1,padding:"8px 4px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${editMode===v?C.accent:C.border}`,background:editMode===v?C.accentLight:"transparent",color:editMode===v?C.accent:C.muted,fontSize:11,fontWeight:700}}>{l}</button>
           ))}
         </div>}
       </div>
 
-      {/* OPTIONS (\u00e0 venir) */}
+      {/* OPTIONS (à venir) */}
       <div style={secLbl}>Options</div>
       <div style={card}>
-        <div style={avRow}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0112 0c0 5 2 6 2 6H4s2-1 2-6z" stroke={C.muted} strokeWidth="1.6" strokeLinejoin="round"/><path d="M10 20a2 2 0 004 0" stroke={C.muted} strokeWidth="1.6" strokeLinecap="round"/></svg><span style={{fontSize:15,color:C.ink}}>Alerte</span><span style={pill}>\u00e0 venir</span></div>
-        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke={C.muted} strokeWidth="1.6"/><path d="M3.6 6.5l8.4 6 8.4-6" stroke={C.muted} strokeWidth="1.6" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>e.mail Invitation</span><span style={pill}>\u00e0 venir</span></div>
-        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="2" stroke={C.muted} strokeWidth="1.6"/><path d="M16 10l5-3v10l-5-3z" stroke={C.muted} strokeWidth="1.6" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>Lien visio</span><span style={pill}>\u00e0 venir</span></div>
-        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 11l-7.5 7.5a4 4 0 01-5.7-5.7L13 5.6a2.7 2.7 0 013.8 3.8L9.3 17" stroke={C.muted} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>Pi\u00e8ce jointe</span><span style={pill}>\u00e0 venir</span></div>
-        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15V4M8.5 7L12 3.5 15.5 7M5 13v6h14v-6" stroke={C.muted} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>Partager</span><span style={pill}>\u00e0 venir</span></div>
+        <div style={avRow}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0112 0c0 5 2 6 2 6H4s2-1 2-6z" stroke={C.muted} strokeWidth="1.6" strokeLinejoin="round"/><path d="M10 20a2 2 0 004 0" stroke={C.muted} strokeWidth="1.6" strokeLinecap="round"/></svg><span style={{fontSize:15,color:C.ink}}>Alerte</span><span style={pill}>à venir</span></div>
+        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke={C.muted} strokeWidth="1.6"/><path d="M3.6 6.5l8.4 6 8.4-6" stroke={C.muted} strokeWidth="1.6" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>e.mail Invitation</span><span style={pill}>à venir</span></div>
+        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="2" stroke={C.muted} strokeWidth="1.6"/><path d="M16 10l5-3v10l-5-3z" stroke={C.muted} strokeWidth="1.6" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>Lien visio</span><span style={pill}>à venir</span></div>
+        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 11l-7.5 7.5a4 4 0 01-5.7-5.7L13 5.6a2.7 2.7 0 013.8 3.8L9.3 17" stroke={C.muted} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>Pièce jointe</span><span style={pill}>à venir</span></div>
+        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15V4M8.5 7L12 3.5 15.5 7M5 13v6h14v-6" stroke={C.muted} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>Partager</span><span style={pill}>à venir</span></div>
       </div>
 
       {/* NOTES */}
@@ -338,7 +338,7 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
 
       <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:14}}>
         <Btn onClick={onCancel}>Annuler</Btn>
-        <Btn onClick={save} variant="primary" disabled={saving}>Enregistrer l'\u00e9v\u00e9nement</Btn>
+        <Btn onClick={save} variant="primary" disabled={saving}>Enregistrer l'événement</Btn>
       </div>
     </div>
   );
@@ -356,7 +356,7 @@ function TaskForm({ initial, onSave, onCancel }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
-      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titre de la tâche…" style={{...iStyle,fontSize:16,fontWeight:700}} autoFocus/>
+      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titre de la tâche…" style={{...iStyle,fontSize:16,fontWeight:700}}/>
       <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Notes (optionnel)" rows={2} style={{...iStyle,resize:"none"}}/>
       <label style={{fontSize:11,color:C.muted,fontWeight:700,letterSpacing:.5}}>PRIORITÉ</label>
       <div style={{display:"flex",gap:8,marginBottom:4}}>
