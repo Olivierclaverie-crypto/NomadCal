@@ -215,8 +215,8 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
     if (!title.trim()) return;
     // Notes = notes libres + contact (composition pour DESCRIPTION ICS)
     const contactLines = [];
-    if (email.trim()) contactLines.push("✉️ " + email.trim());
-    if (tel.trim())   contactLines.push("📞 " + tel.trim());
+    if (email.trim()) contactLines.push("Email : " + email.trim());
+    if (tel.trim())   contactLines.push("Tél : " + tel.trim());
     const fullNotes = [notes.trim(), ...contactLines].filter(Boolean).join("\n");
     onSave({
       title:title.trim(), allDay,
@@ -229,99 +229,116 @@ function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, savin
 
   const DURATIONS = [["15 min",15],["30 min",30],["45 min",45],["1 h",60],["2 h",120]];
 
+  // --- Habillage A1 : sections groupées ORCHARD ---
+  const card   = {background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden"};
+  const secLbl = {fontSize:11,fontWeight:800,letterSpacing:.5,textTransform:"uppercase",color:C.muted,margin:"16px 4px 7px"};
+  const cellIn = {width:"100%",padding:"13px 14px",border:"none",background:"transparent",color:C.ink,fontSize:15,fontFamily:"inherit",outline:"none",boxSizing:"border-box"};
+  const valIn  = {marginLeft:"auto",border:"none",background:"transparent",color:C.accent,fontSize:15,fontFamily:"inherit",fontWeight:600,outline:"none"};
+  const rowR   = {display:"flex",alignItems:"center",padding:"11px 14px"};
+  const div1   = {borderTop:`1px solid ${C.border}`};
+  const avRow  = {display:"flex",alignItems:"center",gap:10,padding:"13px 14px",opacity:.5};
+  const pill   = {marginLeft:"auto",fontSize:10,fontWeight:800,color:C.goldDark,background:C.goldLight,border:`1px solid ${C.gold}`,borderRadius:9,padding:"2px 8px"};
+
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+    <div style={{display:"flex",flexDirection:"column"}}>
 
-      {/* Titre = Nom du client */}
-      <div>
-        <label style={lblStyle}>TITRE / CLIENT</label>
-        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Nom du client…" style={{...iStyle,fontSize:16,fontWeight:700,marginBottom:0,borderColor:C.accentBorder}} autoFocus/>
+      {/* CONTACT */}
+      <div style={secLbl}>Contact</div>
+      <div style={card}>
+        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Nom du client\u2026" style={{...cellIn,fontSize:17,fontWeight:700}} autoFocus/>
       </div>
 
-      {/* Jour entier */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"2px 0"}}>
-        <span style={{fontSize:14,color:C.ink}}>Jour entier</span>
-        <div onClick={()=>setAllDay(a=>!a)} style={{width:44,height:26,borderRadius:13,background:allDay?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s"}}>
-          <div style={{position:"absolute",top:3,left:allDay?21:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}/>
+      {/* LIEU & COORDONN\u00c9ES */}
+      <div style={secLbl}>Lieu &amp; coordonn\u00e9es</div>
+      <div style={card}>
+        <div style={{position:"relative"}}>
+          <input value={rue} onChange={e=>setRue(e.target.value)} placeholder="Rue" style={{...cellIn,paddingRight:44}}/>
+          {composedLoc&&<button onClick={()=>{const a=encodeURIComponent(composedLoc);const w=confirm("OK = Plans Apple\nAnnuler = Waze/Google");if(w)window.open(`maps://?q=${a}`,"_blank");else{const g=confirm("OK = Waze\nAnnuler = Google Maps");if(g)window.open(`waze://?q=${a}&navigate=yes`,"_blank");else window.open(`https://maps.google.com/?q=${a}`,"_blank");}}} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",padding:0,lineHeight:0}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z" stroke={C.accent} strokeWidth="1.6" strokeLinejoin="round"/><circle cx="12" cy="10" r="2.4" stroke={C.accent} strokeWidth="1.6"/></svg></button>}
         </div>
+        <div style={{display:"flex",...div1}}>
+          <input value={cp} onChange={e=>setCp(e.target.value)} placeholder="CP" inputMode="numeric" style={{...cellIn,flex:".5",borderRight:`1px solid ${C.border}`}}/>
+          <input value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville" style={{...cellIn,flex:"1"}}/>
+        </div>
+        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" inputMode="email" style={{...cellIn,...div1}}/>
+        <input value={tel} onChange={e=>setTel(e.target.value)} placeholder="T\u00e9l\u00e9phone" inputMode="tel" style={{...cellIn,...div1}}/>
       </div>
 
-      {/* Bloc date/heure — carte ORCHARD */}
-      <div style={{background:C.surface,border:`1.5px solid ${C.accentBorder}`,borderRadius:14,padding:"12px",display:"flex",flexDirection:"column",gap:10}}>
+      {/* QUAND */}
+      <div style={secLbl}>Quand</div>
+      <div style={card}>
+        <div style={rowR}>
+          <span style={{fontSize:15,color:C.ink}}>Journ\u00e9e enti\u00e8re</span>
+          <div onClick={()=>setAllDay(a=>!a)} style={{marginLeft:"auto",width:46,height:28,borderRadius:14,background:allDay?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s"}}>
+            <div style={{position:"absolute",top:3,left:allDay?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,.2)"}}/>
+          </div>
+        </div>
         {!allDay ? (
           <>
-            {/* Event horaire : 1 seule date + heures début/fin (défaut 1h) */}
-            <div><label style={lblStyle}>DATE</label><input type="date" value={startDate} onChange={e=>{setSD(e.target.value);setED(e.target.value);}} style={{...iStyle,marginBottom:0}}/></div>
-            <div style={{display:"flex",gap:8}}>
-              <div style={{flex:1}}><label style={lblStyle}>HEURE DÉBUT</label><input type="time" value={startTime} onChange={e=>changeStart(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
-              <div style={{flex:1}}><label style={lblStyle}>HEURE FIN</label><input type="time" value={endTime} min={startTime} onChange={e=>changeEnd(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
-            </div>
-            <div style={{display:"flex",gap:6}}>
-              {DURATIONS.map(([lbl,mins])=>{
-                const active = durMin===mins;
-                return (
-                  <button key={mins} onClick={()=>applyDuration(mins)} style={{flex:1,padding:"7px 2px",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,border:`1.5px solid ${active?C.gold:C.border}`,background:active?C.goldLight:"transparent",color:active?C.goldDark:C.muted}}>{lbl}</button>
-                );
-              })}
+            <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Date</span><input type="date" value={startDate} onChange={e=>{setSD(e.target.value);setED(e.target.value);}} style={valIn}/></div>
+            <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>D\u00e9but</span><input type="time" value={startTime} onChange={e=>changeStart(e.target.value)} style={valIn}/></div>
+            <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Fin</span><input type="time" value={endTime} min={startTime} onChange={e=>changeEnd(e.target.value)} style={valIn}/></div>
+            <div style={{display:"flex",gap:6,padding:"10px 12px",...div1}}>
+              {DURATIONS.map(([lbl,mins])=>{const active=durMin===mins;return (<button key={mins} onClick={()=>applyDuration(mins)} style={{flex:1,padding:"7px 2px",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,border:`1.5px solid ${active?C.gold:C.border}`,background:active?C.goldLight:"transparent",color:active?C.goldDark:C.muted}}>{lbl}</button>);})}
             </div>
           </>
         ) : (
-          /* Jour entier : date de début (DU) + date de fin (AU), pas d'heures */
-          <div style={{display:"flex",gap:8}}>
-            <div style={{flex:1}}><label style={lblStyle}>DU</label><input type="date" value={startDate} onChange={e=>setSD(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
-            <div style={{flex:1}}><label style={lblStyle}>AU</label><input type="date" value={endDate} onChange={e=>setED(e.target.value)} style={{...iStyle,marginBottom:0}}/></div>
-          </div>
+          <>
+            <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Du</span><input type="date" value={startDate} onChange={e=>setSD(e.target.value)} style={valIn}/></div>
+            <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Au</span><input type="date" value={endDate} onChange={e=>setED(e.target.value)} style={valIn}/></div>
+          </>
         )}
       </div>
 
-      {/* Calendrier (défaut depuis réglages) */}
-      <div>
-        <label style={lblStyle}>CALENDRIER</label>
-        <select value={calHref} onChange={e=>setCal(e.target.value)} style={{...iStyle,borderColor:calColor,borderWidth:2,background:calColor+"15",marginBottom:0}}>
-          {calendars.map(c=><option key={c.href} value={c.href}>{c.displayName}</option>)}
-        </select>
-      </div>
-
-      {/* Statut */}
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>setStatus("confirmed")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="confirmed"?C.green:C.border}`,background:status==="confirmed"?C.greenLight:"transparent",color:status==="confirmed"?C.green:C.muted,fontSize:12,fontWeight:700}}>✅ Confirmé</button>
-        <button onClick={()=>setStatus("tentative")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="tentative"?"#F5A623":C.border}`,background:status==="tentative"?"#FFF8ED":"transparent",color:status==="tentative"?"#B8741A":C.muted,fontSize:12,fontWeight:700}}>🟠 À confirmer</button>
-      </div>
-
-      {/* Coordonnées client — champs ICS structurés */}
-      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:"12px",display:"flex",flexDirection:"column",gap:8}}>
-        <div style={{fontSize:11,color:C.accent,fontWeight:800,letterSpacing:.3,marginBottom:2}}>COORDONNÉES</div>
-        <div style={{position:"relative"}}>
-          <input value={rue} onChange={e=>setRue(e.target.value)} placeholder="Rue" style={{...iStyle,marginBottom:0,paddingRight:36}}/>
-          {composedLoc&&<button onClick={()=>{const a=encodeURIComponent(composedLoc);const w=confirm("OK = Plans Apple\nAnnuler = Waze/Google");if(w)window.open(`maps://?q=${a}`,"_blank");else{const g=confirm("OK = Waze\nAnnuler = Google Maps");if(g)window.open(`waze://?q=${a}&navigate=yes`,"_blank");else window.open(`https://maps.google.com/?q=${a}`,"_blank");}}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:18}}>📍</button>}
+      {/* CLASSEMENT */}
+      <div style={secLbl}>Classement</div>
+      <div style={card}>
+        <div style={{display:"flex",alignItems:"center",padding:"8px 12px"}}>
+          <span style={{fontSize:15,color:C.ink}}>Calendrier</span>
+          <select value={calHref} onChange={e=>setCal(e.target.value)} style={{marginLeft:"auto",border:`1.5px solid ${calColor}`,background:calColor+"15",borderRadius:9,padding:"7px 10px",color:C.ink,fontSize:14,fontFamily:"inherit",fontWeight:600,outline:"none",maxWidth:190}}>
+            {calendars.map(c=><option key={c.href} value={c.href}>{c.displayName}</option>)}
+          </select>
         </div>
-        <div style={{display:"flex",gap:8}}>
-          <input value={cp} onChange={e=>setCp(e.target.value)} placeholder="CP" inputMode="numeric" style={{...iStyle,marginBottom:0,flex:".5"}}/>
-          <input value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville" style={{...iStyle,marginBottom:0,flex:"1"}}/>
+        <div style={{display:"flex",gap:8,padding:"10px 12px",...div1}}>
+          <button onClick={()=>setStatus("confirmed")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="confirmed"?C.green:C.border}`,background:status==="confirmed"?C.greenLight:"transparent",color:status==="confirmed"?C.green:C.muted,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={status==="confirmed"?C.green:C.muted} strokeWidth="1.7"/><path d="M8 12.5l2.5 2.5L16 9" stroke={status==="confirmed"?C.green:C.muted} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>Confirm\u00e9</button>
+          <button onClick={()=>setStatus("tentative")} style={{flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${status==="tentative"?"#E07B17":C.border}`,background:status==="tentative"?"#FFF4E6":"transparent",color:status==="tentative"?"#B8741A":C.muted,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={status==="tentative"?"#E07B17":C.muted} strokeWidth="1.7"/><path d="M12 7v5l3.3 2" stroke={status==="tentative"?"#E07B17":C.muted} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>\u00c0 confirmer</button>
         </div>
-        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" inputMode="email" style={{...iStyle,marginBottom:0}}/>
-        <input value={tel} onChange={e=>setTel(e.target.value)} placeholder="Téléphone principal" inputMode="tel" style={{...iStyle,marginBottom:0}}/>
       </div>
 
-      {/* Récurrence */}
-      <div>
-        <label style={lblStyle}>RÉCURRENCE <button onClick={()=>alert("Récurrence vs Tâche glissante\n\nLa RÉCURRENCE recrée l'événement à la fréquence choisie.\n\nLa TÂCHE GLISSANTE glisse au lendemain si non faite.")} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:"50%",width:16,height:16,fontSize:10,cursor:"pointer",color:C.muted}}>?</button></label>
-        <select value={rrule} onChange={e=>setRrule(e.target.value)} style={{...iStyle,marginBottom:0}}>
-          {RECURRENCE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+      {/* R\u00c9CURRENCE */}
+      <div style={secLbl}>R\u00e9currence</div>
+      <div style={card}>
+        <div style={{display:"flex",alignItems:"center",padding:"8px 12px"}}>
+          <span style={{fontSize:15,color:C.ink}}>R\u00e9p\u00e9ter</span>
+          <select value={rrule} onChange={e=>setRrule(e.target.value)} style={{marginLeft:"auto",border:`1.5px solid ${C.border}`,background:C.bg,borderRadius:9,padding:"7px 10px",color:C.ink,fontSize:14,fontFamily:"inherit",outline:"none",maxWidth:200}}>
+            {RECURRENCE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        {initial?.rrule&&<div style={{display:"flex",gap:6,padding:"10px 12px",...div1}}>
+          {[["this","Cet \u00e9v\u00e9nement"],["following","Suivants"],["all","Tous"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setEditMode(v)} style={{flex:1,padding:"8px 4px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${editMode===v?C.accent:C.border}`,background:editMode===v?C.accentLight:"transparent",color:editMode===v?C.accent:C.muted,fontSize:11,fontWeight:700}}>{l}</button>
+          ))}
+        </div>}
       </div>
-      {initial?.rrule&&<div style={{display:"flex",gap:6}}>
-        {[["this","Cet événement"],["following","Suivants"],["all","Tous"]].map(([v,l])=>(
-          <button key={v} onClick={()=>setEditMode(v)} style={{flex:1,padding:"8px 4px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${editMode===v?C.accent:C.border}`,background:editMode===v?C.accentLight:"transparent",color:editMode===v?C.accent:C.muted,fontSize:11,fontWeight:700}}>{l}</button>
-        ))}
-      </div>}
 
-      {/* Notes libres */}
-      <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Notes (optionnel)" rows={2} style={{...iStyle,resize:"none",lineHeight:1.6}}/>
+      {/* OPTIONS (\u00e0 venir) */}
+      <div style={secLbl}>Options</div>
+      <div style={card}>
+        <div style={avRow}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0112 0c0 5 2 6 2 6H4s2-1 2-6z" stroke={C.muted} strokeWidth="1.6" strokeLinejoin="round"/><path d="M10 20a2 2 0 004 0" stroke={C.muted} strokeWidth="1.6" strokeLinecap="round"/></svg><span style={{fontSize:15,color:C.ink}}>Alerte</span><span style={pill}>\u00e0 venir</span></div>
+        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke={C.muted} strokeWidth="1.6"/><path d="M3.6 6.5l8.4 6 8.4-6" stroke={C.muted} strokeWidth="1.6" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>e.mail Invitation</span><span style={pill}>\u00e0 venir</span></div>
+        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="2" stroke={C.muted} strokeWidth="1.6"/><path d="M16 10l5-3v10l-5-3z" stroke={C.muted} strokeWidth="1.6" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>Lien visio</span><span style={pill}>\u00e0 venir</span></div>
+        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 11l-7.5 7.5a4 4 0 01-5.7-5.7L13 5.6a2.7 2.7 0 013.8 3.8L9.3 17" stroke={C.muted} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>Pi\u00e8ce jointe</span><span style={pill}>\u00e0 venir</span></div>
+        <div style={{...avRow,...div1}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15V4M8.5 7L12 3.5 15.5 7M5 13v6h14v-6" stroke={C.muted} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:15,color:C.ink}}>Partager</span><span style={pill}>\u00e0 venir</span></div>
+      </div>
 
-      <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
+      {/* NOTES */}
+      <div style={secLbl}>Notes</div>
+      <div style={card}>
+        <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Notes (optionnel)" rows={3} style={{...cellIn,resize:"none",lineHeight:1.6}}/>
+      </div>
+
+      <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:14}}>
         <Btn onClick={onCancel}>Annuler</Btn>
-        <Btn onClick={save} variant="primary" disabled={saving}>Enregistrer l'événement</Btn>
+        <Btn onClick={save} variant="primary" disabled={saving}>Enregistrer l'\u00e9v\u00e9nement</Btn>
       </div>
     </div>
   );
