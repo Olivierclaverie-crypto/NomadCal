@@ -5,10 +5,25 @@ import { todayISO, timeToMinutes, minutesToHHMM } from "../utils/helpers.js";
 export default function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, saving=false }) {
   const [title,setTitle]       = useState(initial?.title||"");
   const [allDay,setAllDay]     = useState(initial?.allDay||false);
-  const [startDate,setSD]      = useState(initial?.startDate||todayISO());
-  const [endDate,setED]        = useState(initial?.endDate||todayISO());
-  const [startTime,setST]      = useState(initial?.startTime||"09:00");
-  const [endTime,setET]        = useState(initial?.endTime||"10:00");
+ const defaultStart = initial?.startTime || "09:00";
+
+// ── Durée par défaut user (future préférence Settings) ──
+const DEFAULT_DURATION = 60;
+
+const computedEnd =
+  initial?.endTime ||
+  minutesToHHMM(
+    Math.min(
+      GRID_END,
+      timeToMinutes(defaultStart) + DEFAULT_DURATION
+    )
+  );
+
+const [startDate,setSD] = useState(initial?.startDate || todayISO());
+const [endDate,setED]   = useState(initial?.endDate || initial?.startDate || todayISO());
+
+const [startTime,setST] = useState(defaultStart);
+const [endTime,setET]   = useState(computedEnd);
   const [calHref,setCal]       = useState(initial?.calHref||defaultCalHref||calendars[0]?.href||"");
   // Champs ICS structurés
   const [rue,setRue]           = useState(initial?.rue||initial?.location||"");
