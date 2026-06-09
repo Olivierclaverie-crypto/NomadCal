@@ -107,9 +107,6 @@ const [endTime,setET]   = useState(computedEnd);
   value={title}
   onChange={e=>setTitle(e.target.value)}
   autoComplete="off"
-  autoCorrect="off"
-  autoCapitalize="words"
-  spellCheck={false}
   placeholder="Prénom Nom du client…"
   style={{
     ...cellIn,
