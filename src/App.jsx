@@ -646,7 +646,21 @@ export default function App() {
                   const min=Math.round((relY/GRID_H)*GRID_TOTAL/30)*30;
                   const time=minutesToHHMM(Math.max(0,Math.min(GRID_END-30,min)));
                   if(clipboard) setPasteTarget({date:day,time});
-                  else { setEditEv(null); setFormOpen(true); }
+
+else {
+  setSlotPrefill({
+    startDate: day,
+    endDate: day,
+    startTime: time,
+    endTime: minutesToHHMM(
+      Math.min(GRID_END, timeToMinutes(time) + 60)
+    ),
+  });
+
+  setEditEv(null);
+  setFormOpen(true);
+}
+
                 }}>
                 {pulseCell&&pulseCell.day===day&&<div style={{position:"absolute",top:pulseCell.top-16,left:2,right:2,height:32,background:C.gold+"44",border:`2px solid ${C.gold}`,borderRadius:8,pointerEvents:"none",zIndex:11}}/>}
                 {nowPct&&<div style={{position:"absolute",top:`${nowPct*100}%`,left:0,right:0,height:2,background:C.red,zIndex:10}}><div style={{position:"absolute",left:-4,top:-3,width:8,height:8,borderRadius:"50%",background:C.red}}/></div>}
