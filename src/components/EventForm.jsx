@@ -54,7 +54,17 @@ const [endTime,setET]   = useState(computedEnd);
   function changeEnd(v){ const sMin=timeToMinutes(startTime); setET(timeToMinutes(v)<=sMin ? minutesToHHMM(Math.min(GRID_END, sMin+15)) : v); }
 
   // En-tête flottant : ✕ rouge / ✓ vert dès qu'un champ est rempli
-  const hasContent = !!(title.trim()||rue.trim()||cp.trim()||ville.trim()||email.trim()||tel.trim()||notes.trim());
+const hasContent =
+  !!(
+    prenom.trim() ||
+    nom.trim() ||
+    rue.trim() ||
+    cp.trim() ||
+    ville.trim() ||
+    email.trim() ||
+    tel.trim() ||
+    notes.trim()
+  );
 
   function save() {
     if (!title.trim()) return;
