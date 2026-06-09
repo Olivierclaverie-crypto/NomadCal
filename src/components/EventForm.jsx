@@ -4,6 +4,13 @@ import { todayISO, timeToMinutes, minutesToHHMM } from "../utils/helpers.js";
 
 export default function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, saving=false }) {
   const [title,setTitle]       = useState(initial?.title||"");
+  const initialParts = (initial?.title || "").split(" ");
+
+const [prenom,setPrenom] =
+  useState(initialParts.slice(0, -1).join(" ") || "");
+
+const [nom,setNom] =
+  useState(initialParts.slice(-1).join("") || "");
   const [allDay,setAllDay]     = useState(initial?.allDay||false);
  const defaultStart = initial?.startTime || "09:00";
 
