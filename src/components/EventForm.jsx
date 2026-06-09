@@ -132,8 +132,32 @@ const [endTime,setET]   = useState(computedEnd);
             </div>
             {!allDay ? (
               <>
-                <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Date</span><input type="date" value={startDate} onChange={e=>{setSD(e.target.value);setED(e.target.value);}} style={valIn}/></div>
-                <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Début</span><input type="time" value={startTime} onChange={e=>changeStart(e.target.value)} style={valIn}/></div>
+<div style={{...rowR,...div1}}>
+  <span style={{fontSize:15,color:C.ink}}>Date</span>
+
+  <button
+    onClick={() => {
+      const next = prompt("Date (AAAA-MM-JJ)", startDate);
+
+      if (!next) return;
+
+      setSD(next);
+      setED(next);
+    }}
+    style={{
+      marginLeft:"auto",
+      border:"none",
+      background:"transparent",
+      color:C.accent,
+      fontSize:15,
+      fontFamily:"inherit",
+      fontWeight:600,
+      cursor:"pointer"
+    }}
+  >
+    {startDate}
+  </button>
+</div>                <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Début</span><input type="time" value={startTime} onChange={e=>changeStart(e.target.value)} style={valIn}/></div>
                 <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Fin</span><input type="time" value={endTime} min={startTime} onChange={e=>changeEnd(e.target.value)} style={valIn}/></div>
                 <div style={{display:"flex",gap:6,padding:"10px 12px",...div1}}>
                   {DURATIONS.map(([lbl,mins])=>{const active=durMin===mins;return (<button key={mins} onClick={()=>applyDuration(mins)} style={{flex:1,padding:"7px 2px",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,border:`1.5px solid ${active?C.gold:C.border}`,background:active?C.goldLight:"transparent",color:active?C.goldDark:C.muted}}>{lbl}</button>);})}
