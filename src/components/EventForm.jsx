@@ -67,7 +67,7 @@ const hasContent =
   );
 
   function save() {
-    if (!title.trim()) return;
+if (!(prenom.trim() || nom.trim())) return;
     // Notes = notes libres + contact (composition pour DESCRIPTION ICS)
     const contactLines = [];
     if (email.trim()) contactLines.push("Email : " + email.trim());
