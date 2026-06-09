@@ -104,17 +104,7 @@ const [endTime,setET]   = useState(computedEnd);
           <div style={secLbl}>Contact</div>
           <div style={card}>
 
-<input
-  value={title}
-  onChange={e=>setTitle(e.target.value)}
-  autoComplete="off"
-  placeholder="Prénom Nom du client…"
-  style={{
-    ...cellIn,
-    fontSize:17,
-    fontWeight:700
-  }}
-/>
+<input value={title} onChange={e=>setTitle(e.target.value)} autoComplete="off" placeholder="Prénom Nom du client…" style={{...cellIn, fontSize:17, fontWeight:700 }}/>
 
           {/* LIEU & COORDONNÉES */}
           <div style={secLbl}>Lieu &amp; coordonnées</div>
