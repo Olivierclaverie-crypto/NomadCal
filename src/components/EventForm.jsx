@@ -64,7 +64,7 @@ const [endTime,setET]   = useState(computedEnd);
     if (tel.trim())   contactLines.push("Tél : " + tel.trim());
     const fullNotes = [notes.trim(), ...contactLines].filter(Boolean).join("\n");
     onSave({
-      title:title.trim(), allDay,
+      title:[prenom.trim(), nom.trim()].filter(Boolean).join(" "), allDay,
       startDate, startTime:allDay?null:startTime, endDate, endTime:allDay?null:endTime,
       calHref, location:composedLoc, notes:fullNotes, rrule, editMode, status,
       // champs structurés conservés en cache local
