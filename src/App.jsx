@@ -730,8 +730,15 @@ export default function App() {
   setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]);
   setFormOpen(false); setEditEv(null);
   setSaving(false);
-  await pushEvent(newEv,auth);
-  syncCalendar(newEv.calHref);
+
+await pushEvent(newEv, auth);
+
+// ── Sync complète SAFE ────────────────────────────────
+// iCloud peut retarder l’indexation immédiate d’un event.
+// Une sync légère peut alors écraser l’event optimistic local.
+// La sync complète évite la disparition temporaire.
+await syncCalDAV();
+
 }}/>
       )}
 
