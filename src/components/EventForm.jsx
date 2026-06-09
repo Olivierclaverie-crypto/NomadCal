@@ -102,10 +102,13 @@ const [endTime,setET]   = useState(computedEnd);
 
           {/* CONTACT */}
           <div style={secLbl}>Contact</div>
-          <div style={card}>
+       
+<div style={card}>
+  <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Nom du client…" style={{...cellIn,fontSize:17,fontWeight:700}}/>
+</div>
 
-<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Nom du client…" style={{...cellIn,fontSize:17,fontWeight:700}}/>
-          {/* LIEU & COORDONNÉES */}
+{/* LIEU & COORDONNÉES */}
+
           <div style={secLbl}>Lieu &amp; coordonnées</div>
           <div style={card}>
             <div style={{position:"relative"}}>
