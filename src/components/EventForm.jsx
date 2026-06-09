@@ -107,11 +107,34 @@ const [endTime,setET]   = useState(computedEnd);
       <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"4px 16px 40px"}}>
         <div style={{display:"flex",flexDirection:"column"}}>
 
-          {/* CONTACT */}
-          <div style={secLbl}>Contact</div>
-       
+{/* CONTACT */}
+<div style={secLbl}>Contact</div>
+
 <div style={card}>
-  <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Nom du client…" style={{...cellIn,fontSize:17,fontWeight:700}}/>
+
+  <input
+    value={prenom}
+    onChange={e=>setPrenom(e.target.value)}
+    placeholder="Prénom"
+    style={{
+      ...cellIn,
+      fontSize:17,
+      fontWeight:700
+    }}
+  />
+
+  <input
+    value={nom}
+    onChange={e=>setNom(e.target.value)}
+    placeholder="Nom"
+    style={{
+      ...cellIn,
+      ...div1,
+      fontSize:17,
+      fontWeight:700
+    }}
+  />
+
 </div>
 
 {/* LIEU & COORDONNÉES */}
