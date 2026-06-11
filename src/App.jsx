@@ -359,7 +359,16 @@ export default function App() {
       if(pending.length>0){
         const titles=pending.map(e=>e.title).join(", ");
         if(window.confirm(`⚠️ RDV à confirmer dans 48h :\n${titles}\n\nVoulez-vous les confirmer ?`)){
-          setEvents(prev=>prev.map(e=>pending.find(p=>p.id===e.id)?{...e,status:"confirmed"}:e));
+          
+setEvents(prev =>
+  prev.map(e =>
+    pending.some(p => p.id === e.id)
+      ? { ...e, status: "confirmed" }
+      : e
+  )
+);
+``
+
         }
       }
     };
@@ -551,16 +560,7 @@ export default function App() {
   const allEvs = events.filter(e => !e.id?.startsWith("synth-"));
 
 return (
-  <>
-    <div style={{
-      position:"fixed",
-      top:10,
-      right:10,
-      zIndex:1000
-    }}>
-      <button onClick={()=>syncCalDAV()}>🔄</button>
-    </div>
-
+  
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,overflow:"hidden",fontFamily:"Phenomena,Nunito,sans-serif"}}>
       <style>{`@keyframes nbload{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}`}</style>
       {syncing&&(
