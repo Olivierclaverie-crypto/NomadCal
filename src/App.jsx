@@ -557,29 +557,7 @@ export default function App() {
   right:10,
   zIndex:1000
 }}>
- <button
-  onClick={async () => {
-    console.log("🔄 refresh complet");
-    await syncCalDAV();
-  }}
-  style={{
-    background: C.accentLight,
-    border: `1.5px solid ${C.accent}`,
-    borderRadius: 12,
-    padding: "7px 10px",
-    cursor: "pointer",
-    fontSize: 14,
-    fontFamily: "inherit",
-    fontWeight: 700,
-    color: C.accent,
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    boxShadow: "0 1px 3px rgba(0,0,0,.08)"
-  }}
->
-  ↻
-</button>
+<button onClick={()=>syncCalDAV()}>🔄</button
 </div>
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,overflow:"hidden",fontFamily:"Phenomena,Nunito,sans-serif"}}>
       <style>{`@keyframes nbload{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}`}</style>
