@@ -359,7 +359,7 @@ export default function App() {
       if(pending.length>0){
         const titles=pending.map(e=>e.title).join(", ");
         if(window.confirm(`⚠️ RDV à confirmer dans 48h :\n${titles}\n\nVoulez-vous les confirmer ?`)){
-          setEvents(prev=>prev.map(e=>pend.find(p=>p.id===e.id)?{...e,status:"confirmed"}:e));
+          setEvents(prev=>prev.map(e=>pending.find(p=>p.id===e.id)?{...e,status:"confirmed"}:e));
         }
       }
     };
@@ -828,7 +828,7 @@ await syncCalDAV();
                 // syncCalendar() ne détecte pas les suppressions (fetch dernière heure seulement)
                 deleteEvent(confirmDel,auth).then(()=>syncCalDAV());
               }
-              if(confirmDel) setConfirmDel(null);
+
             }}>Supprimer</Btn>
           </div>
         </div>}
