@@ -550,15 +550,17 @@ export default function App() {
   // ── Filtre les events synthèse obsolètes du cache local ─────────────────
   const allEvs = events.filter(e => !e.id?.startsWith("synth-"));
 
-  return (
+return (
+  <>
     <div style={{
-  position:"fixed",
-  top:10,
-  right:10,
-  zIndex:1000
-}}>
-<button onClick={()=>syncCalDAV()}>🔄</button
-</div>
+      position:"fixed",
+      top:10,
+      right:10,
+      zIndex:1000
+    }}>
+      <button onClick={()=>syncCalDAV()}>🔄</button>
+    </div>
+
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,overflow:"hidden",fontFamily:"Phenomena,Nunito,sans-serif"}}>
       <style>{`@keyframes nbload{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}`}</style>
       {syncing&&(
