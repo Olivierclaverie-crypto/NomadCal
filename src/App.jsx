@@ -189,7 +189,6 @@ function TaskForm({ initial, onSave, onCancel }) {
   const [effectiveDate,setEffDate] = useState(initial?.effectiveDate||todayISO());
   const [dueDate,setDueDate]       = useState(initial?.dueDate||"");
   const [recurrence,setRecur]      = useState(initial?.recurrence||"none");
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const iStyle = { width:"100%", padding:"10px 12px", borderRadius:10, border:`1.5px solid ${C.border}`, background:C.bg, color:C.ink, fontSize:14, fontFamily:"inherit", outline:"none", marginBottom:10, boxSizing:"border-box" };
 
   return (
@@ -311,6 +310,7 @@ export default function App() {
   const [popover,setPopover]         = useState(null);
   const [slotPrefill,setSlotPrefill] = useState(null); // Pré-remplissage tap long grille
   const [pulseCell,setPulseCell]     = useState(null); // Feedback visuel tap long
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [fraisDate,setFraisDate]     = useState(null);
   const [nomadBookOpen,setNomadBookOpen] = useState(false);
 
