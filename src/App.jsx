@@ -627,42 +627,54 @@ return (
         currentView={currentView} fmtWeekRange={fmtWeekRange}
       />
 
-      {/* Bannières all-day */}
-      {allEvs.some(e=>e.allDay&&weekDays.some(d=>d>=e.startDate&&d<=e.endDate))&&(
-        <div style={{display:"flex",background:C.bg,borderBottom:`1px solid ${C.border}`,padding:"4px 0",flexShrink:0}}>
-          <div style={{width:36,flexShrink:0,fontSize:9,color:C.muted,textAlign:"center",paddingTop:4}}>Jour<br/>entier</div>
-          <div style={{flex:1,position:"relative",minHeight:28}}>
-            {allEvs.filter(e=>e.allDay&&weekDays.some(d=>d>=e.startDate&&d<=(e.endDate||e.startDate))).map(ev=>{
-          
-  const startIdx = Math.max(0, weekDays.indexOf(ev.startDate));
-  const endIdx = Math.min(6, weekDays.findIndex(d => d > (ev.endDate || ev.startDate)) - 1);
-  const span = Math.max(1, (endIdx < 0 ? 7 : endIdx + 1) - startIdx);
+{/* Bannières all-day */}
+<div style={{display:"flex",background:C.bg,borderBottom:`1px solid ${C.border}`,padding:"4px 0",flexShrink:0}}>
+  <div style={{width:36,flexShrink:0,fontSize:9,color:C.muted,textAlign:"center",paddingTop:4}}>
+    Jour<br/>entier
+  </div>
 
-  return (
-    <div
-      key={ev.id}
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        position: "relative",
-        marginBottom: 2,
-        marginLeft: `${(startIdx / 7) * 100}%`,
-        width: `${(span / 7) * 100}%`,
-        background: ev.calColor + "22",
-        border: `1.5px solid ${ev.calColor}`,
-        borderRadius: 6,
-        padding: "2px 6px",
-        cursor: "pointer",
-        overflow: "hidden"
-      }}
-    >
-      <span style={{ fontSize: 10, fontWeight: 700, color: ev.calColor }}>
-        → {ev.title}
-      </span>
-    </div>
-  );
-})}
+  <div style={{flex:1,position:"relative",minHeight:28}}>
+    {allEvs
+      .filter(e =>
+        e.allDay &&
+        weekDays.some(d => d >= e.startDate && d <= (e.endDate || e.startDate))
+      )
+      .map(ev => {
+        const startIdx = Math.max(0, weekDays.indexOf(ev.startDate));
+        const endIdx = Math.min(
+          6,
+          weekDays.findIndex(d => d > (ev.endDate || ev.startDate)) - 1
+        );
+        const span = Math.max(
+          1,
+          (endIdx < 0 ? 7 : endIdx + 1) - startIdx
+        );
+
+        return (
+          <div
+            key={ev.id}
+            style={{
+              position: "relative",
+              marginBottom: 2,
+              marginLeft: `${(startIdx / 7) * 100}%`,
+              width: `${(span / 7) * 100}%`,
+              background: ev.calColor + "22",
+              border: `1.5px solid ${ev.calColor}`,
+              borderRadius: 6,
+              padding: "2px 6px",
+              overflow: "hidden"
+            }}
+          >
+            <span style={{fontSize:10,fontWeight:700,color:ev.calColor}}>
+              → {ev.title}
+            </span>
+          </div>
+        );
+      })}
+  </div>
 </div>
-      {/* Grille horaire */}
+
+{/* Grille horaire */}
       <div ref={gridScrollRef} style={{flex:1,overflowY:"auto",position:"relative",paddingBottom:96}}
         onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div style={{display:"flex",height:GRID_H,position:"relative"}}>
