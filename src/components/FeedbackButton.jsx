@@ -56,12 +56,32 @@ export default function FeedbackButton({ auth, currentPage = "NomadCal" }) {
 const existing = JSON.parse(localStorage.getItem("nomad_feedback") || "[]");
 
 const newFeedback = {
+  // 💬 contenu
   text: message.trim(),
+
+  // 🧠 type
   type,
+
+  // 📍 contexte
   page: currentPage,
+  location: currentPage,
+
+  // 👤 user
   user: auth?.email || "?",
+
+  // 🌐 environnement
+  network: navigator.onLine ? "online" : "offline",
+  userAgent: navigator.userAgent,
+
+  // ⏰ temps
   date: new Date().toISOString(),
-  network: navigator.onLine ? "online" : "offline"
+  dateReadable: new Date().toLocaleString(),
+
+  // 🔧 app
+  appVersion: "v1-beta",
+
+  // 🆔 identifiant unique
+  id: Date.now()
 };
 
 localStorage.setItem(
