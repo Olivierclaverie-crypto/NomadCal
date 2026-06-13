@@ -422,7 +422,14 @@ if (data.length > 0) {
   const last = localStorage.getItem("last_feedback_prompt");
   const now = Date.now();
 
-  // déjà envoyé aujourd’hui ?
+  // ✅ condition 17h
+  const nowDate = new Date();
+  const today17 = new Date();
+  today17.setHours(17, 0, 0, 0);
+
+  if (now < today17.getTime()) return;
+
+  // ✅ anti-spam (1 fois / jour)
   if (last && now - last < 24 * 60 * 60 * 1000) return;
 
   const content = data.map(f =>
