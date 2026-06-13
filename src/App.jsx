@@ -660,35 +660,6 @@ return (
       </span>
     </div>
   );
-}
-    key={ev.id}
-    onClick={(e) => e.stopPropagation()}
-    style={{
-      position: "relative",
-      marginBottom: 2,
-      marginLeft: `${(startIdx / 7) * 100}%`,
-      width: `${(span / 7) * 100}%`,
-      background: ev.calColor + "22",
-      border: `1.5px solid ${ev.calColor}`,
-      borderRadius: 6,
-      padding: "2px 6px",
-      cursor: "pointer",
-      overflow: "hidden"
-    }}
-  >
-    <span
-      style={{
-        fontSize: 10,
-        fontWeight: 700,
-        color: ev.calColor,
-        whiteSpace: "nowrap"
-      }}
-    >
-      → {ev.title}
-    </span>
-  </div>
-);
-})
               
       {/* Grille horaire */}
       <div ref={gridScrollRef} style={{flex:1,overflowY:"auto",position:"relative",paddingBottom:96}}
