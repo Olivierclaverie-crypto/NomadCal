@@ -827,7 +827,16 @@ await runSync({ auth, flushQueue, syncCalDAV })
                 setSaving(false);
                 // Suppression → syncCalDAV() COMPLET obligatoire
                 // syncCalendar() ne détecte pas les suppressions (fetch dernière heure seulement)
-                deleteEvent(confirmDel,auth).then(()=>syncCalDAV());
+               
+
+try {
+  await deleteEvent(confirmDel, auth);
+  await runSync({ auth, flushQueue, syncCalDAV });
+} catch (e) {
+  console.error("delete failed", e);
+}
+
+
               }
 
             }}>Supprimer</Btn>
