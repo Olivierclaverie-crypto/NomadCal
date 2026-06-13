@@ -70,7 +70,6 @@ localStorage.setItem(
 );
 
 alert("Feedback enregistré ✅");
-);
 
     setSent(true);
     setTimeout(() => {
