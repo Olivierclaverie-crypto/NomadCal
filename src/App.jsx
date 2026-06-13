@@ -384,7 +384,7 @@ setEvents(prev =>
 
   // ── Re-sync au retour réseau ──────────────────────────────────────────────
   useEffect(()=>{
-    const onOnline  = () => { setSyncOk(true);  if(auth){ flushQueue(auth).then(()=>syncCalDAV()); } };
+    const onOnline  = () => { setSyncOk(true);  if(auth){ runSync({ auth, flushQueue, syncCalDAV }); } };
     const onOffline = () => { setSyncOk(false); };
     window.addEventListener("online",  onOnline);
     window.addEventListener("offline", onOffline);
