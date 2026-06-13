@@ -762,7 +762,7 @@ await pushEvent(newEv, auth);
 // iCloud peut retarder l’indexation immédiate d’un event.
 // Une sync légère peut alors écraser l’event optimistic local.
 // La sync complète évite la disparition temporaire.
-await syncCalDAV();
+await runSync({ auth, flushQueue, syncCalDAV })
 
 }}/>
       )}
