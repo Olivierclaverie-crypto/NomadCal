@@ -367,7 +367,6 @@ setEvents(prev =>
       : e
   )
 );
-``
 
         }
       }
@@ -446,7 +445,7 @@ Page : ${f.page}
   // mémorise la date d’envoi
   localStorage.setItem("last_feedback_prompt", now);
 }
-``
+  
 }, []);
   // ── Navigation semaine ────────────────────────────────────────────────────
   function handleTouchStart(e){ touchStartX.current=e.touches[0].clientX; touchStartY.current=e.touches[0].clientY; }
