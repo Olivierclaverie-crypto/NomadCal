@@ -628,7 +628,9 @@ return (
       />
 
 {/* Bannières all-day */}
+{allEvs.some(e=>e.allDay&&weekDays.some(d=>d>=e.startDate&&d<=e.endDate))&&(
 <div style={{display:"flex",background:C.bg,borderBottom:`1px solid ${C.border}`,padding:"4px 0",flexShrink:0}}>
+
   <div style={{width:36,flexShrink:0,fontSize:9,color:C.muted,textAlign:"center",paddingTop:4}}>
     Jour<br/>entier
   </div>
