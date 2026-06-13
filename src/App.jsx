@@ -927,6 +927,7 @@ try {
 
       <FeedbackButton auth={auth} currentPage={nomadBookOpen?"NomadBook":"NomadCal"}/>
 
-    </div>
-  );
-}
+</div>
+      }
+      );
+      }
