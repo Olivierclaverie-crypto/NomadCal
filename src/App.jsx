@@ -299,7 +299,6 @@ export default function App() {
   const [saving,setSaving]           = useState(false); // Anti-doublon bouton Créer/Supprimer
   const [formOpen,setFormOpen]       = useState(false);
   const [taskFormOpen,setTaskFormOpen] = useState(false);
-  const [detailEv,setDetailEv]       = useState(null);
   const [editEv,setEditEv]           = useState(null);
   const [editTask,setEditTask]       = useState(null);
   const [clipboard,setClipboard]     = useState(null);
@@ -638,13 +637,29 @@ return (
               const endIdx=Math.min(6,weekDays.findIndex(d=>d>(ev.endDate||ev.startDate))-1);
               const span=Math.max(1,(endIdx<0?7:endIdx+1)-startIdx);
               return(
-                <div key={ev.id} onClick={()=>setDetailEv(ev)} style={{position:"relative",marginBottom:2,marginLeft:`${startIdx/7*100}%`,width:`${span/7*100}%`,background:ev.calColor+"22",border:`1.5px solid ${ev.calColor}`,borderRadius:6,padding:"2px 6px",cursor:"pointer",overflow:"hidden"}}>
-                  <span style={{fontSize:10,fontWeight:700,color:ev.calColor,whiteSpace:"nowrap"}}>→ {ev.title}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+              <div
+  key={ev.id}
+  onClick={(e) => {
+    e.stopPropagation();
+  }}
+  style={{
+    position: "relative",
+    marginBottom: 2,
+    marginLeft: `${startIdx / 7 * 100}%`,
+    width: `${span / 7 * 100}%`,
+    background: ev.calColor + "22",
+    border: `1.5px solid ${ev.calColor}`,
+    borderRadius: 6,
+    padding: "2px 6px",
+    cursor: "pointer",
+    overflow: "hidden"
+  }}
+>
+  <span style={{fontSize:10,fontWeight:700,color:ev.calColor,whiteSpace:"nowrap"}}>
+    → {ev.title}
+  </span>
+</div>
+
       )}
 
       {/* Grille horaire */}
@@ -808,14 +823,6 @@ await runSync({ auth, flushQueue, syncCalDAV })
         <TaskForm initial={editTask} onCancel={()=>{setTaskFormOpen(false);setEditTask(null);}} onSave={task=>{setTasks(prev=>editTask?prev.map(t=>t.id===editTask.id?{...task,id:editTask.id}:t):[...prev,task]);setTaskFormOpen(false);setEditTask(null);}}/>
       </Modal>
 
-      <Modal open={!!detailEv} onClose={()=>setDetailEv(null)} title={detailEv?.type==="task"?"Tâche glissante":"Événement"}>
-        <EventDetail ev={detailEv}
-          onEdit={()=>{if(detailEv?.type==="task"){setEditTask(detailEv);setTaskFormOpen(true);}else{setEditEv(detailEv);setFormOpen(true);}setDetailEv(null);}}
-          onDelete={()=>{handleDeleteEvent(detailEv);setDetailEv(null);}}
-          onCopy={()=>{setClipboard(detailEv);setDetailEv(null);}}
-          onDone={()=>{setConfirmDone(detailEv);setDetailEv(null);}}
-        />
-      </Modal>
 
       <Modal open={!!confirmDone} onClose={()=>setConfirmDone(null)} title="✓ Confirmer la validation">
         {confirmDone&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
