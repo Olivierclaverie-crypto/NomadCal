@@ -11,6 +11,7 @@ import NomadBook from "./components/NomadBook.jsx";
 import FeedbackButton from "./components/FeedbackButton.jsx";
 import EventForm from "./components/EventForm.jsx";
 import { checkCalendarExists, createCalendar, calendarDisplayName } from "./utils/caldavCalendar.js";
+import TaskDrawer from "./components/TaskDrawer.jsx";
 
 const USER_PLAN = "free";
 
