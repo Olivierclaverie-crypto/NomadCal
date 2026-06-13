@@ -579,7 +579,12 @@ return (
       <Header
         weekDays={weekDays} syncing={syncing} syncOk={syncOk}
         onSync={() => runSync({ auth, flushQueue, syncCalDAV })} onSettings={()=>setScreen("settings")}
-        onAddEvent={()=>{setEditEv(null);setSlotPrefill(null);setFormOpen(true);}}
+        onAddEvent={()=>{setEditEv(null);setSlotPrefill({
+  startDate: todayISO(),
+  endDate: todayISO(),
+  startTime: "09:00",
+  endTime: "10:00"
+});setFormOpen(true);}}
         clipboard={clipboard} onClearClipboard={()=>{setClipboard(null);setPasteTarget(null);}}
         tasks={tasks} onToggleDrawer={()=>setDrawerOpen(o=>!o)}
         weekStart={weekStart} weekNum={weekNum} today={today}
