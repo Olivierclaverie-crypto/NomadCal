@@ -661,7 +661,7 @@ return (
     </div>
   );
 })
-</div>       
+       
       {/* Grille horaire */}
       <div ref={gridScrollRef} style={{flex:1,overflowY:"auto",position:"relative",paddingBottom:96}}
         onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
