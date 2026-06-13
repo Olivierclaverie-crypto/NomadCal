@@ -414,7 +414,13 @@ setEvents(prev =>
     }
     setupCalendar();
   },[auth]);
+useEffect(() => {
+  const data = JSON.parse(localStorage.getItem("nomad_feedback") || "[]");
 
+  if (data.length > 0) {
+    console.log("Feedback en attente :", data.length);
+  }
+}, []);
   // ── Navigation semaine ────────────────────────────────────────────────────
   function handleTouchStart(e){ touchStartX.current=e.touches[0].clientX; touchStartY.current=e.touches[0].clientY; }
   function handleTouchEnd(e){
