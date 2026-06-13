@@ -633,7 +633,7 @@ return (
           <div style={{width:36,flexShrink:0,fontSize:9,color:C.muted,textAlign:"center",paddingTop:4}}>Jour<br/>entier</div>
           <div style={{flex:1,position:"relative",minHeight:28}}>
             {allEvs.filter(e=>e.allDay&&weekDays.some(d=>d>=e.startDate&&d<=(e.endDate||e.startDate))).map(ev=>{
-{
+          
   const startIdx = Math.max(0, weekDays.indexOf(ev.startDate));
   const endIdx = Math.min(6, weekDays.findIndex(d => d > (ev.endDate || ev.startDate)) - 1);
   const span = Math.max(1, (endIdx < 0 ? 7 : endIdx + 1) - startIdx);
