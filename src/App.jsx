@@ -419,9 +419,13 @@ useEffect(() => {
 
   if (data.length > 0) {
 
-  const content = data.map(f =>
-    `• ${new Date(f.date).toLocaleTimeString()} (${f.network})\n${f.text}`
-  ).join("\n\n");
+const content = data.map(f =>
+  `• ${new Date(f.date).toLocaleTimeString()} (${f.network})
+Type : ${f.type}
+Page : ${f.page}
+
+→ ${f.text}`
+).join("\n\n");
 
   const mail = `mailto:olivierclaverie@me.com?subject=NomadCal Feedback&body=${encodeURIComponent(content)}`;
 
