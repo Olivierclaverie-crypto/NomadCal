@@ -418,8 +418,15 @@ useEffect(() => {
   const data = JSON.parse(localStorage.getItem("nomad_feedback") || "[]");
 
   if (data.length > 0) {
-    console.log("Feedback en attente :", data.length);
-  }
+
+  const content = data.map(f =>
+    `• ${new Date(f.date).toLocaleTimeString()} (${f.network})\n${f.text}`
+  ).join("\n\n");
+
+  const mail = `mailto:olivierclaverie@me.com?subject=NomadCal Feedback&body=${encodeURIComponent(content)}`;
+
+  window.location.href = mail;
+}
 }, []);
   // ── Navigation semaine ────────────────────────────────────────────────────
   function handleTouchStart(e){ touchStartX.current=e.touches[0].clientX; touchStartY.current=e.touches[0].clientY; }
