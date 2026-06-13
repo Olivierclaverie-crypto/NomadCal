@@ -578,7 +578,7 @@ return (
 
       <Header
         weekDays={weekDays} syncing={syncing} syncOk={syncOk}
-        onSync={syncCalDAV} onSettings={()=>setScreen("settings")}
+        onSync={() => runSync({ auth, flushQueue, syncCalDAV })} onSettings={()=>setScreen("settings")}
         onAddEvent={()=>{setEditEv(null);setSlotPrefill(null);setFormOpen(true);}}
         clipboard={clipboard} onClearClipboard={()=>{setClipboard(null);setPasteTarget(null);}}
         tasks={tasks} onToggleDrawer={()=>setDrawerOpen(o=>!o)}
