@@ -5,7 +5,6 @@ import { load, save, toISO, todayISO, getWeekStart, getWeekDays, fmtDay, fmtDayN
 import { caldavRequest, parseCalendars, parseEvents, expandRecurring } from "./utils/caldav.js";
 import Modal, { Btn } from "./components/Modal.jsx";
 import Header from "./components/Header.jsx";
-import TaskDrawer from "./components/TaskDrawer.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
 import Settings from "./components/Settings.jsx";
 import NomadBook from "./components/NomadBook.jsx";
@@ -307,7 +306,6 @@ export default function App() {
   const [pasteTarget,setPasteTarget] = useState(null);
   const [confirmDel,setConfirmDel]   = useState(null);
   const [confirmDone,setConfirmDone] = useState(null);
-  const [drawerOpen,setDrawerOpen]   = useState(false);
   const [swipeTaskId,setSwipeTaskId] = useState(null);
   const [popover,setPopover]         = useState(null);
   const [slotPrefill,setSlotPrefill] = useState(null); // Pré-remplissage tap long grille
