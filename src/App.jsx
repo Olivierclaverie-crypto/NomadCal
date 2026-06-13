@@ -751,8 +751,11 @@ else {
                       onClick={e=>{
                         e.stopPropagation();
                         if(evPressFired.current){evPressFired.current=false;return;}
-                        if(isTask){setDrawerOpen(false);setTimeout(()=>setDetailEv({...ev,type:"task"}),50);return;}
-                        setDetailEv(ev);
+if(isTask){
+  setDrawerOpen(false);
+  return;
+}
+
                       }}
                       style={{position:"absolute",top:y+1,left:`${leftPct+0.5}%`,width:`${colW-1}%`,height:h-2,background:isTask?(ev.done?C.green+"22":C.gold+"15"):"#fff",border:isTask?`2px solid ${evColor}`:`1px solid ${C.border}`,borderRadius:6,padding:isTask?"3px 4px":"3px 4px 3px 11px",cursor:"pointer",overflow:"hidden",opacity: ev.done ? 0.7 : 1,boxSizing:"border-box"}}>
                       {!isTask&&<div style={{position:"absolute",left:0,top:0,bottom:0,width:6,background:evColor}}/>}
@@ -783,7 +786,9 @@ else {
       <TaskDrawer
         tasks={tasks} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}
         swipeTaskId={swipeTaskId} setSwipeTaskId={setSwipeTaskId}
-        onTaskClick={t=>{setDrawerOpen(false);setTimeout(()=>setDetailEv({...t,type:"task"}),50);}}
+onTaskClick={t=>{
+  setDrawerOpen(false);
+}}
         onTaskDone={t=>setConfirmDone(t)}
         onTaskDelete={t=>setConfirmDel({...t,type:"task"})}
         onAddTask={()=>setTaskFormOpen(true)}
