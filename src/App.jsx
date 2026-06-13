@@ -417,20 +417,30 @@ setEvents(prev =>
 useEffect(() => {
   const data = JSON.parse(localStorage.getItem("nomad_feedback") || "[]");
 
-  if (data.length > 0) {
+if (data.length > 0) {
 
-const content = data.map(f =>
-  `• ${new Date(f.date).toLocaleTimeString()} (${f.network})
+  const last = localStorage.getItem("last_feedback_prompt");
+  const now = Date.now();
+
+  // déjà envoyé aujourd’hui ?
+  if (last && now - last < 24 * 60 * 60 * 1000) return;
+
+  const content = data.map(f =>
+    `• ${new Date(f.date).toLocaleTimeString()} (${f.network})
 Type : ${f.type}
 Page : ${f.page}
 
 → ${f.text}`
-).join("\n\n");
+  ).join("\n\n");
 
   const mail = `mailto:olivierclaverie@me.com?subject=NomadCal Feedback&body=${encodeURIComponent(content)}`;
 
   window.location.href = mail;
+
+  // mémorise la date d’envoi
+  localStorage.setItem("last_feedback_prompt", now);
 }
+``
 }, []);
   // ── Navigation semaine ────────────────────────────────────────────────────
   function handleTouchStart(e){ touchStartX.current=e.touches[0].clientX; touchStartY.current=e.touches[0].clientY; }
