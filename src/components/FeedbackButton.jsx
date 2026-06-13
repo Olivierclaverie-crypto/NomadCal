@@ -52,8 +52,23 @@ export default function FeedbackButton({ auth, currentPage = "NomadCal" }) {
       `Page : ${currentPage}\n` +
       `Utilisateur : ${auth?.email || "?"}\n` +
       `Version : v1-beta`;
-    window.location.href =
-      `mailto:olivierclaverie@me.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+// stockage local au lieu d’envoyer direct
+const existing = JSON.parse(localStorage.getItem("nomad_feedback") || "[]");
+
+const newFeedback = {
+  text: message.trim(),
+  type,
+  page: currentPage,
+  user: auth?.email || "?",
+  date: new Date().toISOString(),
+  network: navigator.onLine ? "online" : "offline"
+};
+
+localStorage.setItem(
+  "nomad_feedback",
+  JSON.stringify([...existing, newFeedback])
+);
+
     setSent(true);
     setTimeout(() => {
       setSent(false);
