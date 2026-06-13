@@ -937,9 +937,8 @@ try {
         </div>
       </Modal>
 
-      <FeedbackButton auth={auth} currentPage={nomadBookOpen?"NomadBook":"NomadCal"}/>
+     <FeedbackButton auth={auth} currentPage={nomadBookOpen ? "NomadBook" : "NomadCal"} />
 
 </div>
-      }
-      );
-      }
+);
+}
