@@ -69,6 +69,9 @@ localStorage.setItem(
   JSON.stringify([...existing, newFeedback])
 );
 
+alert("Feedback enregistré ✅");
+);
+
     setSent(true);
     setTimeout(() => {
       setSent(false);
