@@ -379,7 +379,7 @@ setEvents(prev =>
   },[events]);
 
   useEffect(()=>{
-    if(auth){ const t=setTimeout(()=>{ flushQueue(auth).then(()=>syncCalDAV()); },300); return()=>clearTimeout(t); }
+    if(auth){ const t=setTimeout(()=>{ runSync({ auth, flushQueue, syncCalDAV }); },300); return()=>clearTimeout(t); }
   },[auth]);
 
   // ── Re-sync au retour réseau ──────────────────────────────────────────────
