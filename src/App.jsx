@@ -779,7 +779,25 @@ else {
                         },450);
                       }}
                       onTouchMove={()=>{ if(evPressTimer.current){clearTimeout(evPressTimer.current);evPressTimer.current=null;} }}
-                      onTouchEnd={()=>{ if(evPressTimer.current){clearTimeout(evPressTimer.current);evPressTimer.current=null;} }}
+                      onTouchEnd={(e)=>{
+  if(evPressTimer.current){
+    clearTimeout(evPressTimer.current);
+    evPressTimer.current=null;
+  }
+
+  // ✅ tap court → popover
+  if(!evPressFired.current){
+    const touch = e.changedTouches[0];
+
+    setPopover({
+      ev,
+      x: touch.clientX,
+      y: touch.clientY
+    });
+  }
+
+  evPressFired.current = false;
+}}
                       onClick={e=>{
                         e.stopPropagation();
                         if(evPressFired.current){evPressFired.current=false;return;}
