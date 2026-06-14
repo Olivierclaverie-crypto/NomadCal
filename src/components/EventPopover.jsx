@@ -1,6 +1,20 @@
 import { C } from "../utils/constants.js";
-import { copyEvent, deleteEventAction } from "../services/eventActions.js";
-import { ClockIcon, EditIcon, DeleteIcon, CalendarIcon, LocationIcon, PendingIcon } from "./icons";
+import { deleteEventAction } from "../services/eventActions.js";
+import {
+  EditIcon,
+  DeleteIcon,
+  CalendarIcon,
+  LocationIcon,
+  PendingIcon
+} from "./icons";
+
+/**
+ * EventPopover – version clean :
+ * - taille augmentée
+ * - statut uniquement si pending
+ * - centré sur point utilisateur
+ * - base prête pour arrow
+ */
 
 export default function EventPopover({
   ev,
@@ -14,9 +28,13 @@ export default function EventPopover({
 
   const isPending = ev.status === "tentative";
 
+  const width = 260;
+  const top = position.y - 80;
+  const left = Math.max(8, Math.min(position.x - width / 2, window.innerWidth - width - 8));
+
   return (
     <>
-      {/* Overlay fermeture */}
+      {/* overlay fermeture */}
       <div
         onClick={onClose}
         style={{
@@ -26,33 +44,32 @@ export default function EventPopover({
         }}
       />
 
-      {/* Popover */}
+      {/* popover */}
       <div
         style={{
           position: "fixed",
-          top: position.y,
-          left: Math.min(Math.max(8, position.x), window.innerWidth - 220),
+          top,
+          left,
           zIndex: 300,
-          width: 260,
+          width,
           background: isPending ? "#FFF8ED" : C.surface,
           border: `1.5px solid ${isPending ? "#E07B17" : C.border}`,
-          borderRadius: 14,
-          boxShadow: "0 6px 24px rgba(0,0,0,.15)",
-          padding: "10px 8px"
+          borderRadius: 16,
+          boxShadow: "0 10px 28px rgba(0,0,0,.18)",
+          padding: "12px 10px"
         }}
       >
 
         {/* HEADER */}
         <div
           style={{
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: 800,
             color: isPending ? "#B8741A" : C.ink,
             marginBottom: 6,
-            padding: "0 6px",
             display: "flex",
             alignItems: "center",
-            gap: 4,
+            gap: 6,
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis"
@@ -62,37 +79,30 @@ export default function EventPopover({
           <span>{ev.title}</span>
         </div>
 
-        {/* Séparateur */}
-        <div
-          style={{
-            height: 1,
-            background: C.border,
-            marginBottom: 6
-          }}
-        />
+        {/* separator */}
+        <div style={{ height: 1, background: C.border, marginBottom: 6 }} />
 
         {/* INFOS */}
         <div
           style={{
-            fontSize: 11,
+            fontSize: 12,
             color: C.muted,
-            padding: "0 6px",
-            marginBottom: 8,
+            marginBottom: 10,
             display: "flex",
             flexDirection: "column",
-            gap: 2
+            gap: 4
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <CalendarIcon size={12} />
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <CalendarIcon size={13} />
             <span>
               {ev.startDate} · {ev.startTime} → {ev.endTime}
             </span>
           </div>
 
           {ev.location && (
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <LocationIcon size={12} />
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <LocationIcon size={13} />
               <span>{ev.location}</span>
             </div>
           )}
@@ -106,15 +116,17 @@ export default function EventPopover({
           }}
         >
 
+          {/* COPY (temp texte en attendant vraie icône) */}
           <IconBtn
             onClick={() => {
-              onCopy(copyEvent(ev));
+              onCopy(ev);
               onClose();
             }}
           >
-            <ClockIcon />
+            📋
           </IconBtn>
 
+          {/* EDIT */}
           <IconBtn
             onClick={() => {
               onEdit(ev);
@@ -124,6 +136,7 @@ export default function EventPopover({
             <EditIcon />
           </IconBtn>
 
+          {/* DELETE */}
           <IconBtn
             onClick={() => {
               onDelete(deleteEventAction(ev));
@@ -135,12 +148,28 @@ export default function EventPopover({
           </IconBtn>
 
         </div>
+
+        {/* ARROW (base simple, orienté bas) */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: -8,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 0,
+            height: 0,
+            borderLeft: "8px solid transparent",
+            borderRight: "8px solid transparent",
+            borderTop: `8px solid ${isPending ? "#FFF8ED" : C.surface}`
+          }}
+        />
       </div>
     </>
   );
 }
 
-//  Icon button
+
+/* bouton icone */
 function IconBtn({ children, onClick, color }) {
   return (
     <button
@@ -149,9 +178,10 @@ function IconBtn({ children, onClick, color }) {
         background: "none",
         border: "none",
         cursor: "pointer",
-        padding: "8px 10px",
-        borderRadius: 8,
-        color: color || "inherit"
+        padding: "8px 12px",
+        borderRadius: 10,
+        color: color || "inherit",
+        fontSize: 18
       }}
     >
       {children}
