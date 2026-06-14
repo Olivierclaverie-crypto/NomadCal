@@ -112,7 +112,7 @@ export default function EventPopover({
               onClose();
             }}
           >
-            <CopyIcon />
+            <ClockIcon />
           </IconBtn>
 
           <IconBtn
