@@ -724,6 +724,20 @@ onTouchEnd={(e) => {
 
   // ✅ tap court → popover
   if(!longPressFired.current){
+    const touch = e.changedTouches[0];
+
+    setPopover({
+      ev,
+      x: touch.clientX,
+      y: touch.clientY
+    });
+  }
+
+  longPressFired.current = false;
+}}
+
+  // ✅ tap court → popover
+  if(!longPressFired.current){
     const rect = e.currentTarget.getBoundingClientRect();
 
     setPopover({
