@@ -736,9 +736,7 @@ onTouchEnd={(e) => {
   longPressFired.current = false;
 }}
 
-
-  longPressFired.current = false;
-}}
+                
                 onClick={e=>{
                   if(longPressFired.current){longPressFired.current=false;return;}
                   if(popover){setPopover(null);return;}
