@@ -226,7 +226,7 @@ function TaskForm({ initial, onSave, onCancel }) {
   );
 }
 
-function EventPopover({ ev, onCopy, onEdit, onDelete, onClose, position }) {
+function EventPopover_OLD({ ev, onCopy, onEdit, onDelete, onClose, position }) {
   if (!ev || !position) return null;
   const isPending = ev.status === "tentative";
   const Item = ({label,icon,onClick,color}) => (
