@@ -30,7 +30,6 @@ export default function EventPopover({
 
   return (
     <>
-      {/* Overlay fermeture */}
       <div
         onClick={onClose}
         style={{
@@ -40,7 +39,6 @@ export default function EventPopover({
         }}
       />
 
-      {/* Popover */}
       <div
         style={{
           position: "fixed",
@@ -55,7 +53,6 @@ export default function EventPopover({
           padding: "12px 10px"
         }}
       >
-        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -70,3 +67,114 @@ export default function EventPopover({
             textOverflow: "ellipsis"
           }}
         >
+          {isPending && <PendingIcon size={16} />}
+          <span>{ev.title}</span>
+        </div>
+
+        <div
+          style={{
+            height: 1,
+            background: C.border,
+            marginBottom: 8
+          }}
+        />
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            marginBottom: 12,
+            fontSize: 12,
+            color: C.muted
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <CalendarIcon size={14} />
+            <span>
+              {ev.startDate} · {ev.startTime} → {ev.endTime}
+            </span>
+          </div>
+
+          {ev.location && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <LocationIcon size={14} />
+              <span>{ev.location}</span>
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-around",
+            alignItems: "center"
+          }}
+        >
+          <IconBtn
+            onClick={() => {
+              onCopy(ev);
+              onClose();
+            }}
+          >
+            <CopyIcon size={30} />
+          </IconBtn>
+
+          <IconBtn
+            onClick={() => {
+              onEdit(ev);
+              onClose();
+            }}
+          >
+            <EditIcon size={30} />
+          </IconBtn>
+
+          <IconBtn
+            onClick={() => {
+              onDelete(deleteEventAction(ev));
+              onClose();
+            }}
+            color={C.red}
+          >
+            <DeleteIcon size={30} />
+          </IconBtn>
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            bottom: -10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 0,
+            height: 0,
+            borderLeft: "10px solid transparent",
+            borderRight: "10px solid transparent",
+            borderTop: `10px solid ${isPending ? "#FFF8ED" : C.surface}`
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
+function IconBtn({ children, onClick, color }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        padding: "8px 12px",
+        borderRadius: 10,
+        color: color || "inherit",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }}
+    >
+      {children}
+    </button>
+  );
+}
