@@ -1,6 +1,6 @@
 import { C } from "../utils/constants.js";
 import { copyEvent, deleteEventAction } from "../services/eventActions.js";
-import { CopyIcon, EditIcon, DeleteIcon, CalendarIcon, LocationIcon, PendingIcon } from "./icons";
+import { ClockIcon, EditIcon, DeleteIcon, CalendarIcon, LocationIcon, PendingIcon } from "./icons";
 
 export default function EventPopover({
   ev,
