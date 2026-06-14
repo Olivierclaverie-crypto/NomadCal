@@ -716,7 +716,25 @@ return (
                   },450);
                 }}
                 onTouchMove={()=>{ if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;} }}
-                onTouchEnd={()=>{ if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;} }}
+onTouchEnd={(e) => {
+  if(longPressTimer.current){
+    clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+  }
+
+  // ✅ tap court → popover
+  if(!longPressFired.current){
+    const rect = e.currentTarget.getBoundingClientRect();
+
+    setPopover({
+      ev,
+      x: rect.left + rect.width / 2,
+      y: rect.top - 60
+    });
+  }
+
+  longPressFired.current = false;
+}}
                 onClick={e=>{
                   if(longPressFired.current){longPressFired.current=false;return;}
                   if(popover){setPopover(null);return;}
