@@ -727,17 +727,13 @@ return (
                   if(clipboard) setPasteTarget({date:day,time});
 
 else {
-  setSlotPrefill({
-    startDate: day,
-    endDate: day,
-    startTime: time,
-    endTime: minutesToHHMM(
-      Math.min(GRID_END, timeToMinutes(time) + 60)
-    ),
-  });
+  const rect = e.currentTarget.getBoundingClientRect();
 
-  setEditEv(null);
-  setFormOpen(true);
+  setPopover({
+    ev,
+    x: rect.left + rect.width / 2,
+    y: rect.top - 60
+  });
 }
 
                 }}>
