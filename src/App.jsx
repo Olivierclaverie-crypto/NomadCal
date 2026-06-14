@@ -793,7 +793,7 @@ if(isTask){
       {popover&&(
         <EventPopoverNew ev={popover.ev} position={{x:popover.x,y:popover.y}}
           onClose={()=>setPopover(null)}
-          onCopy={()=>{setClipboard(popover.ev);setPopover(null);showToast("📋 Copié — tap long sur un créneau pour coller","amber");}}
+          onCopy={()=>{setClipboard(ev);setPopover(null);showToast("Copié — tap long sur un créneau pour coller","amber");}}
           onEdit={()=>{setEditEv(popover.ev);setSlotPrefill(null);setFormOpen(true);setPopover(null);}}
           onDelete={()=>{handleDeleteEvent(popover.ev);setPopover(null);}}
         />
