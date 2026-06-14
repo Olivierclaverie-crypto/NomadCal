@@ -33,7 +33,7 @@ export default function EventPopover({
           top: position.y,
           left: Math.min(Math.max(8, position.x), window.innerWidth - 220),
           zIndex: 300,
-          width: 200,
+          width: 260,
           background: isPending ? "#FFF8ED" : C.surface,
           border: `1.5px solid ${isPending ? "#E07B17" : C.border}`,
           borderRadius: 14,
