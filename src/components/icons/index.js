@@ -13,3 +13,6 @@ export { default as AttachmentIcon } from "./AttachmentIcon";
 export { default as LinkIcon } from "./LinkIcon";
 export { default as HomeIcon } from "./HomeIcon";
 export { default as PendingIcon } from "./PendingIcon.jsx";
+export { default as CopyIcon } from "./CopyIcon.jsx";
+export { default as PasteIcon } from "./PasteIcon.jsx";
+export { default as CutIcon } from "./CutIcon.jsx";
