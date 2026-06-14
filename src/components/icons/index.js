@@ -12,3 +12,4 @@ export { default as AlertIcon } from "./AlertIcon";
 export { default as AttachmentIcon } from "./AttachmentIcon";
 export { default as LinkIcon } from "./LinkIcon";
 export { default as HomeIcon } from "./HomeIcon";
+export { default as PendingIcon } from "./PendingIcon.jsx";
