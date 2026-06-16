@@ -682,7 +682,7 @@ return (
       <div ref={gridScrollRef} style={{flex:1,overflowY:"auto",position:"relative",paddingBottom:96}}
         onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div style={{display:"flex",height:GRID_H,position:"relative"}}>
-          <div style={{width:36,flexShrink:0}}>
+          <div style={{width:28,flexShrink:0}}>
             {Array.from({length:24},(_,h)=>(
               <div key={h} style={{position:"absolute",top:(h*60/GRID_TOTAL)*GRID_H,left:0,width:36,fontSize:9,color:C.muted,textAlign:"right",paddingRight:4,fontFamily:"monospace"}}>{h}h</div>
             ))}
