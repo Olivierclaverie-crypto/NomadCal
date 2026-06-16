@@ -165,39 +165,86 @@ export default function Header({
           <button onClick={onAddEvent} style={btnPrimary}>+RDV</button>
         </div>
 
-        {/* ── Ligne 4 — Jours + numéros + € CSS — aligné sur colonnes grille ── */}
-        <div style={{ display:"flex", borderTop:`0.5px solid ${C.border}` }}>
-          {/* Espace 36px pour colonne heures — alignement avec grille */}
-          <div style={{ width:36, flexShrink:0 }}/>
-          {weekDays.map(day=>{
-            const isToday = day === today;
-            return(
-              <div key={day} style={{ flex:1, textAlign:"center", padding:"4px 0 6px" }}>
-                <div style={{ fontSize:10, fontWeight:700, color:isToday?C.accent:C.muted, textTransform:"uppercase", letterSpacing:.5, marginBottom:2 }}>
-                  {fmtDay(day)}
-                </div>
-                <div style={{ width:24, height:24, borderRadius:"50%", background:isToday?C.accent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 4px" }}>
-                  <span style={{ fontSize:13, fontWeight:700, color:isToday?"#fff":C.ink }}>{fmtDayNum(day)}</span>
-                </div>
-                {/* € CSS pur — cercle bleu clair, filet bleu acier, € bleu foncé */}
-                <div
-                  onClick={()=>onOpenFrais&&onOpenFrais(day)}
-                  style={{
-                    width: 20, height: 20, borderRadius: "50%",
-                    background: C.accentLight,
-                    border: `1.5px solid ${C.accent}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    margin: "0 auto", cursor: "pointer",
-                    fontSize: 11, fontWeight: 800, color: C.accent,
-                    fontFamily: "Phenomena, sans-serif",
-                    boxShadow: `0 1px 3px ${C.accent}33`,
-                  }}>
-                  €
-                </div>
-              </div>
-            );
-          })}
+{/* ── Ligne 4 — Jours + numéros + € CSS — aligné sur colonnes grille ── */}
+<div style={{ display:"flex", borderTop:`0.5px solid ${C.border}` }}>
+  {/* Espace 28px pour colonne heures — alignement avec grille */}
+  <div style={{ width:28, flexShrink:0 }}/>
+
+  {weekDays.map(day=>{
+    const isToday = day === today;
+
+    return(
+      <div
+        key={day}
+        style={{
+          flex: isToday ? 1.08 : 0.98,
+          textAlign:"center",
+          padding:"4px 0 6px"
+        }}
+      >
+        <div
+          style={{
+            fontSize:10,
+            fontWeight:700,
+            color:isToday ? C.accent : C.muted,
+            textTransform:"uppercase",
+            letterSpacing:.5,
+            marginBottom:2
+          }}
+        >
+          {fmtDay(day)}
         </div>
+
+        <div
+          style={{
+            width:24,
+            height:24,
+            borderRadius:"50%",
+            background:isToday ? C.accent : "transparent",
+            display:"flex",
+            alignItems:"center",
+            justifyContent:"center",
+            margin:"0 auto 4px"
+          }}
+        >
+          <span
+            style={{
+              fontSize:13,
+              fontWeight:700,
+              color:isToday ? "#fff" : C.ink
+            }}
+          >
+            {fmtDayNum(day)}
+          </span>
+        </div>
+
+        <div
+          onClick={()=>onOpenFrais&&onOpenFrais(day)}
+          style={{
+            width:20,
+            height:20,
+            borderRadius:"50%",
+            background:C.accentLight,
+            border:`1.5px solid ${C.accent}`,
+            display:"flex",
+            alignItems:"center",
+            justifyContent:"center",
+            margin:"0 auto",
+            cursor:"pointer",
+            fontSize:11,
+            fontWeight:800,
+            color:C.accent,
+            fontFamily:"Phenomena, sans-serif",
+            boxShadow:`0 1px 3px ${C.accent}33`,
+          }}
+        >
+          €
+        </div>
+      </div>
+    );
+  })}
+</div>
+
 
       </>)}
     </div>
