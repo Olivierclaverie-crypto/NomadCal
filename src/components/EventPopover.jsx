@@ -21,12 +21,17 @@ export default function EventPopover({
 
   const isPending = ev.status === "tentative";
 
-  const width = 260;
-  const top = position.y - 90;
-  const left = Math.max(
-    8,
-    Math.min(position.x - width / 2, window.innerWidth - width - 8)
-  );
+const width = 260;
+const top = position.y - 90;
+const left = Math.max(
+  8,
+  Math.min(position.x - width / 2, window.innerWidth - width - 8)
+);
+
+const arrowLeft = Math.max(
+  18,
+  Math.min(position.x - left, width - 18)
+);
 
   return (
     <>
