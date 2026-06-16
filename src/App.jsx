@@ -79,7 +79,7 @@ async function flushQueue(auth){
 
 async function pushEvent(ev, auth, invalidateCache=true, queueable=true) {
   if (!auth || !ev.calHref) return;
-  const uid = ev.id?.startsWith("calflow-") ? ev.id : `calflow-${Date.now()}@nomadcal`;
+const uid = ev.id || `calflow-${Date.now()}@nomadcal`;
   const allDay = ev.allDay;
   const fmt = s => s ? s.replace(/-/g, "") : "";
 
@@ -116,7 +116,7 @@ async function pushEvent(ev, auth, invalidateCache=true, queueable=true) {
     "END:VCALENDAR"
   ].filter(Boolean).join("\r\n");
 
-  const path = ev.calHref + uid + ".ics";
+const path = ev.href || (ev.calHref + uid + ".ics");
   // ── BOÎTE D'ENVOI : hors-ligne → on range l'écriture au lieu de la perdre ──
   if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return; }
   try {
