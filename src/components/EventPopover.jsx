@@ -149,8 +149,10 @@ const arrowLeft = Math.max(
           style={{
             position: "absolute",
             bottom: -10,
-            left: "50%",
-            transform: "translateX(-50%)",
+
+left: arrowLeft - 10,
+transform: "none",
+
             width: 0,
             height: 0,
             borderLeft: "10px solid transparent",
