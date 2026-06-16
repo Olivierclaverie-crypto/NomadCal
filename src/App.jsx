@@ -684,7 +684,7 @@ return (
         <div style={{display:"flex",height:GRID_H,position:"relative"}}>
           <div style={{width:28,flexShrink:0}}>
             {Array.from({length:24},(_,h)=>(
-             <div key={h} style={{position:"absolute",top:(h*60/GRID_TOTAL)*GRID_H,left:0,width:36,fontSize:9,color:C.muted,textAlign:"right",paddingRight:4,fontFamily:"monospace"}}>{h}h</div>
+             <div key={h} style={{position:"absolute",top:(h*60/GRID_TOTAL)*GRID_H,left:-2,width:28,fontSize:9,color:C.muted,textAlign:"right",paddingRight:2,fontFamily:"monospace"}}>{h}h</div>
             ))}
           </div>
           {weekDays.map(day=>{
