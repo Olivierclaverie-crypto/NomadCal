@@ -694,7 +694,7 @@ return (
             const dayEvs=[...caldavEvs,...doneTasks];
             const nowPct=isToday?(new Date().getHours()*60+new Date().getMinutes())/GRID_TOTAL:null;
             return(
-              <div key={day} style={{flex:1,borderLeft:`1px solid ${C.border}`,position:"relative",background:isToday?"#2B5A9E08":"transparent"}}
+   <div key={day} style={{flex:isToday?1.08:0.98,borderLeft:`1px solid ${C.border}`,position:"relative",background:isToday?"#2B5A9E08":"transparent"}}
                 onTouchStart={e=>{
                   if(e.target!==e.currentTarget) return; // seulement zone vide, pas sur un event
                   const rect=e.currentTarget.getBoundingClientRect();
