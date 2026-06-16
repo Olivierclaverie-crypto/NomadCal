@@ -959,31 +959,42 @@ try {
         </div>}
       </Modal>
 
-      <Modal open={!!clipboard&&!!pasteTarget} onClose={()=>setPasteTarget(null)} title="📋 Coller l'événement">
-        {clipboard&&pasteTarget&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
-          <div style={{background:C.bg,borderRadius:10,padding:"12px 14px",border:`1px solid ${C.border}`}}>
-            <div style={{fontWeight:700,fontSize:15,color:C.ink,marginBottom:4}}>{clipboard.title}</div>
-            <div style={{fontSize:13,color:C.muted}}>📅 {pasteTarget.date} · {pasteTarget.time}</div>
-          </div>
-          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-            <Btn onClick={()=>setPasteTarget(null)}>Annuler</Btn>
-            <Btn variant="primary" onClick={()=>{
-              const duration=Math.max(30,timeToMinutes(clipboard.endTime||"10:00")-timeToMinutes(clipboard.startTime||"09:00"));
-              // Ouvre la fenêtre de création PRÉ-REMPLIE (nouvelle date/heure) — l'user valide
-              setSlotPrefill({
-                title:clipboard.title, allDay:clipboard.allDay, status:clipboard.status,
-                calHref:clipboard.calHref, location:clipboard.location, notes:clipboard.notes,
-                rue:clipboard.rue, cp:clipboard.cp, ville:clipboard.ville, email:clipboard.email, tel:clipboard.tel,
-                startDate:pasteTarget.date, endDate:pasteTarget.date,
-                startTime:pasteTarget.time, endTime:minutesToHHMM(timeToMinutes(pasteTarget.time)+duration),
-              });
-              setEditEv(null);
-              setClipboard(null); setPasteTarget(null);
-              setFormOpen(true);
-            }}>Coller ici</Btn>
-          </div>
-        </div>}
-      </Modal>
+<Modal open={!!clipboard&&!!pasteTarget} onClose={()=>setPasteTarget(null)} title="Coller l’événement">
+  {clipboard&&pasteTarget&&
+    <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+      <div style={{background:C.bg,borderRadius:10,padding:"12px 14px",border:`1px solid ${C.border}`}}>
+        <div style={{fontSize:12,color:C.muted,marginBottom:4}}>Événement copié</div>
+        <div style={{fontWeight:700,fontSize:15,color:C.ink,marginBottom:8}}>
+          {clipboard.title}
+        </div>
+
+        <div style={{fontSize:12,color:C.muted,marginBottom:4}}>Créneau cible</div>
+        <div style={{fontSize:13,color:C.ink}}>
+          {pasteTarget.date} · {pasteTarget.time}
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+        <Btn onClick={()=>setPasteTarget(null)}>Annuler</Btn>
+        <Btn variant="primary" onClick={()=>{
+          const duration=Math.max(30,timeToMinutes(clipboard.endTime||"10:00")-timeToMinutes(clipboard.startTime||"09:00"));
+          setSlotPrefill({
+            title:clipboard.title, allDay:clipboard.allDay, status:clipboard.status,
+            calHref:clipboard.calHref, location:clipboard.location, notes:clipboard.notes,
+            rue:clipboard.rue, cp:clipboard.cp, ville:clipboard.ville, email:clipboard.email, tel:clipboard.tel,
+            startDate:pasteTarget.date, endDate:pasteTarget.date,
+            startTime:pasteTarget.time, endTime:minutesToHHMM(timeToMinutes(pasteTarget.time)+duration),
+          });
+          setEditEv(null);
+          setClipboard(null); setPasteTarget(null);
+          setFormOpen(true);
+        }}>Coller ici</Btn>
+      </div>
+
+    </div>
+  }
+</Modal>
 
       <Modal open={!!fraisDate} onClose={()=>setFraisDate(null)} title={`Frais du ${fraisDate||""}`}>
         <div style={{textAlign:"center",padding:"20px 0",color:C.muted,fontSize:14}}>
