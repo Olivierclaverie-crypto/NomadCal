@@ -865,7 +865,16 @@ onTaskClick={t=>{
         <EventForm initial={editEv||slotPrefill} calendars={calendars} defaultCalHref={settings.defaultCalHref} saving={saving} onCancel={()=>{setFormOpen(false);setEditEv(null);setSlotPrefill(null);}} onSave={async ev=>{
   if(saving) return;
   setSaving(true);
-  const newEv={...ev,id:editEv?.id||`calflow-${Date.now()}`,calColor:calendars.find(c=>c.href===ev.calHref)?.color||C.accent,calName:calendars.find(c=>c.href===ev.calHref)?.displayName||"",type:"event"};
+const newEv = {
+  ...(editEv || {}),
+  ...ev,
+  id: editEv?.id || `calflow-${Date.now()}`,
+  href: editEv?.href,
+  calColor: calendars.find(c => c.href === ev.calHref)?.color || C.accent,
+  calName: calendars.find(c => c.href === ev.calHref)?.displayName || "",
+  type: "event"
+};
+
   setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]);
   setFormOpen(false); setEditEv(null);
   setSaving(false);
