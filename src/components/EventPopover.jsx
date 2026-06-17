@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { C } from "../utils/constants.js";
 import { deleteEventAction } from "../services/eventActions.js";
 import {
@@ -8,6 +9,7 @@ import {
   LocationIcon,
   PendingIcon,
   PhoneIcon,
+  EmailIcon,
 } from "./icons";
 
 const POPOVER_W     = 260;
@@ -25,6 +27,8 @@ export default function EventPopover({
   onCopy,
   onDelete
 }) {
+  const [voletOpen, setVoletOpen] = useState(false);
+
   if (!ev || !eventRect) return null;
 
   const isPending = ev.status === "tentative";
@@ -93,11 +97,28 @@ export default function EventPopover({
           border: `1.5px solid ${borderColor}`,
           borderRadius: 16,
           boxShadow: "0 10px 28px rgba(0,0,0,.18)",
-          padding: "12px 10px"
+          padding: "12px 10px",
+          overflow: "hidden",
         }}
       >
         <div style={arrowBorderStyle} />
         <div style={arrowFillStyle} />
+
+        {/* Volet copie gold */}
+        <div style={{
+          position: "absolute", inset: 0, background: C.gold, borderRadius: 14, zIndex: 10,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12,
+          clipPath: voletOpen ? "inset(0 0 0% 0 round 14px)" : "inset(0 0 100% 0 round 14px)",
+          transition: "clip-path 0.3s cubic-bezier(.4,0,.2,1)",
+          pointerEvents: voletOpen ? "auto" : "none",
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: C.ink, opacity: voletOpen ? 1 : 0, transition: "opacity 0.2s 0.22s ease" }}>Événement copié</span>
+          <svg style={{ opacity: voletOpen ? 1 : 0, transition: "opacity 0.2s 0.30s ease" }} width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke={C.ink} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <rect x="8" y="8" width="11" height="13" rx="2" stroke="#fff" strokeWidth="1.8"/>
+          </svg>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#7a4e0a", textAlign: "center", opacity: voletOpen ? 1 : 0, transition: "opacity 0.2s 0.38s ease" }}>Tap nouveau créneau pour coller</span>
+        </div>
 
         <div style={{
           display: "flex", alignItems: "center", gap: 6, marginBottom: 8,
@@ -128,23 +149,33 @@ export default function EventPopover({
           {ev.tel && (
             <a
               href={`tel:${ev.tel}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                color: C.accent,
-                textDecoration: "none",
-                fontSize: 12,
-              }}
+              style={{ display: "flex", alignItems: "center", gap: 6, color: C.accent, textDecoration: "none", fontSize: 12 }}
             >
               <PhoneIcon size={14} color={C.accent} />
               <span>{ev.tel}</span>
             </a>
           )}
+          {ev.email && (
+            <a
+              href={`mailto:${ev.email}`}
+              style={{ display: "flex", alignItems: "center", gap: 6, color: C.accent, textDecoration: "none", fontSize: 12 }}
+            >
+              <EmailIcon size={14} color={C.accent} />
+              <span>{ev.email}</span>
+            </a>
+          )}
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center" }}>
-          <IconBtn onClick={() => { onCopy(ev); onClose(); }}>
+          <IconBtn onClick={() => {
+            if (navigator.vibrate) navigator.vibrate(40);
+            setVoletOpen(true);
+            onCopy(ev);
+            setTimeout(() => {
+              setVoletOpen(false);
+              setTimeout(() => onClose(), 320);
+            }, 1600);
+          }}>
             <CopyIcon size={30} />
           </IconBtn>
           <IconBtn onClick={() => { onEdit(ev); onClose(); }}>
