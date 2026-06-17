@@ -224,22 +224,14 @@ export default function Header({
           style={{
             width:20,
             height:20,
-            borderRadius:"50%",
-            background:C.accentLight,
-            border:`1.5px solid ${C.accent}`,
             display:"flex",
             alignItems:"center",
             justifyContent:"center",
             margin:"0 auto",
             cursor:"pointer",
-            fontSize:11,
-            fontWeight:800,
-            color:C.accent,
-            fontFamily:"Phenomena, sans-serif",
-            boxShadow:`0 1px 3px ${C.accent}33`,
           }}
         >
-          <FeedIcon size={13} />
+          <FeedIcon size={18} />
         </div>
       </div>
     );
