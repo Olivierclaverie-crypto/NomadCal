@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { C, PRIORITY } from '../utils/constants.js';
+import { FeedIcon } from "./icons";
 
 // ── Icônes SVG ────────────────────────────────────────────────────────────────
 const IconNotes = ({ active=false }) => (
@@ -236,7 +237,7 @@ export default function TaskDrawer({
           {/* NomadFeed */}
           <button onClick={() => onOpenNomadFeed && onOpenNomadFeed()} style={{ ...tabStyle(null), opacity:.5 }}>
             <span style={{ color: C.accent }}>
-              <IconFeed/>
+              <FeedIcon size={20} />
             </span>
             Feed
           </button>

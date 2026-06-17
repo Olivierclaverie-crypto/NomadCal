@@ -16,3 +16,4 @@ export { default as PendingIcon } from "./PendingIcon.jsx";
 export { default as CopyIcon } from "./CopyIcon.jsx";
 export { default as PasteIcon } from "./PasteIcon.jsx";
 export { default as CutIcon } from "./CutIcon.jsx";
+export { default as FeedIcon } from "./FeedIcon.jsx";
