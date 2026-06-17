@@ -13,6 +13,7 @@ import EventForm from "./components/EventForm.jsx";
 import { checkCalendarExists, createCalendar, calendarDisplayName } from "./utils/caldavCalendar.js";
 import TaskDrawer from "./components/TaskDrawer.jsx";
 import EventPopoverNew from "./components/EventPopover.jsx";
+import EventPopoverPaste from "./components/EventPopoverPaste.jsx";
 
 const USER_PLAN = "free";
 
@@ -263,13 +264,23 @@ export default function App() {
   // ── UN SEUL état semaine ──────────────────────────────────────────────────
   const [weekStart,setWeekStart] = useState(()=>getWeekStart(new Date()));
 
-  const touchStartX   = useRef(null);
-  const touchStartY   = useRef(null);
-  const gridScrollRef = useRef(null);
+  const [ghostSlot, setGhostSlot] = useState(null);
+
+  const touchStartX    = useRef(null);
+  const touchStartY    = useRef(null);
+  const gridScrollRef  = useRef(null);
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
-  const evPressTimer = useRef(null);   // tap long sur un EVENT
-  const evPressFired = useRef(false);
+  const evPressTimer   = useRef(null);
+  const evPressFired   = useRef(false);
+  const clipboardTimer = useRef(null);
+
+  function copyToClipboard(ev) {
+    if (clipboardTimer.current) clearTimeout(clipboardTimer.current);
+    setClipboard(ev);
+    setPasteTarget(null);
+    clipboardTimer.current = setTimeout(() => setClipboard(null), 60000);
+  }
 
   const weekDays = getWeekDays(weekStart);
   const weekNum  = getWeekNum(weekStart);
@@ -659,7 +670,9 @@ return (
                   setPulseCell({day,top:relY});
                   setTimeout(()=>setPulseCell(null),350);
                   if(clipboard){
-                    setPasteTarget({date:day,time});
+                    const dayRect=e.currentTarget.getBoundingClientRect();
+                    const tapY=dayRect.top+relY;
+                    setPasteTarget({date:day,time,eventRect:{top:tapY,bottom:tapY+10,left:dayRect.left,right:dayRect.right,width:dayRect.width,height:10}});
                   } else {
                     setSlotPrefill({startDate:day,endDate:day,startTime:time,endTime:minutesToHHMM(Math.min(GRID_END,min+60))});
                     setEditEv(null);
@@ -675,7 +688,7 @@ return (
                   const relY=e.clientY-rect.top;
                   const min=Math.round((relY/GRID_H)*GRID_TOTAL/30)*30;
                   const time=minutesToHHMM(Math.max(0,Math.min(GRID_END-30,min)));
-                  if(clipboard) setPasteTarget({date:day,time});
+                  if(clipboard){ const tapY=e.clientY; setPasteTarget({date:day,time,eventRect:{top:tapY,bottom:tapY+10,left:rect.left,right:rect.right,width:rect.width,height:10}}); }
 
 else {
   const rect = e.currentTarget.getBoundingClientRect();
@@ -690,6 +703,13 @@ else {
                 }}>
                 {pulseCell&&pulseCell.day===day&&<div style={{position:"absolute",top:pulseCell.top-16,left:2,right:2,height:32,background:C.gold+"44",border:`2px solid ${C.gold}`,borderRadius:8,pointerEvents:"none",zIndex:11}}/>}
                 {nowPct&&<div style={{position:"absolute",top:`${nowPct*100}%`,left:0,right:0,height:2,background:C.red,zIndex:10}}><div style={{position:"absolute",left:-4,top:-3,width:8,height:8,borderRadius:"50%",background:C.red}}/></div>}
+                {ghostSlot&&ghostSlot.date===day&&(()=>{
+                  const gy=timeToY(ghostSlot.time);
+                  const gh=Math.max(20,durationToH(ghostSlot.time,ghostSlot.endTime));
+                  return <div style={{position:"absolute",top:gy+1,left:1,right:1,height:gh-2,background:"rgba(245,201,122,0.35)",border:"1.5px dashed #F5C97A",borderRadius:6,pointerEvents:"none",zIndex:9,display:"flex",alignItems:"flex-start",padding:"3px 5px"}}>
+                    <span style={{fontSize:9,color:"#7a4e0a",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ghostSlot.time} → {ghostSlot.endTime}</span>
+                  </div>;
+                })()}
                 {layoutEvents(dayEvs).map(ev=>{
                   const y=timeToY(ev.startTime||"09:00");
                   const h=Math.max(20,durationToH(ev.startTime||"09:00",ev.endTime||"10:00"));
@@ -771,10 +791,7 @@ else {
           onClose={()=>setPopover(null)}
 
 onCopy={(ev) => {
-  setClipboard(ev);
-  setPopover(null);
-  setPasteTarget(null);
-  showToast("Copié — tap long sur un créneau pour coller","amber");
+  copyToClipboard(ev);
 }}
 
           onEdit={()=>{setEditEv(popover.ev);setSlotPrefill(null);setFormOpen(true);setPopover(null);}}
@@ -901,42 +918,29 @@ try {
         </div>}
       </Modal>
 
-<Modal open={!!clipboard&&!!pasteTarget} onClose={()=>setPasteTarget(null)} title="Coller l’événement">
-  {clipboard&&pasteTarget&&
-    <div style={{display:"flex",flexDirection:"column",gap:16}}>
-
-      <div style={{background:C.bg,borderRadius:10,padding:"12px 14px",border:`1px solid ${C.border}`}}>
-        <div style={{fontSize:12,color:C.muted,marginBottom:4}}>Événement copié</div>
-        <div style={{fontWeight:700,fontSize:15,color:C.ink,marginBottom:8}}>
-          {clipboard.title}
-        </div>
-
-        <div style={{fontSize:12,color:C.muted,marginBottom:4}}>Créneau cible</div>
-        <div style={{fontSize:13,color:C.ink}}>
-          {pasteTarget.date} · {pasteTarget.time}
-        </div>
-      </div>
-
-      <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-        <Btn onClick={()=>setPasteTarget(null)}>Annuler</Btn>
-        <Btn variant="primary" onClick={()=>{
-          const duration=Math.max(30,timeToMinutes(clipboard.endTime||"10:00")-timeToMinutes(clipboard.startTime||"09:00"));
-          setSlotPrefill({
-            title:clipboard.title, allDay:clipboard.allDay, status:clipboard.status,
-            calHref:clipboard.calHref, location:clipboard.location, notes:clipboard.notes,
-            rue:clipboard.rue, cp:clipboard.cp, ville:clipboard.ville, email:clipboard.email, tel:clipboard.tel,
-            startDate:pasteTarget.date, endDate:pasteTarget.date,
-            startTime:pasteTarget.time, endTime:minutesToHHMM(timeToMinutes(pasteTarget.time)+duration),
-          });
-          setEditEv(null);
-          setClipboard(null); setPasteTarget(null);
-          setFormOpen(true);
-        }}>Coller ici</Btn>
-      </div>
-
-    </div>
-  }
-</Modal>
+{clipboard&&pasteTarget&&(
+  <EventPopoverPaste
+    clipboard={clipboard}
+    eventRect={pasteTarget.eventRect}
+    targetDate={pasteTarget.date}
+    targetTime={pasteTarget.time}
+    onGhostChange={setGhostSlot}
+    onCancel={()=>{ setGhostSlot(null); setPasteTarget(null); }}
+    onConfirm={({startTime,endTime})=>{
+      pushEvent({
+        title:clipboard.title, allDay:clipboard.allDay, status:clipboard.status,
+        calHref:clipboard.calHref, location:clipboard.location, notes:clipboard.notes,
+        rue:clipboard.rue, cp:clipboard.cp, ville:clipboard.ville, email:clipboard.email, tel:clipboard.tel,
+        startDate:pasteTarget.date, endDate:pasteTarget.date,
+        startTime, endTime,
+      }, auth);
+      setGhostSlot(null);
+      setClipboard(null);
+      setPasteTarget(null);
+      if (clipboardTimer.current) clearTimeout(clipboardTimer.current);
+    }}
+  />
+)}
 
       <Modal open={!!fraisDate} onClose={()=>setFraisDate(null)} title={`Frais du ${fraisDate||""}`}>
         <div style={{textAlign:"center",padding:"20px 0",color:C.muted,fontSize:14}}>

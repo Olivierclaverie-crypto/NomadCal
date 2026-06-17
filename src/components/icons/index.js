@@ -18,3 +18,4 @@ export { default as PasteIcon } from "./PasteIcon.jsx";
 export { default as CutIcon } from "./CutIcon.jsx";
 export { default as FeedIcon } from "./FeedIcon.jsx";
 export { default as PhoneIcon } from "./PhoneIcon.jsx";
+export { default as EmailIcon } from "./EmailIcon.jsx";
