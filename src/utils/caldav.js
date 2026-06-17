@@ -73,9 +73,12 @@ export function parseICS(ics, href, calHref, calColor, calName) {
   const loc      = get("LOCATION") || "";
   const desc     = get("DESCRIPTION") || "";
 
+  // ── Normalise les \n littéraux iCloud → vrais sauts de ligne ──────────────
+  const descNorm = desc.replace(/\\n/g, "\n");
+
   // ── Extraction champs structurés depuis DESCRIPTION ───────────────────────
   const extractField = (label) => {
-    const match = desc.match(new RegExp("^" + label + ":\\s*(.+)$", "m"));
+    const match = descNorm.match(new RegExp("^" + label + ":\\s*(.+)$", "m"));
     return match ? match[1].trim() : "";
   };
   const structRue   = extractField("Rue");
@@ -85,7 +88,7 @@ export function parseICS(ics, href, calHref, calColor, calName) {
   const structEmail = extractField("Email");
 
   // Notes libres = tout ce qui est avant le séparateur "---"
-  const notesLibres = desc.split(/\n---\n/)[0].replace(/\\n/g, "\n").trim();
+  const notesLibres = descNorm.split(/\n---\n/)[0].trim();
 
   const rrule    = get("RRULE") || "";
   const status   = get("STATUS") || "CONFIRMED";
