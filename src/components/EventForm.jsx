@@ -67,17 +67,27 @@ const hasContent =
   );
 
   function save() {
-if (!(prenom.trim() || nom.trim())) return;
-    // Notes = notes libres + contact (composition pour DESCRIPTION ICS)
-    const contactLines = [];
-    if (email.trim()) contactLines.push("Email : " + email.trim());
-    if (tel.trim())   contactLines.push("Tél : " + tel.trim());
-    const fullNotes = [notes.trim(), ...contactLines].filter(Boolean).join("\n");
+    if (!(prenom.trim() || nom.trim())) return;
+
+    // Champs structurés encodés dans DESCRIPTION avec marqueurs préfixés
+    const structuredLines = [];
+    if (rue.trim())   structuredLines.push("Rue: " + rue.trim());
+    if (cp.trim())    structuredLines.push("CP: " + cp.trim());
+    if (ville.trim()) structuredLines.push("Ville: " + ville.trim());
+    if (tel.trim())   structuredLines.push("Tél: " + tel.trim());
+    if (email.trim()) structuredLines.push("Email: " + email.trim());
+
+    // DESCRIPTION = notes libres + séparateur + champs structurés
+    const parts = [];
+    if (notes.trim()) parts.push(notes.trim());
+    if (structuredLines.length > 0) parts.push("---\n" + structuredLines.join("\n"));
+    const fullNotes = parts.join("\n");
+
     onSave({
-      title:[prenom.trim(), nom.trim()].filter(Boolean).join(" "), allDay,
-      startDate, startTime:allDay?null:startTime, endDate, endTime:allDay?null:endTime,
-      calHref, location:composedLoc, notes:fullNotes, rrule, editMode, status,
-      // champs structurés conservés en cache local
+      title: [prenom.trim(), nom.trim()].filter(Boolean).join(" "), allDay,
+      startDate, startTime: allDay ? null : startTime, endDate, endTime: allDay ? null : endTime,
+      calHref, location: composedLoc, notes: fullNotes, rrule, editMode, status,
+      // champs structurés conservés en cache local (pour réouverture immédiate sans aller-retour iCloud)
       rue, cp, ville, email, tel,
     });
   }

@@ -72,6 +72,21 @@ export function parseICS(ics, href, calHref, calColor, calName) {
   const dtend    = get("DTEND");
   const loc      = get("LOCATION") || "";
   const desc     = get("DESCRIPTION") || "";
+
+  // ── Extraction champs structurés depuis DESCRIPTION ───────────────────────
+  const extractField = (label) => {
+    const match = desc.match(new RegExp("^" + label + ":\\s*(.+)$", "m"));
+    return match ? match[1].trim() : "";
+  };
+  const structRue   = extractField("Rue");
+  const structCp    = extractField("CP");
+  const structVille = extractField("Ville");
+  const structTel   = extractField("Tél");
+  const structEmail = extractField("Email");
+
+  // Notes libres = tout ce qui est avant le séparateur "---"
+  const notesLibres = desc.split(/\n---\n/)[0].replace(/\\n/g, "\n").trim();
+
   const rrule    = get("RRULE") || "";
   const status   = get("STATUS") || "CONFIRMED";
 
@@ -124,7 +139,12 @@ export function parseICS(ics, href, calHref, calColor, calName) {
     endDate:   allDay ? (typeof end === "string" ? end : end?.date) : (typeof end === "object" ? end?.date : null),
     endTime:   allDay ? null : (typeof end === "object" ? end?.time : null),
     location: loc,
-    notes: desc.replace(/\\n/g, "\n"),
+    notes: notesLibres,
+    rue:   structRue,
+    cp:    structCp,
+    ville: structVille,
+    tel:   structTel,
+    email: structEmail,
     rrule, exdates,
     status: evStatus,
     type: "event",
