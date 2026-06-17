@@ -11,7 +11,7 @@ import NomadBook from "./components/NomadBook.jsx";
 import FeedbackButton from "./components/FeedbackButton.jsx";
 import EventForm from "./components/EventForm.jsx";
 import { checkCalendarExists, createCalendar, calendarDisplayName } from "./utils/caldavCalendar.js";
-import TaskDrawer from "./components/TaskDrawer.jsx";
+import NomadTask from "./components/NomadTask.jsx";
 import EventPopoverNew from "./components/EventPopover.jsx";
 import EventPopoverPaste from "./components/EventPopoverPaste.jsx";
 
@@ -799,7 +799,7 @@ onCopy={(ev) => {
         />
       )}
 
-      <TaskDrawer
+      <NomadTask
         tasks={tasks} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}
         swipeTaskId={swipeTaskId} setSwipeTaskId={setSwipeTaskId}
 onTaskClick={t=>{
