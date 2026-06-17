@@ -6,7 +6,8 @@ import {
   DeleteIcon,
   CalendarIcon,
   LocationIcon,
-  PendingIcon
+  PendingIcon,
+  PhoneIcon,
 } from "./icons";
 
 const POPOVER_W     = 260;
@@ -123,6 +124,22 @@ export default function EventPopover({
               <LocationIcon size={14} />
               <span>{ev.location}</span>
             </div>
+          )}
+          {ev.tel && (
+            <a
+              href={`tel:${ev.tel}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                color: C.accent,
+                textDecoration: "none",
+                fontSize: 12,
+              }}
+            >
+              <PhoneIcon size={14} color={C.accent} />
+              <span>{ev.tel}</span>
+            </a>
           )}
         </div>
 
