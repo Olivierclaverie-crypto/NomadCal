@@ -715,43 +715,54 @@ else {
                   const leftPct=(ev.col||0)*colW;
                   return(
                     <div key={ev.id+ev.col}
-                      onTouchStart={e=>{
-                        if(isTask) return;
-                        const rect=e.currentTarget.getBoundingClientRect();
-                        evPressFired.current=false;
-                        evPressTimer.current=setTimeout(()=>{
-                          evPressFired.current=true;
-                          setPopover({ev,x:rect.left+rect.width/2-90,y:rect.top-92});
-                        },450);
+                      onTouchStart={e => {
+                        if (isTask) return;
+                        evPressFired.current = false;
+                        // tap long réservé au futur drag & drop — ne déclenche plus le popover
+                        evPressTimer.current = setTimeout(() => {
+                          evPressFired.current = true;
+                          // TODO drag & drop : initialiser ici
+                        }, 450);
                       }}
                       onTouchMove={()=>{ if(evPressTimer.current){clearTimeout(evPressTimer.current);evPressTimer.current=null;} }}
-                      onTouchEnd={(e)=>{
-  if(evPressTimer.current){
-    clearTimeout(evPressTimer.current);
-    evPressTimer.current=null;
-  }
-
-  // ✅ tap court → popover
-  if(!evPressFired.current){
-    const touch = e.changedTouches[0];
-
-    setPopover({
-      ev,
-      x: touch.clientX,
-      y: touch.clientY
-    });
-  }
-
-  evPressFired.current = false;
-}}
+                      onTouchEnd={(e) => {
+                        if (evPressTimer.current) {
+                          clearTimeout(evPressTimer.current);
+                          evPressTimer.current = null;
+                        }
+                        // tap court → popover (tap long réservé au futur drag & drop)
+                        if (!evPressFired.current) {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setPopover({
+                            ev,
+                            eventRect: {
+                              top:    rect.top,
+                              bottom: rect.bottom,
+                              left:   rect.left,
+                              right:  rect.right,
+                              width:  rect.width,
+                              height: rect.height
+                            }
+                          });
+                        }
+                        evPressFired.current = false;
+                      }}
                       onClick={e=>{
                         e.stopPropagation();
                         if(evPressFired.current){evPressFired.current=false;return;}
-if(isTask){
-  setDrawerOpen(false);
-  return;
-}
-
+                        if(isTask){setDrawerOpen(false);return;}
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setPopover({
+                          ev,
+                          eventRect: {
+                            top:    rect.top,
+                            bottom: rect.bottom,
+                            left:   rect.left,
+                            right:  rect.right,
+                            width:  rect.width,
+                            height: rect.height
+                          }
+                        });
                       }}
                       style={{position:"absolute",top:y+1,left:`${leftPct+0.5}%`,width:`${colW-1}%`,height:h-2,background:isTask?(ev.done?C.green+"22":C.gold+"15"):"#fff",border:isTask?`2px solid ${evColor}`:`1px solid ${C.border}`,borderRadius:6,padding:isTask?"3px 4px":"3px 4px 3px 11px",cursor:"pointer",overflow:"hidden",opacity: ev.done ? 0.7 : 1,boxSizing:"border-box"}}>
                       {!isTask&&<div style={{position:"absolute",left:0,top:0,bottom:0,width:6,background:evColor}}/>}
@@ -771,7 +782,7 @@ if(isTask){
       </div>
 
       {popover&&(
-        <EventPopoverNew ev={popover.ev} position={{x:popover.x,y:popover.y}}
+        <EventPopoverNew ev={popover.ev} eventRect={popover.eventRect}
           onClose={()=>setPopover(null)}
 
 onCopy={(ev) => {
