@@ -1,7 +1,7 @@
-// ExpenseIcon — Frais (ORCHARD)
+// FeedIcon — Frais (ORCHARD)
 // Bloc-notes bleu #2B5A9E + reliure à pastilles or + pièce € (glyphe euro authentique)
-// Usage : <ExpenseIcon /> ou <ExpenseIcon size={24} />
-export default function ExpenseIcon({ size = 20, color = "#2B5A9E", accent = "#F5C97A", coin = "#fdf8ed", euro = "#7a4e0a" }) {
+// Usage : <FeedIcon /> ou <FeedIcon size={24} />
+export default function FeedIcon({ size = 20, color = "#2B5A9E", accent = "#F5C97A", coin = "#fdf8ed", euro = "#7a4e0a" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-label="Frais">
       {/* papier */}

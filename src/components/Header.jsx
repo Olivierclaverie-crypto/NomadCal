@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from '../utils/constants.js';
+import { FeedIcon } from "./icons";
 
 const IconSync = ({ color }) => (
   <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
@@ -238,7 +239,7 @@ export default function Header({
             boxShadow:`0 1px 3px ${C.accent}33`,
           }}
         >
-          €
+          <FeedIcon size={13} />
         </div>
       </div>
     );

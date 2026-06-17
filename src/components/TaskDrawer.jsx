@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { C, PRIORITY } from '../utils/constants.js';
+import { FeedIcon } from "./icons";
 
 // ── Icônes SVG ────────────────────────────────────────────────────────────────
 const IconNotes = ({ active=false }) => (
@@ -7,15 +8,6 @@ const IconNotes = ({ active=false }) => (
     <rect x="4" y="3" width="12" height="14" rx="1.5" stroke={active?"#fff":"currentColor"} strokeWidth="1.5"/>
     <path d="M7 7h6M7 10h6M7 13h4" stroke={active?"#fff":"currentColor"} strokeWidth="1.5" strokeLinecap="round"/>
     <path d="M12 13l3 3" stroke={active?"rgba(255,255,255,0.6)":"#F5C97A"} strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
-
-const IconFeed = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-    <path d="M6 7h8M6 10h5M6 13h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <circle cx="15" cy="13" r="3" fill="#F5C97A"/>
-    <path d="M14 13h2M15 12v2" stroke="#0F1D2B" strokeWidth="1" strokeLinecap="round"/>
   </svg>
 );
 
@@ -236,7 +228,7 @@ export default function TaskDrawer({
           {/* NomadFeed */}
           <button onClick={() => onOpenNomadFeed && onOpenNomadFeed()} style={{ ...tabStyle(null), opacity:.5 }}>
             <span style={{ color: C.accent }}>
-              <IconFeed/>
+              <FeedIcon size={20} />
             </span>
             Feed
           </button>
