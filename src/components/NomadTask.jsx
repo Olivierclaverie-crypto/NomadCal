@@ -28,7 +28,7 @@ const IconSuppr = () => (
   </svg>
 );
 
-export default function TaskDrawer({
+export default function NomadTask({
   tasks,
   drawerOpen,
   setDrawerOpen,
