@@ -647,40 +647,25 @@ return (
                   const relY=e.touches[0].clientY-rect.top;
                   const min=Math.round((relY/GRID_H)*GRID_TOTAL/30)*30;
                   const time=minutesToHHMM(Math.max(0,Math.min(GRID_END-30,min)));
-                  longPressFired.current=false;
-                  longPressTimer.current=setTimeout(()=>{
-                    longPressFired.current=true;
-                    setPulseCell({day,top:relY});
-                    setTimeout(()=>setPulseCell(null),350);
-                    if(clipboard){
-                      setPasteTarget({date:day,time}); // flux coller
-                    } else {
-                      setSlotPrefill({startDate:day,endDate:day,startTime:time,endTime:minutesToHHMM(Math.min(GRID_END,min+60))});
-                      setEditEv(null);
-                      setFormOpen(true);
-                    }
-                  },450);
+                  // Stocke la position pour onTouchEnd
+                  longPressTimer.current={relY,min,time};
                 }}
-                onTouchMove={()=>{ if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;} }}
-onTouchEnd={(e) => {
-  if(longPressTimer.current){
-    clearTimeout(longPressTimer.current);
-    longPressTimer.current = null;
-  }
-
-  // ✅ tap court → popover
-  if(!longPressFired.current){
-    const touch = e.changedTouches[0];
-
-    setPopover({
-      ev,
-      x: touch.clientX,
-      y: touch.clientY
-    });
-  }
-
-  longPressFired.current = false;
-}}
+                onTouchMove={()=>{ longPressTimer.current=null; }}
+                onTouchEnd={(e)=>{
+                  if(!longPressTimer.current) return; // annulé par un swipe
+                  const {relY,min,time}=longPressTimer.current;
+                  longPressTimer.current=null;
+                  // tap court → création ou coller
+                  setPulseCell({day,top:relY});
+                  setTimeout(()=>setPulseCell(null),350);
+                  if(clipboard){
+                    setPasteTarget({date:day,time});
+                  } else {
+                    setSlotPrefill({startDate:day,endDate:day,startTime:time,endTime:minutesToHHMM(Math.min(GRID_END,min+60))});
+                    setEditEv(null);
+                    setFormOpen(true);
+                  }
+                }}
 
                 
                 onClick={e=>{
