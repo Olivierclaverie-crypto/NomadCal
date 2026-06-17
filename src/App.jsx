@@ -226,60 +226,6 @@ function TaskForm({ initial, onSave, onCancel }) {
   );
 }
 
-function EventPopover_OLD({ ev, onCopy, onEdit, onDelete, onClose, position }) {
-  if (!ev || !position) return null;
-  const isPending = ev.status === "tentative";
-  const Item = ({label,icon,onClick,color}) => (
-    <button onClick={onClick} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"6px 12px",color,fontSize:11,fontWeight:700}}>
-      <span style={{fontSize:18}}>{icon}</span>{label}
-    </button>
-  );
-  return (
-    <>
-      <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:299}}/>
-      <div style={{position:"fixed",top:position.y,left:Math.min(Math.max(8,position.x),window.innerWidth-200),zIndex:300,background:C.surface,border:`1.5px solid ${isPending?"#F5A623":C.border}`,borderRadius:14,boxShadow:"0 6px 24px rgba(0,0,0,.2)",padding:"10px 8px",minWidth:190}}>
-        <div style={{fontSize:12,fontWeight:800,color:isPending?"#B8741A":C.ink,marginBottom:6,padding:"0 8px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:180}}>
-          {isPending&&<span style={{marginRight:4}}>🟠</span>}{ev.title}
-        </div>
-        <div style={{display:"flex",justifyContent:"space-around"}}>
-          <Item label="Copier"   icon="📋" onClick={onCopy}   color={C.accent}/>
-          <Item label="Modifier" icon="✎"  onClick={onEdit}   color={C.ink}/>
-          <Item label="Suppr."   icon="🗑"  onClick={onDelete} color={C.red}/>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function EventDetail({ ev, onEdit, onDelete, onCopy, onDone }) {
-  if (!ev) return null;
-  const isTask = ev.type === "task";
-  const isSynthese = false; // Synthèses supprimées
-  return (
-    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div style={{fontSize:20,fontWeight:800,color:C.ink,fontFamily:"Phenomena,sans-serif",lineHeight:1.3}}>{ev.title}</div>
-      {ev.status==="tentative"&&<div style={{fontSize:12,color:"#B8741A",background:"#FFF8ED",border:"1px solid #F5A623",borderRadius:8,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}>🟠 À confirmer</div>}
-      {ev.isRecurring&&<div style={{fontSize:12,color:C.accent,background:C.accentLight,border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}><svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M4 10a6 6 0 0110-4.5" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round"/><path d="M16 10a6 6 0 01-10 4.5" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/><path d="M14 3v3h-3" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 17v-3h3" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Événement récurrent</div>}
-      {ev.rrule&&!ev.isRecurring&&<div style={{fontSize:12,color:C.accent,background:C.accentLight,border:`1px solid ${C.accentBorder}`,borderRadius:8,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}><svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M4 10a6 6 0 0110-4.5" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round"/><path d="M16 10a6 6 0 01-10 4.5" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round"/><path d="M14 3v3h-3" stroke="#2B5A9E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 17v-3h3" stroke="#F5C97A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>{rruleToFr(ev.rrule)}</div>}
-      <div style={{fontSize:14,color:C.muted}}>
-        {ev.allDay?`📅 ${ev.startDate}${ev.endDate&&ev.endDate!==ev.startDate?` → ${ev.endDate}`:""}` : `📅 ${ev.startDate} · ${ev.startTime} → ${ev.endTime}`}
-      </div>
-      {isTask&&ev.effectiveDate&&<div style={{fontSize:13,color:C.muted}}>↻ Apparaît le {ev.effectiveDate}</div>}
-      {isTask&&ev.dueDate&&<div style={{fontSize:13,color:C.red}}>⚠ Échéance {ev.dueDate}</div>}
-      {ev.location&&<div style={{fontSize:14,color:C.muted}}>📍 {ev.location}</div>}
-      {ev.notes&&<div style={{fontSize:14,color:C.ink,lineHeight:1.65,whiteSpace:"pre-wrap",background:C.bg,borderRadius:10,padding:"10px 14px",border:`1px solid ${C.border}`}}>{ev.notes}</div>}
-      {!isSynthese&&<>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
-          <Btn onClick={onEdit} variant="soft" style={{flex:1}}>✎ Modifier</Btn>
-          <Btn onClick={onDelete} variant="danger" style={{flex:1}}>🗑 Supprimer</Btn>
-        </div>
-        {!isTask&&<Btn onClick={onCopy} variant="gold" style={{width:"100%",justifyContent:"center",display:"flex"}}>📋 Copier cet événement</Btn>}
-        {isTask&&!ev.done&&<Btn onClick={onDone} variant="outline" style={{width:"100%",color:C.green,borderColor:C.green}}>✓ Marquer comme terminée</Btn>}
-      </>}
-    </div>
-  );
-}
-
 export default function App() {
   // ── Auth — clé globale non préfixée ──────────────────────────────────────
   const [auth,setAuth] = useState(()=>load("cf_auth",null));

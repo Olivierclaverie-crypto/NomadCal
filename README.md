@@ -46,9 +46,7 @@ NomadCal/
 │   │
 │   ├── services/
 │   │   ├── syncService.js     runSync() : flushQueue → syncCalDAV (12 lignes)
-│   │   └── eventActions.js    helpers purs : copyEvent, updateEvent, deleteEventAction,
-│   │                          setConfirmed, setTentative — seul deleteEventAction
-│   │                          est utilisé (dans EventPopover)
+│   │   └── eventActions.js    deleteEventAction(ev) — utilisé dans EventPopover.jsx
 │   │
 │   └── utils/
 │       ├── caldav.js          ⚠️ CLIENT navigateur — caldavRequest(), parseCalendars(),
@@ -240,7 +238,7 @@ Résultat : un tap court sur une zone vide ouvre le popover avec `ev=undefined` 
 `src/utils/caldav.js` : `TENTATIVE` est mappé vers `"pending"` (ligne 116).  
 `App.jsx::pushEvent()` : vérifie `ev.status === "tentative"` pour émettre `STATUS:TENTATIVE`.  
 Un événement récupéré d'iCloud avec `status="pending"` sera réécrit `STATUS:CONFIRMED`.  
-De plus, les checks d'affichage (`isPending = ev.status === "tentative"` dans EventPopover.jsx l. 22 et EventDetail) ne détectent pas les events venant d'iCloud.  
+De plus, le check d'affichage (`isPending = ev.status === "tentative"` dans EventPopover.jsx l. 22) ne détecte pas les events venant d'iCloud.  
 **Correction** : unifier sur une seule valeur, par exemple `"tentative"` partout.
 
 ### 🔧 Mode édition récurrence non fonctionnel
@@ -258,10 +256,6 @@ L'`useEffect` (~l. 415, App.jsx) ouvre le lien `mailto:` via `window.location.hr
 ### ⚠️ Scroll initial à midi, pas à 8 h
 
 `GRID_DEFAULT_SCROLL = 12 * 60 = 720` dans `constants.js` → l'app s'ouvre positionnée sur **12 h**, pas 8 h.
-
-### Dead code dans App.jsx
-
-`EventPopover_OLD` (l. 229–252) et `EventDetail` (l. 254–281) sont définis mais jamais utilisés. `eventActions.js` exporte 5 helpers dont seul `deleteEventAction` est réellement appelé (dans `EventPopover.jsx`).
 
 ---
 
