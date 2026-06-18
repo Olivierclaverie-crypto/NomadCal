@@ -19,7 +19,7 @@ const IconSettings = () => (
 
 export default function Header({
   weekDays, syncing, syncOk, onSync, onSettings, onAddEvent,
-  clipboard, onClearClipboard, onToday, onGoToDate, onChangeView,
+  onToday, onGoToDate, onChangeView,
   onOpenFrais, currentView, fmtWeekRange, fmtDay, fmtDayNum, weekNum, today,
 }) {
   const [showViewMenu,   setShowViewMenu]   = useState(false);
@@ -108,12 +108,6 @@ export default function Header({
         </div>
       </div>
 
-      {clipboard && (
-        <div style={{ display:"flex", alignItems:"center", gap:8, background:C.goldLight, border:`1px solid ${C.gold}`, borderRadius:10, margin:"0 14px 8px", padding:"6px 12px" }}>
-          <span style={{ fontSize:12, color:C.goldDark, flex:1, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}><path d="M15 9V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7a2 2 0 002 2h3" stroke={C.goldDark} strokeWidth="1.6" strokeLinejoin="round"/><rect x="9" y="9" width="11" height="11" rx="2" stroke={C.goldDark} strokeWidth="1.6"/></svg>{clipboard.title} — Tap un créneau pour coller</span>
-          <button onClick={onClearClipboard} style={{ background:"none", border:"none", color:C.goldDark, cursor:"pointer", fontSize:16, padding:"0 4px", fontWeight:700 }}>✕</button>
-        </div>
-      )}
       {(<>
 
         {/* ── Ligne 2 — Sem XX | Mois Année ── */}
