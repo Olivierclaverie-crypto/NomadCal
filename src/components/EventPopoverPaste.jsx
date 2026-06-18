@@ -4,7 +4,7 @@ import { timeToMinutes, minutesToHHMM } from "../utils/helpers.js";
 import { CloseIcon, CheckIcon, PasteIcon } from "./icons";
 
 const POPOVER_W     = 240;
-const POPOVER_H_EST = 250;
+const POPOVER_H_EST = 310;
 const ARROW_SIZE    = 10;
 const ARROW_H       = 10;
 const MARGIN        = 8;
@@ -32,6 +32,7 @@ export default function EventPopoverPaste({
   onConfirm,
   onCancel,
   onGhostChange,
+  calendars = [],
 }) {
   if (!clipboard || !eventRect) return null;
 
@@ -41,20 +42,32 @@ export default function EventPopoverPaste({
   );
 
   const [startTime, setStartTime] = useState(targetTime);
+  const [endTime,   setEndTime]   = useState(minutesToHHMM(Math.min(1440, timeToMinutes(targetTime) + origDuration)));
+  const [calHref,   setCalHref]   = useState(clipboard.calHref || (calendars[0]?.href ?? ""));
   const [voletOpen, setVoletOpen] = useState(false);
-
-  const endTime = minutesToHHMM(Math.min(1440, timeToMinutes(startTime) + origDuration));
 
   // Met à jour le bloc fantôme en temps réel
   useEffect(() => {
     onGhostChange && onGhostChange({ date: targetDate, time: startTime, endTime });
     return () => { onGhostChange && onGhostChange(null); };
-  }, [startTime]);
+  }, [startTime, endTime]);
 
-  function stepTime(delta) {
+  function stepStart(delta) {
     if (navigator.vibrate) navigator.vibrate(20);
-    const newMin = Math.max(0, Math.min(1380, timeToMinutes(startTime) + delta * STEP_MIN));
-    setStartTime(minutesToHHMM(newMin));
+    const dur = timeToMinutes(endTime) - timeToMinutes(startTime);
+    const newStart = Math.max(0, Math.min(1380, timeToMinutes(startTime) + delta * STEP_MIN));
+    const newEnd   = Math.min(1440, newStart + Math.max(STEP_MIN, dur));
+    setStartTime(minutesToHHMM(newStart));
+    setEndTime(minutesToHHMM(newEnd));
+  }
+
+  function stepEnd(delta) {
+    if (navigator.vibrate) navigator.vibrate(20);
+    const newEnd = Math.max(
+      timeToMinutes(startTime) + STEP_MIN,
+      Math.min(1440, timeToMinutes(endTime) + delta * STEP_MIN)
+    );
+    setEndTime(minutesToHHMM(newEnd));
   }
 
   function handleCancel() {
@@ -67,10 +80,10 @@ export default function EventPopoverPaste({
 
   function handleConfirm() {
     onGhostChange && onGhostChange(null);
-    onConfirm({ startTime, endTime });
+    onConfirm({ startTime, endTime, calHref });
   }
 
-  // Positionnement smart (même logique EventPopover)
+  // Positionnement smart
   const screenW = window.innerWidth;
   const screenH = window.innerHeight;
   const goAbove = eventRect.top >= SPACE_NEEDED;
@@ -98,6 +111,8 @@ export default function EventPopoverPaste({
 
   const lbl = { fontSize: 9, color: C.muted, fontWeight: 700, width: 36, flexShrink: 0, textTransform: "uppercase", letterSpacing: 0.3 };
   const val = { flex: 1, fontSize: 12, fontWeight: 700, color: C.accent, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px" };
+
+  const selectedCal = calendars.find(c => c.href === calHref);
 
   return (
     <>
@@ -138,7 +153,7 @@ export default function EventPopoverPaste({
             <div style={{ fontSize: 11, color: C.accent, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{clipboard.title}</div>
           </div>
           <div style={{ fontSize: 9, fontWeight: 700, background: C.gold, color: C.ink, padding: "2px 6px", borderRadius: 5, flexShrink: 0 }}>
-            {fmtDuration(clipboard.startTime, clipboard.endTime)}
+            {fmtDuration(startTime, endTime)}
           </div>
         </div>
 
@@ -155,28 +170,50 @@ export default function EventPopoverPaste({
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={lbl}>Début</span>
             <div style={{ flex: 1, display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
-              <button onClick={() => stepTime(-1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 16, color: C.accent, fontWeight: 800 }}>−</button>
+              <button onClick={() => stepStart(-1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 16, color: C.accent, fontWeight: 800 }}>−</button>
               <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 800, color: C.accent, borderLeft: `1px solid ${C.border}`, borderRight: `1px solid ${C.border}`, padding: "6px 0" }}>{startTime}</div>
-              <button onClick={() => stepTime(1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 16, color: C.accent, fontWeight: 800 }}>+</button>
+              <button onClick={() => stepStart(1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 16, color: C.accent, fontWeight: 800 }}>+</button>
             </div>
           </div>
 
-          {/* Fin calculée */}
+          {/* Fin stepper */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={lbl}>Fin</span>
-            <div style={{ ...val, color: C.muted, fontWeight: 500, fontSize: 11, background: C.bg, borderColor: "transparent" }}>
-              {endTime} · {fmtDuration(startTime, endTime)}
+            <div style={{ flex: 1, display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+              <button onClick={() => stepEnd(-1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 16, color: C.accent, fontWeight: 800 }}>−</button>
+              <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 800, color: C.accent, borderLeft: `1px solid ${C.border}`, borderRight: `1px solid ${C.border}`, padding: "6px 0" }}>{endTime}</div>
+              <button onClick={() => stepEnd(1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 16, color: C.accent, fontWeight: 800 }}>+</button>
             </div>
           </div>
 
-          {/* Calendrier */}
-          {clipboard.calName && (
+          {/* Calendrier — select si plusieurs */}
+          {calendars.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={lbl}>Cal.</span>
-              <div style={{ ...val, display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: clipboard.calColor || C.accent, flexShrink: 0 }} />
-                <span style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{clipboard.calName}</span>
-              </div>
+              {calendars.length === 1 ? (
+                <div style={{ ...val, display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: calendars[0].color || C.accent, flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{calendars[0].displayName}</span>
+                </div>
+              ) : (
+                <div style={{ flex: 1, position: "relative" }}>
+                  <div style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", width: 8, height: 8, borderRadius: "50%", background: selectedCal?.color || C.accent, pointerEvents: "none", zIndex: 1 }} />
+                  <select
+                    value={calHref}
+                    onChange={e => setCalHref(e.target.value)}
+                    style={{
+                      width: "100%", fontSize: 11, fontWeight: 700, color: C.accent,
+                      background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8,
+                      padding: "5px 9px 5px 22px", cursor: "pointer",
+                      fontFamily: "inherit", appearance: "none", WebkitAppearance: "none",
+                    }}
+                  >
+                    {calendars.map(c => (
+                      <option key={c.href} value={c.href}>{c.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -184,10 +221,10 @@ export default function EventPopoverPaste({
         {/* Actions */}
         <div style={{ display: "flex", borderTop: `1px solid ${C.border}` }}>
           <button onClick={handleCancel} style={{ flex: 1, padding: "10px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 800, color: C.red, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRight: `1px solid ${C.border}`, fontFamily: "inherit" }}>
-            <CloseIcon size={14} /> Annuler
+            <CloseIcon size={20} /> Annuler
           </button>
           <button onClick={handleConfirm} style={{ flex: 1, padding: "10px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 800, color: C.accent, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
-            <CheckIcon size={14} /> Coller
+            <CheckIcon size={20} /> Coller
           </button>
         </div>
       </div>

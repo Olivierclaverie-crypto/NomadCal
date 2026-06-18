@@ -927,19 +927,29 @@ try {
     targetDate={pasteTarget.date}
     targetTime={pasteTarget.time}
     onGhostChange={setGhostSlot}
+    calendars={calendars}
     onCancel={()=>{ setGhostSlot(null); setPasteTarget(null); }}
-    onConfirm={({startTime,endTime})=>{
-      pushEvent({
-        title:clipboard.title, allDay:clipboard.allDay, status:clipboard.status,
-        calHref:clipboard.calHref, location:clipboard.location, notes:clipboard.notes,
-        rue:clipboard.rue, cp:clipboard.cp, ville:clipboard.ville, email:clipboard.email, tel:clipboard.tel,
-        startDate:pasteTarget.date, endDate:pasteTarget.date,
+    onConfirm={async ({startTime,endTime,calHref})=>{
+      const targetCalHref = calHref || clipboard.calHref;
+      const newEv = {
+        id: `calflow-${Date.now()}`,
+        title: clipboard.title, allDay: clipboard.allDay, status: clipboard.status,
+        calHref: targetCalHref,
+        calColor: calendars.find(c=>c.href===targetCalHref)?.color || C.accent,
+        calName:  calendars.find(c=>c.href===targetCalHref)?.displayName || "",
+        location: clipboard.location, email: clipboard.email, tel: clipboard.tel,
+        notes: clipboard.notes,
+        startDate: pasteTarget.date, endDate: pasteTarget.date,
         startTime, endTime,
-      }, auth);
+        type: "event",
+      };
+      setEvents(prev=>[...prev, newEv]);
       setGhostSlot(null);
       setClipboard(null);
       setPasteTarget(null);
       if (clipboardTimer.current) clearTimeout(clipboardTimer.current);
+      await pushEvent(newEv, auth);
+      await runSync({ auth, flushQueue, syncCalDAV });
     }}
   />
 )}
