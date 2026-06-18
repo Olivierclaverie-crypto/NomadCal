@@ -11,6 +11,7 @@ const [prenom,setPrenom] =
 
 const [nom,setNom] =
   useState(initialParts.slice(-1).join("") || "");
+const [entreprise,setEntreprise] = useState(initial?.entreprise||"");
   const [allDay,setAllDay]     = useState(initial?.allDay||false);
  const defaultStart = initial?.startTime || "09:00";
 
@@ -32,10 +33,7 @@ const [endDate,setED]   = useState(initial?.endDate || initial?.startDate || tod
 const [startTime,setST] = useState(defaultStart);
 const [endTime,setET]   = useState(computedEnd);
   const [calHref,setCal]       = useState(initial?.calHref||defaultCalHref||calendars[0]?.href||"");
-  // Champs ICS structurés
-  const [rue,setRue]           = useState(initial?.rue||initial?.location||"");
-  const [cp,setCp]             = useState(initial?.cp||"");
-  const [ville,setVille]       = useState(initial?.ville||"");
+  const [adresse,setAdresse]   = useState(initial?.adresse||initial?.location||"");
   const [email,setEmail]       = useState(initial?.email||"");
   const [tel,setTel]           = useState(initial?.tel||"");
   const [notes,setNotes]       = useState(initial?.notes||"");
@@ -45,8 +43,7 @@ const [endTime,setET]   = useState(computedEnd);
 
   const calColor = calendars.find(c=>c.href===calHref)?.color || C.accent;
 
-  // Adresse composée (pour LOCATION ICS + bouton Plans)
-  const composedLoc = [rue.trim(), [cp.trim(), ville.trim()].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const composedLoc = adresse.trim();
   const durMin = Math.max(0, timeToMinutes(endTime) - timeToMinutes(startTime));
   function applyDuration(mins){ setET(minutesToHHMM(Math.min(GRID_END, timeToMinutes(startTime)+mins))); }
   // S3 — fin impossible empêchée : déplacer le début garde la durée ; une fin ≤ début saute juste après
@@ -58,37 +55,29 @@ const hasContent =
   !!(
     prenom.trim() ||
     nom.trim() ||
-    rue.trim() ||
-    cp.trim() ||
-    ville.trim() ||
+    entreprise.trim() ||
+    adresse.trim() ||
     email.trim() ||
     tel.trim() ||
     notes.trim()
   );
 
   function save() {
-    if (!(prenom.trim() || nom.trim())) return;
+    if (!(prenom.trim() || nom.trim() || entreprise.trim())) return;
 
-    // Champs structurés encodés dans DESCRIPTION avec marqueurs préfixés
-    const structuredLines = [];
-    if (rue.trim())   structuredLines.push("Rue: " + rue.trim());
-    if (cp.trim())    structuredLines.push("CP: " + cp.trim());
-    if (ville.trim()) structuredLines.push("Ville: " + ville.trim());
-    if (tel.trim())   structuredLines.push("Tél: " + tel.trim());
-    if (email.trim()) structuredLines.push("Email: " + email.trim());
-
-    // DESCRIPTION = notes libres + séparateur + champs structurés
-    const parts = [];
-    if (notes.trim()) parts.push(notes.trim());
-    if (structuredLines.length > 0) parts.push("---\n" + structuredLines.join("\n"));
-    const fullNotes = parts.join("\n");
+    const title = [prenom.trim(), nom.trim(), entreprise.trim()].filter(Boolean).join(" ");
+    const fullNotes = notes.trim();
 
     onSave({
-      title: [prenom.trim(), nom.trim()].filter(Boolean).join(" "), allDay,
+      title, allDay,
       startDate, startTime: allDay ? null : startTime, endDate, endTime: allDay ? null : endTime,
-      calHref, location: composedLoc, notes: fullNotes, rrule, editMode, status,
-      // champs structurés conservés en cache local (pour réouverture immédiate sans aller-retour iCloud)
-      rue, cp, ville, email, tel,
+      calHref,
+      location: composedLoc,
+      email: email.trim(),
+      tel: tel.trim(),
+      notes: fullNotes,
+      rrule, editMode, status,
+      adresse: adresse.trim(), entreprise: entreprise.trim(),
     });
   }
 
@@ -155,6 +144,13 @@ const hasContent =
     }}
   />
 
+  <input
+    value={entreprise}
+    onChange={e=>setEntreprise(e.target.value)}
+    placeholder="Entreprise"
+    style={{ ...cellIn, ...div1, fontSize:17, fontWeight:700 }}
+  />
+
 </div>
 
 {/* LIEU & COORDONNÉES */}
@@ -162,12 +158,8 @@ const hasContent =
           <div style={secLbl}>Lieu &amp; coordonnées</div>
           <div style={card}>
             <div style={{position:"relative"}}>
-              <input value={rue} onChange={e=>setRue(e.target.value)} placeholder="Rue" style={{...cellIn,paddingRight:44}}/>
+              <input value={adresse} onChange={e=>setAdresse(e.target.value)} placeholder="Adresse complète" style={{...cellIn,paddingRight:44}}/>
               {composedLoc&&<button onClick={()=>{const a=encodeURIComponent(composedLoc);const w=confirm("OK = Plans Apple\nAnnuler = Waze/Google");if(w)window.open(`maps://?q=${a}`,"_blank");else{const g=confirm("OK = Waze\nAnnuler = Google Maps");if(g)window.open(`waze://?q=${a}&navigate=yes`,"_blank");else window.open(`https://maps.google.com/?q=${a}`,"_blank");}}} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",padding:0,lineHeight:0}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z" stroke={C.accent} strokeWidth="1.6" strokeLinejoin="round"/><circle cx="12" cy="10" r="2.4" stroke={C.accent} strokeWidth="1.6"/></svg></button>}
-            </div>
-            <div style={{display:"flex",...div1}}>
-              <input value={cp} onChange={e=>setCp(e.target.value)} placeholder="CP" inputMode="numeric" style={{...cellIn,flex:".5",borderRight:`1px solid ${C.border}`}}/>
-              <input value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville" style={{...cellIn,flex:"1"}}/>
             </div>
             <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" inputMode="email" style={{...cellIn,...div1}}/>
             <input value={tel} onChange={e=>setTel(e.target.value)} placeholder="Téléphone" inputMode="tel" style={{...cellIn,...div1}}/>

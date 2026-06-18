@@ -112,6 +112,8 @@ const uid = ev.id || `calflow-${Date.now()}@nomadcal`;
     icsStatus,
     ev.rrule&&!ev.isRecurring?`RRULE:${ev.rrule}`:"",
     ev.location?`LOCATION:${ev.location}`:"",
+    ev.email?`URL:mailto:${ev.email}`:"",
+    ev.tel?`CONTACT:${ev.tel}`:"",
     ev.notes?`DESCRIPTION:${ev.notes.replace(/\n/g,"\\n")}`:"",
     "END:VEVENT",
     "END:VCALENDAR"
