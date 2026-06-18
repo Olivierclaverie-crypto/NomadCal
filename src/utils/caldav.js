@@ -71,23 +71,29 @@ export function parseICS(ics, href, calHref, calColor, calName) {
   const dtstart  = get("DTSTART");
   const dtend    = get("DTEND");
   const loc      = get("LOCATION") || "";
-  const desc     = get("DESCRIPTION") || "";
-
-  // ── Normalise les \n littéraux iCloud → vrais sauts de ligne ──────────────
+  const desc = get("DESCRIPTION") || "";
   const descNorm = desc.replace(/\\n/g, "\n");
 
-  // ── Extraction champs structurés depuis DESCRIPTION ───────────────────────
+  // Email depuis URL:mailto: (nouveau modèle) avec fallback ancien marqueur
+  const urlField = get("URL") || "";
+  const emailFromUrl = urlField.startsWith("mailto:") ? urlField.slice(7).trim() : "";
+
+  // Téléphone depuis CONTACT (nouveau modèle) avec fallback ancien marqueur
+  const contactField = get("CONTACT") || "";
+
+  // ── Compat descendante : anciens events avec marqueurs DESCRIPTION ─────────
   const extractField = (label) => {
     const match = descNorm.match(new RegExp("^" + label + ":\\s*(.+)$", "m"));
     return match ? match[1].trim() : "";
   };
-  const structRue   = extractField("Rue");
-  const structCp    = extractField("CP");
-  const structVille = extractField("Ville");
-  const structTel   = extractField("Tél");
-  const structEmail = extractField("Email");
+  const legacyTel   = extractField("Tél");
+  const legacyEmail = extractField("Email");
 
-  // Notes libres = tout ce qui est avant le séparateur "---"
+  // Valeurs finales : nouveau modèle prioritaire, fallback ancien
+  const finalEmail = emailFromUrl || legacyEmail;
+  const finalTel   = contactField || legacyTel;
+
+  // Notes : si anciens marqueurs présents, couper avant "---"
   const notesLibres = descNorm.split(/\n---\n/)[0].trim();
 
   const rrule    = get("RRULE") || "";
@@ -131,7 +137,7 @@ export function parseICS(ics, href, calHref, calColor, calName) {
 
   // ── Statut événement → emoji sobre ────────────────────────────────────────
   const evStatus = status.toUpperCase() === "CANCELLED" ? "cancelled"
-    : status.toUpperCase() === "TENTATIVE" ? "pending"
+    : status.toUpperCase() === "TENTATIVE" ? "tentative"
     : "confirmed";
 
   return {
@@ -142,12 +148,10 @@ export function parseICS(ics, href, calHref, calColor, calName) {
     endDate:   allDay ? (typeof end === "string" ? end : end?.date) : (typeof end === "object" ? end?.date : null),
     endTime:   allDay ? null : (typeof end === "object" ? end?.time : null),
     location: loc,
+    adresse: loc,
+    email: finalEmail,
+    tel: finalTel,
     notes: notesLibres,
-    rue:   structRue,
-    cp:    structCp,
-    ville: structVille,
-    tel:   structTel,
-    email: structEmail,
     rrule, exdates,
     status: evStatus,
     type: "event",
