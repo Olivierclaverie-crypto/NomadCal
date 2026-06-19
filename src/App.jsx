@@ -2,7 +2,7 @@ import { runSync } from "./services/syncService.js";
 import { loadQueue, saveQueue, enqueueWrite, pushEvent, deleteEvent } from "./sync/index.js";
 import { useState, useEffect, useRef } from "react";
 import { C, PRIORITY, GRID_START, GRID_END, GRID_TOTAL, SLOT_H, GRID_H, GRID_DEFAULT_SCROLL, RECURRENCE_OPTIONS } from "./utils/constants.js";
-import { load, save, toISO, todayISO, getWeekStart, getWeekDays, fmtDay, fmtDayNum, fmtWeekRange, timeToMinutes, minutesToHHMM, timeToY, durationToH, slideTasksToToday, rruleToFr, makeAuthHeader } from "./utils/helpers.js";
+import { load, save, toISO, todayISO, getWeekStart, getWeekDays, fmtDay, fmtDayNum, fmtWeekRange, timeToMinutes, minutesToHHMM, timeToY, durationToH, slideTasksToToday, rruleToFr, makeAuthHeader, userPrefix, uKey } from "./utils/helpers.js";
 import { caldavRequest, parseCalendars, parseEvents, expandRecurring } from "./utils/caldav.js";
 import Modal, { Btn } from "./components/Modal.jsx";
 import Header from "./components/Header.jsx";
@@ -18,27 +18,7 @@ import EventPopoverPaste from "./components/EventPopoverPaste.jsx";
 
 const USER_PLAN = "free";
 
-// ── Préfixage clés localStorage par user ──────────────────────────────────────
-// Format : nompartie@email + JJMMAAAA de 1ère connexion → ex: olivierclaverie31052026_
-function userPrefix(email) {
-  if (!email) return "";
-  const name = email.split("@")[0].replace(/[^a-z0-9]/gi,"").toLowerCase();
-  const storageKey = "user_created_" + name;
-  let date = localStorage.getItem(storageKey);
-  if (!date) {
-    const now = new Date();
-    date = String(now.getDate()).padStart(2,"0")
-         + String(now.getMonth()+1).padStart(2,"0")
-         + now.getFullYear();
-    localStorage.setItem(storageKey, date);
-  }
-  return name + date + "_";
-}
-function uKey(email, key) {
-  // cf_auth n'est jamais préfixé — clé globale de session
-  if (key === "cf_auth") return key;
-  return userPrefix(email) + key;
-}
+
 
 // ── Migration automatique anciennes clés → clés préfixées ─────────────────────
 // S'exécute silencieusement au 1er démarrage après MAJ — aucune action user requise
@@ -742,11 +722,12 @@ onTaskClick={t=>{
         <EventForm initial={editEv||slotPrefill} calendars={calendars} defaultCalHref={settings.defaultCalHref} saving={saving} onCancel={()=>{setFormOpen(false);setEditEv(null);setSlotPrefill(null);}} onSave={async ev=>{
   if(saving) return;
   setSaving(true);
+const newId = editEv?.id || `calflow-${Date.now()}`;
 const newEv = {
   ...(editEv || {}),
   ...ev,
-  id: editEv?.id || `calflow-${Date.now()}`,
-  href: editEv?.href,
+  id: newId,
+  href: editEv?.href || (ev.calHref + newId + ".ics"),
   calColor: calendars.find(c => c.href === ev.calHref)?.color || C.accent,
   calName: calendars.find(c => c.href === ev.calHref)?.displayName || "",
   type: "event"
@@ -847,8 +828,10 @@ try {
     onCancel={()=>{ setGhostSlot(null); setPasteTarget(null); }}
     onConfirm={async ({startTime,endTime,calHref})=>{
       const targetCalHref = calHref || clipboard.calHref;
+      const pasteId = `calflow-${Date.now()}`;
       const newEv = {
-        id: `calflow-${Date.now()}`,
+        id: pasteId,
+        href: targetCalHref + pasteId + ".ics",
         title: clipboard.title, allDay: clipboard.allDay, status: clipboard.status,
         calHref: targetCalHref,
         calColor: calendars.find(c=>c.href===targetCalHref)?.color || C.accent,

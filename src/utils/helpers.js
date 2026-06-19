@@ -105,3 +105,25 @@ export function rruleToFr(rrule) {
 export function makeAuthHeader(email, appPassword) {
   return "Basic " + btoa(`${email}:${appPassword}`);
 }
+
+// ── Préfixage clés localStorage par user ─────────────────────────────────────
+// Format : nom@email + JJMMAAAA de 1ère connexion → ex: olivierclaverie31052026_
+export function userPrefix(email) {
+  if (!email) return "";
+  const name = email.split("@")[0].replace(/[^a-z0-9]/gi,"").toLowerCase();
+  const storageKey = "user_created_" + name;
+  let date = localStorage.getItem(storageKey);
+  if (!date) {
+    const now = new Date();
+    date = String(now.getDate()).padStart(2,"0")
+         + String(now.getMonth()+1).padStart(2,"0")
+         + now.getFullYear();
+    localStorage.setItem(storageKey, date);
+  }
+  return name + date + "_";
+}
+
+export function uKey(email, key) {
+  if (key === "cf_auth") return key;
+  return userPrefix(email) + key;
+}
