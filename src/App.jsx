@@ -1,5 +1,5 @@
 import { runSync } from "./services/syncService.js";
-import { loadQueue, saveQueue, enqueueWrite, pushEvent, deleteEvent } from "./sync/index.js";
+import { loadQueue, saveQueue, enqueueWrite, pushEvent, deleteEvent, mergeEvents } from "./sync/index.js";
 import { useState, useEffect, useRef } from "react";
 import { C, PRIORITY, GRID_START, GRID_END, GRID_TOTAL, SLOT_H, GRID_H, GRID_DEFAULT_SCROLL, RECURRENCE_OPTIONS } from "./utils/constants.js";
 import { load, save, toISO, todayISO, getWeekStart, getWeekDays, fmtDay, fmtDayNum, fmtWeekRange, timeToMinutes, minutesToHHMM, timeToY, durationToH, slideTasksToToday, rruleToFr, makeAuthHeader, userPrefix, uKey } from "./utils/helpers.js";
@@ -340,7 +340,12 @@ Page : ${f.page}
         // ── GARDE-FOU : re-téléchargement vide alors qu'on avait des events ici ? On garde. ──
         const hadEvents = prev.some(e => e.calHref === calHref && !e.id?.startsWith("done-"));
         if(freshEvs.length === 0 && hadEvents) return prev;
-        const otherCals = prev.filter(e => e.calHref !== calHref || e.id?.startsWith("done-"));
+        const freshIds = new Set(freshEvs.map(e => e.id));
+        const otherCals = prev.filter(e =>
+          e.calHref !== calHref ||
+          e.id?.startsWith("done-") ||
+          (e._pending === true && !freshIds.has(e.id))
+        );
         const merged = [...otherCals, ...freshEvs];
         save(uKey(email,"cf_events"), merged);
         return merged;
@@ -382,9 +387,8 @@ Page : ${f.page}
       // Les events calflow- qui ne sont plus dans iCloud sont supprimés → pas de résurrection !
       // ── GARDE-FOU 2 : synchro revenue sans aucun event ? On garde le cache. ──
       if(allEvents.length===0 && events.length>0){ setSyncOk(true); setSyncing(false); return; }
-      // ── Tâches terminées : lues depuis le cache FRAIS, jamais une photo périmée ──
-      const localOnly = load(uKey(email,"cf_events"),[]).filter(e => e.id?.startsWith("done-"));
-      const merged = [...allEvents, ...localOnly];
+      const localEvents = load(uKey(email,"cf_events"),[]);
+      const merged = mergeEvents(allEvents, localEvents);
       setEvents(merged); save(uKey(email,"cf_events"),merged);
       setSyncOk(true);
     }catch(e){ setSyncOk(false); }
@@ -730,7 +734,8 @@ const newEv = {
   href: editEv?.href || (ev.calHref + newId + ".ics"),
   calColor: calendars.find(c => c.href === ev.calHref)?.color || C.accent,
   calName: calendars.find(c => c.href === ev.calHref)?.displayName || "",
-  type: "event"
+  type: "event",
+  ...(editEv ? {} : { _pending: true }),
 };
 
   setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]);
@@ -841,6 +846,7 @@ try {
         startDate: pasteTarget.date, endDate: pasteTarget.date,
         startTime, endTime,
         type: "event",
+        _pending: true,
       };
       setEvents(prev=>[...prev, newEv]);
       setGhostSlot(null);
