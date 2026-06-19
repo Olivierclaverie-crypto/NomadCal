@@ -1,5 +1,5 @@
 import { caldavRequest } from "../utils/caldav.js";
-import { makeAuthHeader } from "../utils/helpers.js";
+import { makeAuthHeader, userPrefix } from "../utils/helpers.js";
 import { enqueueWrite } from "./pendingQueue.js";
 
 export async function pushEvent(ev, auth, invalidateCache=true, queueable=true) {
@@ -54,9 +54,9 @@ const path = ev.href || (ev.calHref + uid + ".ics");
   }
 
   // ── Cache invalidation — force sync fraîche après chaque write ────────────
-  if (invalidateCache) {
-    const cacheKey = Object.keys(localStorage).find(k => k.endsWith("_cf_events"));
-    if (cacheKey) localStorage.removeItem(cacheKey);
+  if (invalidateCache && auth.email) {
+    const prefix = userPrefix(auth.email);
+    if (prefix) localStorage.removeItem(prefix + "cf_events");
   }
 }
 
