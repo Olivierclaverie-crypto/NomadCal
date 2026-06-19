@@ -1,4 +1,5 @@
 import { runSync } from "./services/syncService.js";
+import { loadQueue, saveQueue, enqueueWrite, pushEvent, deleteEvent } from "./sync/index.js";
 import { useState, useEffect, useRef } from "react";
 import { C, PRIORITY, GRID_START, GRID_END, GRID_TOTAL, SLOT_H, GRID_H, GRID_DEFAULT_SCROLL, RECURRENCE_OPTIONS } from "./utils/constants.js";
 import { load, save, toISO, todayISO, getWeekStart, getWeekDays, fmtDay, fmtDayNum, fmtWeekRange, timeToMinutes, minutesToHHMM, timeToY, durationToH, slideTasksToToday, rruleToFr, makeAuthHeader } from "./utils/helpers.js";
@@ -55,15 +56,6 @@ function migrateOldKeys(email) {
   });
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// BOÎTE D'ENVOI — file d'attente des écritures faites hors-ligne.
-// Une écriture impossible faute de réseau est rangée ici, puis rejouée
-// automatiquement au retour du réseau (onOnline + au démarrage).
-// ════════════════════════════════════════════════════════════════════════
-function loadQueue(email){ try{ return JSON.parse(localStorage.getItem(`${email}_cf_pending`)||"[]"); }catch{ return []; } }
-function saveQueue(email,q){ try{ localStorage.setItem(`${email}_cf_pending`, JSON.stringify(q)); }catch{} }
-function enqueueWrite(email,entry){ const q=loadQueue(email); q.push({...entry, ts:Date.now()}); saveQueue(email,q); }
-
 async function flushQueue(auth){
   if(!auth || !navigator.onLine) return;
   const q = loadQueue(auth.email);
@@ -76,82 +68,6 @@ async function flushQueue(auth){
     }catch(e){ remaining.push(item); }   // échec → on garde pour la prochaine tentative
   }
   saveQueue(auth.email, remaining);
-}
-
-async function pushEvent(ev, auth, invalidateCache=true, queueable=true) {
-  if (!auth || !ev.calHref) return;
-const uid = ev.id || `calflow-${Date.now()}@nomadcal`;
-  const allDay = ev.allDay;
-  const fmt = s => s ? s.replace(/-/g, "") : "";
-
-  // ── TZID=Europe/Paris — RFC 5545 correct ──────────────────────────────────
-  const dtstart = allDay
-    ? `DTSTART;VALUE=DATE:${fmt(ev.startDate)}`
-    : `DTSTART;TZID=Europe/Paris:${fmt(ev.startDate)}T${(ev.startTime||"09:00").replace(":","")+"00"}`;
-  const dtend = allDay
-    ? `DTEND;VALUE=DATE:${fmt(ev.endDate||ev.startDate)}`
-    : `DTEND;TZID=Europe/Paris:${fmt(ev.endDate||ev.startDate)}T${(ev.endTime||"10:00").replace(":","")+"00"}`;
-
-  // ── STATUS ICS — RFC 5545 ─────────────────────────────────────────────────
-  const icsStatus = ev.status === "tentative" ? "STATUS:TENTATIVE"
-    : ev.status === "cancelled" ? "STATUS:CANCELLED"
-    : "STATUS:CONFIRMED";
-
-  const ics = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//NomadCal//FR",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
-    "BEGIN:VEVENT",
-    `UID:${uid}`,
-    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g,"").slice(0,15)}Z`,
-    dtstart,
-    dtend,
-    `SUMMARY:${ev.title}`,
-    icsStatus,
-    ev.rrule&&!ev.isRecurring?`RRULE:${ev.rrule}`:"",
-    ev.location?`LOCATION:${ev.location}`:"",
-    ev.email?`URL:mailto:${ev.email}`:"",
-    ev.tel?`CONTACT:${ev.tel}`:"",
-    ev.notes?`DESCRIPTION:${ev.notes.replace(/\n/g,"\\n")}`:"",
-    "END:VEVENT",
-    "END:VCALENDAR"
-  ].filter(Boolean).join("\r\n");
-
-const path = ev.href || (ev.calHref + uid + ".ics");
-  // ── BOÎTE D'ENVOI : hors-ligne → on range l'écriture au lieu de la perdre ──
-  if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return; }
-  try {
-    await caldavRequest("PUT", path, makeAuthHeader(auth.email, auth.appPassword), ics, {"Content-Type":"text/calendar; charset=utf-8"});
-  } catch(e) {
-    if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return; }
-    throw e;
-  }
-
-  // ── Cache invalidation — force sync fraîche après chaque write ────────────
-  if (invalidateCache) {
-    const cacheKey = Object.keys(localStorage).find(k => k.endsWith("_cf_events"));
-    if (cacheKey) localStorage.removeItem(cacheKey);
-  }
-}
-
-async function deleteEvent(ev, auth, queueable=true) {
-  if (!auth) return;
-  // Si pas de href local → cherche le vrai href via UID dans iCloud
-  // Le syncCalDAV() après cette fonction récupère l'état réel
-  if (!ev.href) {
-    console.warn("[deleteEvent] Pas de href pour:", ev.id, "— sync forcée");
-    return; // syncCalDAV() après va nettoyer
-  }
-  // ── BOÎTE D'ENVOI : hors-ligne → on range la suppression au lieu de la perdre ──
-  if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"delete", ev}); return; }
-  try {
-    await caldavRequest("DELETE", ev.href, makeAuthHeader(auth.email, auth.appPassword));
-  } catch(e) {
-    if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"delete", ev}); return; }
-    throw e;
-  }
 }
 
 function layoutEvents(dayEvs) {
