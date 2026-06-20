@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { C, GRID_END, RECURRENCE_OPTIONS } from "../utils/constants.js";
 import { todayISO, timeToMinutes, minutesToHHMM } from "../utils/helpers.js";
+import { CancelIcon, ConfirmIcon } from "./icons";
 
 export default function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, saving=false }) {
   const [title,setTitle]       = useState(initial?.title||"");
@@ -104,11 +105,11 @@ const hasContent =
         background:C.bg,borderBottom:`1px solid ${C.border}`,
       }}>
         <button onClick={onCancel} aria-label="Annuler" style={{...navBtn,background:hasContent?"#fbeae8":"transparent"}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke={hasContent?C.red:C.muted} strokeWidth="2.2" strokeLinecap="round"/></svg>
+          <CancelIcon size={16} color={hasContent ? C.red : C.muted} />
         </button>
         <span style={{fontSize:16,fontWeight:800,color:C.ink,letterSpacing:.3,fontFamily:"Phenomena, sans-serif"}}>{initial?"Modifier l'événement":"Nouvel événement"}</span>
         <button onClick={save} disabled={saving} aria-label="Enregistrer" style={{...navBtn,background:hasContent?"#e8f3ec":"transparent",opacity:saving?.5:1}}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7" stroke={hasContent?C.green:C.muted} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <ConfirmIcon size={18} color={hasContent ? C.green : C.muted} />
         </button>
       </div>
 

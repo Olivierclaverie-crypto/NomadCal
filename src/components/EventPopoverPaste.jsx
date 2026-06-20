@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { C } from "../utils/constants.js";
 import { timeToMinutes, minutesToHHMM } from "../utils/helpers.js";
-import { CloseIcon, CheckIcon, PasteIcon } from "./icons";
+import { CancelIcon, ConfirmIcon, PasteIcon } from "./icons";
 
 const POPOVER_W     = 240;
 const POPOVER_H_EST = 310;
@@ -221,10 +221,10 @@ export default function EventPopoverPaste({
         {/* Actions */}
         <div style={{ display: "flex", borderTop: `1px solid ${C.border}` }}>
           <button onClick={handleCancel} style={{ flex: 1, padding: "10px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 800, color: C.red, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRight: `1px solid ${C.border}`, fontFamily: "inherit" }}>
-            <CloseIcon size={20} /> Annuler
+            <CancelIcon size={20} color={C.red} /> Annuler
           </button>
           <button onClick={handleConfirm} style={{ flex: 1, padding: "10px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 800, color: C.accent, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
-            <CheckIcon size={20} /> Coller
+            <ConfirmIcon size={20} color={C.accent} /> Coller
           </button>
         </div>
       </div>
