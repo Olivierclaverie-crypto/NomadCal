@@ -2,6 +2,7 @@ import { useState } from "react";
 import { C, GRID_END, RECURRENCE_OPTIONS } from "../utils/constants.js";
 import { todayISO, timeToMinutes, minutesToHHMM } from "../utils/helpers.js";
 import { CancelIcon, ConfirmIcon } from "./icons";
+import WheelSelect from "./WheelSelect.jsx";
 
 export default function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, saving=false }) {
   const [title,setTitle]       = useState(initial?.title||"");
@@ -177,41 +178,52 @@ const hasContent =
             </div>
             {!allDay ? (
               <>
-<div style={{...rowR,...div1}}>
-  <span style={{fontSize:15,color:C.ink}}>Date</span>
-
-  <button
-    onClick={() => {
-      const next = prompt("Date (AAAA-MM-JJ)", startDate);
-
-      if (!next) return;
-
-      setSD(next);
-      setED(next);
-    }}
-    style={{
-      marginLeft:"auto",
-      border:"none",
-      background:"transparent",
-      color:C.accent,
-      fontSize:15,
-      fontFamily:"inherit",
-      fontWeight:600,
-      cursor:"pointer"
-    }}
-  >
-    {startDate}
-  </button>
-</div>                <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Début</span><input type="time" value={startTime} onChange={e=>changeStart(e.target.value)} style={valIn}/></div>
-                <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Fin</span><input type="time" value={endTime} min={startTime} onChange={e=>changeEnd(e.target.value)} style={valIn}/></div>
+                <div style={{...div1, padding:"8px 12px 4px"}}>
+                  <div style={{fontSize:11,color:C.muted,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Date</div>
+                  <WheelSelect
+                    wheels={['day','month','year']}
+                    value={{ day:startDate.split('-')[2], month:startDate.split('-')[1], year:startDate.split('-')[0] }}
+                    onChange={v => { const d=`${v.year}-${v.month}-${v.day}`; setSD(d); setED(d); }}
+                  />
+                </div>
+                <div style={{...div1, padding:"8px 12px 4px"}}>
+                  <div style={{fontSize:11,color:C.muted,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Début</div>
+                  <WheelSelect
+                    wheels={['hh','mm']}
+                    value={{ hh:startTime.split(':')[0], mm:String(Math.min(55,Math.round(parseInt(startTime.split(':')[1]||0)/5)*5)).padStart(2,'0') }}
+                    onChange={v => changeStart(`${v.hh}:${v.mm}`)}
+                  />
+                </div>
+                <div style={{...div1, padding:"8px 12px 4px"}}>
+                  <div style={{fontSize:11,color:C.muted,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Fin</div>
+                  <WheelSelect
+                    wheels={['hh','mm']}
+                    value={{ hh:endTime.split(':')[0], mm:String(Math.min(55,Math.round(parseInt(endTime.split(':')[1]||0)/5)*5)).padStart(2,'0') }}
+                    onChange={v => changeEnd(`${v.hh}:${v.mm}`)}
+                  />
+                </div>
                 <div style={{display:"flex",gap:6,padding:"10px 12px",...div1}}>
                   {DURATIONS.map(([lbl,mins])=>{const active=durMin===mins;return (<button key={mins} onClick={()=>applyDuration(mins)} style={{flex:1,padding:"7px 2px",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,border:`1.5px solid ${active?C.gold:C.border}`,background:active?C.goldLight:"transparent",color:active?C.goldDark:C.muted}}>{lbl}</button>);})}
                 </div>
               </>
             ) : (
               <>
-                <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Du</span><input type="date" value={startDate} onChange={e=>setSD(e.target.value)} style={valIn}/></div>
-                <div style={{...rowR,...div1}}><span style={{fontSize:15,color:C.ink}}>Au</span><input type="date" value={endDate} onChange={e=>setED(e.target.value)} style={valIn}/></div>
+                <div style={{...div1, padding:"8px 12px 4px"}}>
+                  <div style={{fontSize:11,color:C.muted,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Du</div>
+                  <WheelSelect
+                    wheels={['day','month','year']}
+                    value={{ day:startDate.split('-')[2], month:startDate.split('-')[1], year:startDate.split('-')[0] }}
+                    onChange={v => setSD(`${v.year}-${v.month}-${v.day}`)}
+                  />
+                </div>
+                <div style={{...div1, padding:"8px 12px 4px"}}>
+                  <div style={{fontSize:11,color:C.muted,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Au</div>
+                  <WheelSelect
+                    wheels={['day','month','year']}
+                    value={{ day:endDate.split('-')[2], month:endDate.split('-')[1], year:endDate.split('-')[0] }}
+                    onChange={v => setED(`${v.year}-${v.month}-${v.day}`)}
+                  />
+                </div>
               </>
             )}
           </div>
