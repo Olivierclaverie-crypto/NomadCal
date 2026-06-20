@@ -45,7 +45,7 @@ const uid = ev.id || `calflow-${Date.now()}@nomadcal`;
 
 const path = ev.href || (ev.calHref + uid + ".ics");
   // ── BOÎTE D'ENVOI : hors-ligne → on range l'écriture au lieu de la perdre ──
-  if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return; }
+  if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return { ok: false }; }
   try {
     const resp = await caldavRequest("PUT", path, makeAuthHeader(auth.email, auth.appPassword), ics, {"Content-Type":"text/calendar; charset=utf-8"});
     const ok = resp && resp.status >= 200 && resp.status < 300;
@@ -59,9 +59,13 @@ const path = ev.href || (ev.calHref + uid + ".ics");
     }
     if (!ok) {
       console.error(`[pushEvent] PUT status=${resp?.status} path=${path}`, resp?.text?.slice(0, 200));
+      // 401 = rejet d'auth réel, pas la peine de réessayer
+      const is401 = resp?.status === 401;
+      if (queueable && !is401) enqueueWrite(auth.email, {op:"put", ev});
+      return { ok: false, status: resp?.status };
     }
   } catch(e) {
-    if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return; }
+    if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return { ok: false }; }
     if (typeof window !== "undefined" && window.__showToast && window.__debugToast) {
       window.__showToast({
         type: "error",
@@ -73,11 +77,12 @@ const path = ev.href || (ev.calHref + uid + ".ics");
     throw e;
   }
 
-  // ── Cache invalidation — force sync fraîche après chaque write ────────────
+  // ── Cache invalidation — uniquement si le PUT a réussi ────────────────────
   if (invalidateCache && auth.email) {
     const prefix = userPrefix(auth.email);
     if (prefix) localStorage.removeItem(prefix + "cf_events");
   }
+  return { ok: true };
 }
 
 export async function deleteEvent(ev, auth, queueable=true) {

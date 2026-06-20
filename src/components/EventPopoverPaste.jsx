@@ -5,7 +5,7 @@ import { CancelIcon, ConfirmIcon, PasteIcon } from "./icons";
 import WheelSelect from "./WheelSelect.jsx";
 
 const POPOVER_W     = 260;
-const POPOVER_H_EST = 560;
+const POPOVER_H_EST = 360;
 const ARROW_SIZE    = 10;
 const ARROW_H       = 10;
 const MARGIN        = 8;
@@ -135,11 +135,11 @@ export default function EventPopoverPaste({
         position: "fixed", top, left, zIndex: 400, width: POPOVER_W,
         background: C.surface, border: `1.5px solid ${C.border}`,
         borderRadius: 16, boxShadow: "0 10px 28px rgba(0,0,0,.18)",
-        overflow: "hidden",
       }}>
         <div style={arrowBorderStyle} />
         <div style={arrowFillStyle} />
 
+        <div style={{ position:"relative", borderRadius:14, overflow:"hidden" }}>
         {/* Volet annulation gold */}
         <div style={{
           position: "absolute", inset: 0, background: C.gold, borderRadius: 14, zIndex: 10,
@@ -227,6 +227,7 @@ export default function EventPopoverPaste({
             <ConfirmIcon size={18} color={C.green} />
           </button>
         </div>
+        </div>{/* inner overflow wrapper */}
       </div>
     </>
   );
