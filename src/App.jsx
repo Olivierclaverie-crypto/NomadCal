@@ -730,6 +730,7 @@ onTaskClick={t=>{
         <EventForm initial={editEv||slotPrefill} calendars={calendars} defaultCalHref={settings.defaultCalHref} saving={saving} onCancel={()=>{setFormOpen(false);setEditEv(null);setSlotPrefill(null);}} onSave={async ev=>{
   if(saving) return;
   setSaving(true);
+const wasEdit = !!editEv;
 const newId = editEv?.id || `calflow-${Date.now()}`;
 const newEv = {
   ...(editEv || {}),
@@ -739,20 +740,23 @@ const newEv = {
   calColor: calendars.find(c => c.href === ev.calHref)?.color || C.accent,
   calName: calendars.find(c => c.href === ev.calHref)?.displayName || "",
   type: "event",
-  ...(editEv ? {} : { _pending: true }),
+  ...(wasEdit ? { _pendingEdit: true } : { _pending: true }),
 };
 
-  setEvents(prev=>editEv?prev.map(e=>e.id===editEv.id?newEv:e):[...prev,newEv]);
+  setEvents(prev=>wasEdit?prev.map(e=>e.id===newId?newEv:e):[...prev,newEv]);
   setFormOpen(false); setEditEv(null);
   setSaving(false);
 
-await pushEvent(newEv, auth);
-
-// ── Sync complète SAFE ────────────────────────────────
-// iCloud peut retarder l’indexation immédiate d’un event.
-// Une sync légère peut alors écraser l’event optimistic local.
-// La sync complète évite la disparition temporaire.
-await runSync({ auth, flushQueue, syncCalDAV })
+const pushResult = await pushEvent(newEv, auth);
+if (pushResult?.ok) {
+  // runSync protégé : _pendingEdit reste actif pendant la sync, effacé après
+  await runSync({ auth, flushQueue, syncCalDAV });
+  if (wasEdit) {
+    setEvents(prev => prev.map(e => e.id === newId ? { ...e, _pendingEdit: undefined } : e));
+  }
+}
+// Si pushResult.ok === false : event protégé localement par _pendingEdit / _pending.
+// La file d’attente ou le prochain cycle de sync s’en chargera.
 
 }}/>
       )}
