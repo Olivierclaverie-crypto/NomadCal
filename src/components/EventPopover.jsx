@@ -97,13 +97,12 @@ export default function EventPopover({
           border: `1.5px solid ${borderColor}`,
           borderRadius: 16,
           boxShadow: "0 10px 28px rgba(0,0,0,.18)",
-          padding: "12px 10px",
-          overflow: "hidden",
         }}
       >
         <div style={arrowBorderStyle} />
         <div style={arrowFillStyle} />
 
+        <div style={{ position:"relative", padding:"12px 10px", borderRadius:14, overflow:"hidden" }}>
         {/* Volet copie gold */}
         <div style={{
           position: "absolute", inset: 0, background: C.gold, borderRadius: 14, zIndex: 10,
@@ -185,6 +184,7 @@ export default function EventPopover({
             <DeleteIcon size={30} />
           </IconBtn>
         </div>
+        </div>{/* inner overflow wrapper */}
       </div>
     </>
   );
