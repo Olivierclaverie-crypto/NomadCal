@@ -15,6 +15,7 @@ import { checkCalendarExists, createCalendar, calendarDisplayName } from "./util
 import NomadTask from "./components/NomadTask.jsx";
 import EventPopoverNew from "./components/EventPopover.jsx";
 import EventPopoverPaste from "./components/EventPopoverPaste.jsx";
+import { ToastProvider } from "./components/Toast/ToastContext.jsx";
 
 const USER_PLAN = "free";
 
@@ -136,7 +137,7 @@ export default function App() {
   const [events,setEvents]       = useState(()=>load(uKey(email,"cf_events"),[]));
   const [tasks,setTasks]         = useState(()=>load(uKey(email,"cf_tasks"),[]));
   const [calendars,setCalendars] = useState(()=>load(uKey(email,"cf_calendars"),[]));
-  const [settings,setSettings]   = useState(()=>load(uKey(email,"cf_settings"),{startHour:"8",endHour:"20",showDone:false}));
+  const [settings,setSettings]   = useState(()=>load(uKey(email,"cf_settings"),{startHour:"8",endHour:"20",showDone:false,debugToast:false}));
 
   const [screen,setScreen]           = useState("main");
   const [currentView,setCurrentView] = useState("week");
@@ -404,7 +405,7 @@ Page : ${f.page}
     setEvents(load(uKey(email,"cf_events"),[]));
     setTasks(load(uKey(email,"cf_tasks"),[]));
     setCalendars(load(uKey(email,"cf_calendars"),[]));
-    setSettings(load(uKey(email,"cf_settings"),{startHour:"8",endHour:"20",showDone:false}));
+    setSettings(load(uKey(email,"cf_settings"),{startHour:"8",endHour:"20",showDone:false,debugToast:false}));
   }
 
   // ── Toast générique ───────────────────────────────────────────────────────
@@ -452,7 +453,7 @@ Page : ${f.page}
   const allEvs = events.filter(e => !e.id?.startsWith("synth-"));
 
 return (
-  
+  <ToastProvider>
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,overflow:"hidden",fontFamily:"Phenomena,Nunito,sans-serif"}}>
       <style>{`@keyframes nbload{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}`}</style>
       {syncing&&(
@@ -868,5 +869,6 @@ try {
      <FeedbackButton auth={auth} currentPage={nomadBookOpen ? "NomadBook" : "NomadCal"} />
 
 </div>
+  </ToastProvider>
 );
 }

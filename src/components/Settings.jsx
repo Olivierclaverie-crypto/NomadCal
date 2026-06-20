@@ -127,6 +127,16 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
               <div style={{ position: "absolute", top: 3, left: settings.showDone ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s", boxShadow: "0 1px 4px rgba(0,0,0,.2)" }}/>
             </div>
           </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
+            <div>
+              <span style={{ fontSize: 14, color: C.ink }}>Mode diagnostic (toast sync)</span>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Affiche le résultat des envois iCloud à l'écran</div>
+            </div>
+            <div onClick={() => setSettings(s => ({ ...s, debugToast: !s.debugToast }))}
+              style={{ width: 44, height: 26, borderRadius: 13, background: settings.debugToast ? C.accent : C.border, cursor: "pointer", position: "relative", transition: "background .2s", flexShrink: 0, marginLeft: 12 }}>
+              <div style={{ position: "absolute", top: 3, left: settings.debugToast ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s", boxShadow: "0 1px 4px rgba(0,0,0,.2)" }}/>
+            </div>
+          </div>
         </div>
 
         {/* CALENDRIERS */}
