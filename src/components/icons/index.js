@@ -21,3 +21,4 @@ export { default as PhoneIcon } from "./PhoneIcon.jsx";
 export { default as EmailIcon } from "./EmailIcon.jsx";
 export { default as CancelIcon } from "./CancelIcon.jsx";
 export { default as ConfirmIcon } from "./ConfirmIcon.jsx";
+export { default as OfflineIcon } from "./OfflineIcon.jsx";
