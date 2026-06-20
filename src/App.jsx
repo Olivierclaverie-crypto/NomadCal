@@ -37,19 +37,21 @@ function migrateOldKeys(email) {
   });
 }
 
-async function flushQueue(auth){
+async function flushQueue(auth, onPutSuccess){
   if(!auth || !navigator.onLine) return;
   const q = loadQueue(auth.email);
   if(!q.length) return;
   const remaining=[];
   for(const item of q){
     try{
-      if(item.op==="put")         await pushEvent(item.ev, auth, false, false);
+      if(item.op==="put")         { await pushEvent(item.ev, auth, false, false); onPutSuccess?.(item.ev.id); }
       else if(item.op==="delete") await deleteEvent(item.ev, auth, false);
     }catch(e){ remaining.push(item); }   // échec → on garde pour la prochaine tentative
   }
   saveQueue(auth.email, remaining);
 }
+
+const clearPendingEdit = id => setEvents(prev => prev.map(e => e.id===id ? {...e, _pendingEdit:undefined} : e));
 
 function layoutEvents(dayEvs) {
   if (!dayEvs.length) return [];
@@ -234,12 +236,12 @@ setEvents(prev =>
   },[events]);
 
   useEffect(()=>{
-    if(auth){ const t=setTimeout(()=>{ runSync({ auth, flushQueue, syncCalDAV }); },300); return()=>clearTimeout(t); }
+    if(auth){ const t=setTimeout(()=>{ runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit }); },300); return()=>clearTimeout(t); }
   },[auth]);
 
   // ── Re-sync au retour réseau ──────────────────────────────────────────────
   useEffect(()=>{
-    const onOnline  = () => { setSyncOk(true);  if(auth){ runSync({ auth, flushQueue, syncCalDAV }); } };
+    const onOnline  = () => { setSyncOk(true);  if(auth){ runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit }); } };
     const onOffline = () => { setSyncOk(false); };
     window.addEventListener("online",  onOnline);
     window.addEventListener("offline", onOffline);
@@ -471,7 +473,7 @@ return (
 
       <Header
         weekDays={weekDays} syncing={syncing} syncOk={syncOk}
-        onSync={() => runSync({ auth, flushQueue, syncCalDAV })} onSettings={()=>setScreen("settings")}
+        onSync={() => runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit })} onSettings={()=>setScreen("settings")}
         onAddEvent={()=>{setEditEv(null);setSlotPrefill({
   startDate: todayISO(),
   endDate: todayISO(),
@@ -750,7 +752,7 @@ const newEv = {
 const pushResult = await pushEvent(newEv, auth);
 if (pushResult?.ok) {
   // runSync protégé : _pendingEdit reste actif pendant la sync, effacé après
-  await runSync({ auth, flushQueue, syncCalDAV });
+  await runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit });
   if (wasEdit) {
     setEvents(prev => prev.map(e => e.id === newId ? { ...e, _pendingEdit: undefined } : e));
   }
@@ -817,7 +819,7 @@ if (pushResult?.ok) {
 
 try {
   await deleteEvent(confirmDel, auth);
-  await runSync({ auth, flushQueue, syncCalDAV });
+  await runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit });
 } catch (e) {
   console.error("delete failed", e);
 }
@@ -862,7 +864,7 @@ try {
       setPasteTarget(null);
       if (clipboardTimer.current) clearTimeout(clipboardTimer.current);
       await pushEvent(newEv, auth);
-      await runSync({ auth, flushQueue, syncCalDAV });
+      await runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit });
     }}
   />
 )}

@@ -1,10 +1,10 @@
-export async function runSync({ auth, syncing, flushQueue, syncCalDAV }) {
+export async function runSync({ auth, syncing, flushQueue, syncCalDAV, onPutSuccess }) {
   if (!auth) return;
   if (syncing) return;
 
   // Si on a du réseau, on rejoue d'abord la file offline
   if (navigator.onLine && flushQueue) {
-    await flushQueue(auth);
+    await flushQueue(auth, onPutSuccess);
   }
 
   // Puis on lance la vraie synchro complète
