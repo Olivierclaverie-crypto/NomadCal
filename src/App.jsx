@@ -707,6 +707,8 @@ onCopy={(ev) => {
         tasks={tasks} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}
         swipeTaskId={swipeTaskId} setSwipeTaskId={setSwipeTaskId}
 onTaskClick={t=>{
+  setEditTask(t);
+  setTaskFormOpen(true);
   setDrawerOpen(false);
 }}
         onTaskDone={t=>setConfirmDone(t)}
