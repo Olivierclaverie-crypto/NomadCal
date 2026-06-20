@@ -198,6 +198,7 @@ export default function App() {
   useEffect(()=>{ if(email) save(uKey(email,"cf_events"),events); },[events,email]);
   useEffect(()=>{ if(email) save(uKey(email,"cf_calendars"),calendars); },[calendars,email]);
   useEffect(()=>{ if(email) save(uKey(email,"cf_settings"),settings); },[settings,email]);
+  useEffect(()=>{ if(typeof window!=="undefined") window.__debugToast=!!settings.debugToast; },[settings.debugToast]);
 
   useEffect(()=>{
     const slide=()=>setTasks(prev=>slideTasksToToday(prev));

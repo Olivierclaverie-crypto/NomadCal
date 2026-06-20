@@ -47,9 +47,29 @@ const path = ev.href || (ev.calHref + uid + ".ics");
   // ── BOÎTE D'ENVOI : hors-ligne → on range l'écriture au lieu de la perdre ──
   if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return; }
   try {
-    await caldavRequest("PUT", path, makeAuthHeader(auth.email, auth.appPassword), ics, {"Content-Type":"text/calendar; charset=utf-8"});
+    const resp = await caldavRequest("PUT", path, makeAuthHeader(auth.email, auth.appPassword), ics, {"Content-Type":"text/calendar; charset=utf-8"});
+    const ok = resp && resp.status >= 200 && resp.status < 300;
+    if (typeof window !== "undefined" && window.__showToast && window.__debugToast) {
+      window.__showToast({
+        type: ok ? "success" : "error",
+        title: ok ? `PUT OK (${resp.status})` : `PUT échec (${resp?.status})`,
+        body: `path: ${path}\n\nUID: ${uid}\n\nréponse iCloud:\n${(resp?.text || "").slice(0, 300)}`,
+        duration: 0,
+      });
+    }
+    if (!ok) {
+      console.error(`[pushEvent] PUT status=${resp?.status} path=${path}`, resp?.text?.slice(0, 200));
+    }
   } catch(e) {
     if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"put", ev}); return; }
+    if (typeof window !== "undefined" && window.__showToast && window.__debugToast) {
+      window.__showToast({
+        type: "error",
+        title: "PUT exception",
+        body: `path: ${path}\n\nerreur: ${e?.message || e}`,
+        duration: 0,
+      });
+    }
     throw e;
   }
 
