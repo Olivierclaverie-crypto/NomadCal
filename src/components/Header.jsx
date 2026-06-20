@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { C } from '../utils/constants.js';
 import { FeedIcon } from "./icons";
+import WheelSelect from "./WheelSelect.jsx";
 
 const IconSync = ({ color }) => (
   <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
@@ -25,12 +26,10 @@ export default function Header({
   const [showViewMenu,   setShowViewMenu]   = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const DAYS   = Array.from({length:31}, (_,i) => String(i+1).padStart(2,"0"));
-  const MONTHS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-  const YEARS  = Array.from({length:10}, (_,i) => String(new Date().getFullYear()-2+i));
-  const [pickDayIdx,   setPickDayIdx]   = useState(new Date().getDate()-1);
-  const [pickMonthIdx, setPickMonthIdx] = useState(new Date().getMonth());
-  const [pickYearIdx,  setPickYearIdx]  = useState(2);
+  const _now = new Date();
+  const [pickDay,   setPickDay]   = useState(String(_now.getDate()).padStart(2,"0"));
+  const [pickMonth, setPickMonth] = useState(String(_now.getMonth()+1).padStart(2,"0"));
+  const [pickYear,  setPickYear]  = useState(String(_now.getFullYear()));
 
   const views = [
     { key:"day",   label:"Jour" },
@@ -40,7 +39,7 @@ export default function Header({
   ];
 
   function handleGoToDate() {
-    const iso = `${YEARS[pickYearIdx]}-${String(pickMonthIdx+1).padStart(2,"0")}-${DAYS[pickDayIdx]}`;
+    const iso = `${pickYear}-${pickMonth}-${pickDay}`;
     const d = new Date(iso + "T12:00:00");
     if (!isNaN(d)) { onGoToDate(d); setShowDatePicker(false); }
   }
@@ -64,26 +63,6 @@ export default function Header({
   };
   const btnStyle   = { ...btnBase, border:`1px solid ${C.accentBorder}`, background:C.accentLight, color:C.accent };
   const btnPrimary = { ...btnBase, background:C.accent, color:"#fff", border:"none" };
-
-  function WheelPicker({ items, selectedIdx, onChange }) {
-    const ITEM_H = 40;
-    let startY = null, startIdx = null;
-    function clamp(v){ return Math.max(0, Math.min(items.length-1, v)); }
-    return (
-      <div
-        onTouchStart={e=>{ startY=e.touches[0].clientY; startIdx=selectedIdx; }}
-        onTouchMove={e=>{ const dy=startY-e.touches[0].clientY; onChange(clamp(startIdx+Math.round(dy/ITEM_H))); }}
-        style={{ position:"relative", height:ITEM_H*5, overflow:"hidden", width:"100%", cursor:"ns-resize", userSelect:"none" }}>
-        <div style={{ position:"absolute", top:ITEM_H*2, left:0, right:0, height:ITEM_H, borderTop:`1.5px solid ${C.border}`, borderBottom:`1.5px solid ${C.border}`, pointerEvents:"none", zIndex:2, background:`${C.accentLight}88` }}/>
-        <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:3, background:`linear-gradient(to bottom, ${C.surface} 0%, transparent 35%, transparent 65%, ${C.surface} 100%)` }}/>
-        <div style={{ transform:`translateY(${(2-selectedIdx)*ITEM_H}px)`, transition:"transform .15s ease-out" }}>
-          {items.map((item,i)=>(
-            <div key={i} onClick={()=>onChange(i)} style={{ height:ITEM_H, display:"flex", alignItems:"center", justifyContent:"center", fontSize:i===selectedIdx?18:15, fontWeight:i===selectedIdx?700:400, color:i===selectedIdx?C.ink:C.muted, fontFamily:"Phenomena, sans-serif", cursor:"pointer" }}>{item}</div>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   const syncColor = syncing ? C.gold : syncOk ? C.green : C.red;
 
@@ -125,10 +104,12 @@ export default function Header({
             {showDatePicker && (
               <div data-menu style={{ position:"fixed", top:"auto", left:14, right:14, background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:"16px", boxShadow:"0 8px 32px rgba(0,0,0,.18)", zIndex:499 }}>
                 <div style={{ fontSize:12, color:C.muted, fontWeight:700, letterSpacing:.5, textAlign:"center", marginBottom:10 }}>ALLER À UNE DATE</div>
-                <div style={{ display:"flex", gap:4, marginBottom:10 }}>
-                  <div style={{ flex:.8 }}><WheelPicker items={DAYS}   selectedIdx={pickDayIdx}   onChange={setPickDayIdx}/></div>
-                  <div style={{ flex:1.4 }}><WheelPicker items={MONTHS} selectedIdx={pickMonthIdx} onChange={setPickMonthIdx}/></div>
-                  <div style={{ flex:1 }}><WheelPicker items={YEARS}  selectedIdx={pickYearIdx}  onChange={setPickYearIdx}/></div>
+                <div style={{ marginBottom:10 }}>
+                  <WheelSelect
+                    wheels={['day','month','year']}
+                    value={{ day: pickDay, month: pickMonth, year: pickYear }}
+                    onChange={v => { setPickDay(v.day); setPickMonth(v.month); setPickYear(v.year); }}
+                  />
                 </div>
                 <div style={{ display:"flex", gap:8, marginBottom:8 }}>
                   <button onClick={()=>setShowDatePicker(false)} style={{...btnStyle,flex:1}}>Annuler</button>

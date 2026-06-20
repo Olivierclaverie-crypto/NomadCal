@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { C } from "../utils/constants.js";
 import { timeToMinutes, minutesToHHMM } from "../utils/helpers.js";
 import { CancelIcon, ConfirmIcon, PasteIcon } from "./icons";
+import WheelSelect from "./WheelSelect.jsx";
 
-const POPOVER_W     = 240;
-const POPOVER_H_EST = 310;
+const POPOVER_W     = 260;
+const POPOVER_H_EST = 560;
 const ARROW_SIZE    = 10;
 const ARROW_H       = 10;
 const MARGIN        = 8;
@@ -41,6 +42,8 @@ export default function EventPopoverPaste({
     timeToMinutes(clipboard.endTime || "10:00") - timeToMinutes(clipboard.startTime || "09:00")
   );
 
+  const [startDate, setSD]        = useState(targetDate);
+  const [endDate,   setED]        = useState(targetDate);
   const [startTime, setStartTime] = useState(targetTime);
   const [endTime,   setEndTime]   = useState(minutesToHHMM(Math.min(1440, timeToMinutes(targetTime) + origDuration)));
   const [calHref,   setCalHref]   = useState(clipboard.calHref || (calendars[0]?.href ?? ""));
@@ -48,26 +51,36 @@ export default function EventPopoverPaste({
 
   // Met à jour le bloc fantôme en temps réel
   useEffect(() => {
-    onGhostChange && onGhostChange({ date: targetDate, time: startTime, endTime });
+    onGhostChange && onGhostChange({ date: startDate, time: startTime, endTime });
     return () => { onGhostChange && onGhostChange(null); };
-  }, [startTime, endTime]);
+  }, [startDate, startTime, endTime]);
 
-  function stepStart(delta) {
-    if (navigator.vibrate) navigator.vibrate(20);
-    const dur = timeToMinutes(endTime) - timeToMinutes(startTime);
-    const newStart = Math.max(0, Math.min(1380, timeToMinutes(startTime) + delta * STEP_MIN));
-    const newEnd   = Math.min(1440, newStart + Math.max(STEP_MIN, dur));
-    setStartTime(minutesToHHMM(newStart));
-    setEndTime(minutesToHHMM(newEnd));
+  function roundMm(t) {
+    const mm = parseInt((t||"00:00").split(':')[1] || 0);
+    return String(Math.min(55, Math.round(mm / 5) * 5)).padStart(2, '0');
   }
 
-  function stepEnd(delta) {
-    if (navigator.vibrate) navigator.vibrate(20);
-    const newEnd = Math.max(
-      timeToMinutes(startTime) + STEP_MIN,
-      Math.min(1440, timeToMinutes(endTime) + delta * STEP_MIN)
-    );
-    setEndTime(minutesToHHMM(newEnd));
+  function wheelVal5(isoDate, isoTime) {
+    const [yr, mo, dd] = (isoDate || targetDate).split('-');
+    const hh = (isoTime || "00:00").split(':')[0];
+    return { day: dd, month: mo, year: yr, hh, mm: roundMm(isoTime) };
+  }
+
+  function handleStartChange(v) {
+    const d = `${v.year}-${v.month}-${v.day}`;
+    const t = `${v.hh}:${v.mm}`;
+    const dur = Math.max(STEP_MIN, timeToMinutes(endTime) - timeToMinutes(startTime));
+    setSD(d); setED(d);
+    setStartTime(t);
+    setEndTime(minutesToHHMM(Math.min(1440, timeToMinutes(t) + dur)));
+  }
+
+  function handleEndChange(v) {
+    const d = `${v.year}-${v.month}-${v.day}`;
+    const t = `${v.hh}:${v.mm}`;
+    const sMin = timeToMinutes(startTime);
+    setED(d);
+    setEndTime(timeToMinutes(t) <= sMin ? minutesToHHMM(Math.min(1440, sMin + STEP_MIN)) : t);
   }
 
   function handleCancel() {
@@ -80,7 +93,7 @@ export default function EventPopoverPaste({
 
   function handleConfirm() {
     onGhostChange && onGhostChange(null);
-    onConfirm({ startTime, endTime, calHref });
+    onConfirm({ startDate, startTime, endDate, endTime, calHref });
   }
 
   // Positionnement smart
@@ -160,30 +173,16 @@ export default function EventPopoverPaste({
         {/* Champs */}
         <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
 
-          {/* Date */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={lbl}>Date</span>
-            <div style={{ ...val, color: C.ink, fontWeight: 600, fontSize: 11 }}>{fmtDate(targetDate)}</div>
+          {/* Début — 5 roues */}
+          <div>
+            <div style={{ fontSize: 9, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 4 }}>Début</div>
+            <WheelSelect wheels={['day','month','year','hh','mm']} value={wheelVal5(startDate, startTime)} onChange={handleStartChange} />
           </div>
 
-          {/* Début stepper */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={lbl}>Début</span>
-            <div style={{ flex: 1, display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
-              <button onClick={() => stepStart(-1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 16, color: C.accent, fontWeight: 800 }}>−</button>
-              <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 800, color: C.accent, borderLeft: `1px solid ${C.border}`, borderRight: `1px solid ${C.border}`, padding: "6px 0" }}>{startTime}</div>
-              <button onClick={() => stepStart(1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 16, color: C.accent, fontWeight: 800 }}>+</button>
-            </div>
-          </div>
-
-          {/* Fin stepper */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={lbl}>Fin</span>
-            <div style={{ flex: 1, display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
-              <button onClick={() => stepEnd(-1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 16, color: C.accent, fontWeight: 800 }}>−</button>
-              <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 800, color: C.accent, borderLeft: `1px solid ${C.border}`, borderRight: `1px solid ${C.border}`, padding: "6px 0" }}>{endTime}</div>
-              <button onClick={() => stepEnd(1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 16, color: C.accent, fontWeight: 800 }}>+</button>
-            </div>
+          {/* Fin — 5 roues */}
+          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
+            <div style={{ fontSize: 9, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 4 }}>Fin</div>
+            <WheelSelect wheels={['day','month','year','hh','mm']} value={wheelVal5(endDate, endTime)} onChange={handleEndChange} />
           </div>
 
           {/* Calendrier — select si plusieurs */}
@@ -219,12 +218,13 @@ export default function EventPopoverPaste({
         </div>
 
         {/* Actions */}
-        <div style={{ display: "flex", borderTop: `1px solid ${C.border}` }}>
-          <button onClick={handleCancel} style={{ flex: 1, padding: "10px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 800, color: C.red, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRight: `1px solid ${C.border}`, fontFamily: "inherit" }}>
-            <CancelIcon size={20} color={C.red} /> Annuler
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: `1px solid ${C.border}`, padding: "8px 14px" }}>
+          <button onClick={handleCancel} style={{ width:36, height:36, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", border:"none", cursor:"pointer", padding:0, background:"#fbeae8" }}>
+            <CancelIcon size={16} color={C.red} />
           </button>
-          <button onClick={handleConfirm} style={{ flex: 1, padding: "10px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 800, color: C.accent, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
-            <ConfirmIcon size={20} color={C.accent} /> Coller
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>{fmtDuration(startTime, endTime)}</span>
+          <button onClick={handleConfirm} style={{ width:36, height:36, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", border:"none", cursor:"pointer", padding:0, background:"#e8f3ec" }}>
+            <ConfirmIcon size={18} color={C.green} />
           </button>
         </div>
       </div>

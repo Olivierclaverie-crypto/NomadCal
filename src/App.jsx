@@ -835,7 +835,7 @@ try {
     onGhostChange={setGhostSlot}
     calendars={calendars}
     onCancel={()=>{ setGhostSlot(null); setPasteTarget(null); }}
-    onConfirm={async ({startTime,endTime,calHref})=>{
+    onConfirm={async ({startDate,startTime,endDate,endTime,calHref})=>{
       const targetCalHref = calHref || clipboard.calHref;
       const pasteId = `calflow-${Date.now()}`;
       const newEv = {
@@ -847,7 +847,7 @@ try {
         calName:  calendars.find(c=>c.href===targetCalHref)?.displayName || "",
         location: clipboard.location, email: clipboard.email, tel: clipboard.tel,
         notes: clipboard.notes,
-        startDate: pasteTarget.date, endDate: pasteTarget.date,
+        startDate: startDate || pasteTarget.date, endDate: endDate || pasteTarget.date,
         startTime, endTime,
         type: "event",
         _pending: true,

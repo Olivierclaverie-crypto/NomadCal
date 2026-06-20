@@ -4,6 +4,7 @@ import {
   deletePeriodEvent, autoLabel, calendarDisplayName, checkCalendarExists
 } from "../utils/caldavCalendar.js";
 import { compressImage, savePhoto, getPhotoURL, deletePhoto, requestPersistentStorage } from "../utils/photoStore.js";
+import WheelSelect from "./WheelSelect.jsx";
 
 const C = {
   bg:"#fdf8f0", surface:"#ffffff", card:"#fffcf7",
@@ -238,11 +239,19 @@ function PeriodForm({ initial, lastEndISO, onSave, onCancel, loading }) {
           <label style={{fontSize:11,color:C.muted,fontWeight:600,display:"block",marginBottom:6}}>
             {!initial?"Date de début *":"Date de début"}
           </label>
-          <input type="date" value={startISO} onChange={e=>setStart(e.target.value)} style={inputStyle}/>
+          <WheelSelect
+            wheels={['day','month','year']}
+            value={{ day:(startISO||"").split('-')[2]||"01", month:(startISO||"").split('-')[1]||"01", year:(startISO||"").split('-')[0]||String(new Date().getFullYear()) }}
+            onChange={v => setStart(`${v.year}-${v.month}-${v.day}`)}
+          />
         </div>
         <div style={{flex:1}}>
           <label style={{fontSize:11,color:C.muted,fontWeight:600,display:"block",marginBottom:6}}>Date de fin *</label>
-          <input type="date" value={endISO} onChange={e=>setEnd(e.target.value)} style={inputStyle} min={startISO}/>
+          <WheelSelect
+            wheels={['day','month','year']}
+            value={{ day:(endISO||"").split('-')[2]||"01", month:(endISO||"").split('-')[1]||"01", year:(endISO||"").split('-')[0]||String(new Date().getFullYear()) }}
+            onChange={v => setEnd(`${v.year}-${v.month}-${v.day}`)}
+          />
         </div>
       </div>
       <div>
