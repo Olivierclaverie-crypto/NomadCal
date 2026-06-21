@@ -1,3 +1,4 @@
+export { default as ChevronIcon } from "./ChevronIcon";
 export { default as ClockIcon } from "./ClockIcon";
 export { default as CalendarIcon } from "./CalendarIcon";
 export { default as LocationIcon } from "./LocationIcon";

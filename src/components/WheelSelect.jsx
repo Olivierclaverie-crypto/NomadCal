@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { C } from "../utils/constants.js";
+import { ChevronIcon } from "./icons";
 
 const ITEM_H = 40;
 const VISIBLE_H = 66; // ≈ 33% de l'ancienne fenêtre (200px) — valeur sélectionnée + amorce voisines
@@ -50,16 +51,24 @@ export default function WheelSelect({ wheels, value, onChange }) {
     onChange({ ...value, [key]: ITEMS[key][idx] });
   }
   return (
-    <div style={{ display:"flex", gap:4 }}>
-      {wheels.map(key => (
-        <div key={key} style={{ flex: FLEX[key] || 1 }}>
-          <SingleWheel
-            items={ITEMS[key]}
-            selectedIdx={idxOf(key)}
-            onChange={idx => handleChange(key, idx)}
-          />
-        </div>
-      ))}
+    <div>
+      <div style={{ display:"flex", justifyContent:"center", padding:"1px 0", pointerEvents:"none" }}>
+        <ChevronIcon direction="up" />
+      </div>
+      <div style={{ display:"flex", gap:4 }}>
+        {wheels.map(key => (
+          <div key={key} style={{ flex: FLEX[key] || 1 }}>
+            <SingleWheel
+              items={ITEMS[key]}
+              selectedIdx={idxOf(key)}
+              onChange={idx => handleChange(key, idx)}
+            />
+          </div>
+        ))}
+      </div>
+      <div style={{ display:"flex", justifyContent:"center", padding:"1px 0", pointerEvents:"none" }}>
+        <ChevronIcon direction="down" />
+      </div>
     </div>
   );
 }
