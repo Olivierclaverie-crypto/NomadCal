@@ -86,19 +86,28 @@ const path = ev.href || (ev.calHref + uid + ".ics");
 }
 
 export async function deleteEvent(ev, auth, queueable=true) {
-  if (!auth) return;
+  if (!auth) return { ok: false };
   // Si pas de href local → cherche le vrai href via UID dans iCloud
   // Le syncCalDAV() après cette fonction récupère l'état réel
   if (!ev.href) {
     console.warn("[deleteEvent] Pas de href pour:", ev.id, "— sync forcée");
-    return; // syncCalDAV() après va nettoyer
+    return { ok: false }; // syncCalDAV() après va nettoyer
   }
   // ── BOÎTE D'ENVOI : hors-ligne → on range la suppression au lieu de la perdre ──
-  if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"delete", ev}); return; }
+  if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"delete", ev}); return { ok: false }; }
   try {
-    await caldavRequest("DELETE", ev.href, makeAuthHeader(auth.email, auth.appPassword));
+    const resp = await caldavRequest("DELETE", ev.href, makeAuthHeader(auth.email, auth.appPassword));
+    // 404 = déjà absent côté iCloud → exactement ce qu'on voulait, on considère ça réussi
+    const ok = resp && ((resp.status >= 200 && resp.status < 300) || resp.status === 404);
+    if (!ok) {
+      console.error(`[deleteEvent] DELETE status=${resp?.status} path=${ev.href}`, resp?.text?.slice(0, 200));
+      const is401 = resp?.status === 401;
+      if (queueable && !is401) enqueueWrite(auth.email, {op:"delete", ev});
+      return { ok: false, status: resp?.status };
+    }
+    return { ok: true };
   } catch(e) {
-    if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"delete", ev}); return; }
+    if (queueable && !navigator.onLine) { enqueueWrite(auth.email, {op:"delete", ev}); return { ok: false }; }
     throw e;
   }
 }
