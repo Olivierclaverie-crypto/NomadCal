@@ -524,20 +524,32 @@ return (
         return (
           <div
             key={ev.id}
+            onClick={e => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              setPopover({
+                ev,
+                eventRect: { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, width: rect.width, height: rect.height }
+              });
+            }}
             style={{
               position: "relative",
               marginBottom: 2,
               marginLeft: `${(startIdx / 7) * 100}%`,
               width: `${(span / 7) * 100}%`,
-              background: ev.calColor + "22",
-              border: `1.5px solid ${ev.calColor}`,
+              background: "#ffffff",
+              border: `1px solid ${C.border}`,
               borderRadius: 6,
-              padding: "2px 6px",
-              overflow: "hidden"
+              padding: "3px 8px 3px 10px",
+              overflow: "hidden",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center"
             }}
           >
-            <span style={{fontSize:10,fontWeight:700,color:ev.calColor}}>
-              → {ev.title}
+            <div style={{position:"absolute",left:0,top:0,bottom:0,width:5,background:ev.calColor,borderRadius:"6px 0 0 6px"}}/>
+            <span style={{fontSize:11,fontWeight:700,color:C.accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+              {ev.title}
             </span>
           </div>
         );
