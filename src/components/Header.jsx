@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from '../utils/constants.js';
-import { FeedIcon } from "./icons";
+import { FeedIcon, OfflineIcon } from "./icons";
 import WheelSelect from "./WheelSelect.jsx";
 
 const IconSync = ({ color }) => (
@@ -19,7 +19,7 @@ const IconSettings = () => (
 );
 
 export default function Header({
-  weekDays, syncing, syncOk, onSync, onSettings, onAddEvent,
+  weekDays, syncing, syncOk, isOnline, onSync, onSettings, onAddEvent,
   onToday, onGoToDate, onChangeView,
   onOpenFrais, currentView, fmtWeekRange, fmtDay, fmtDayNum, weekNum, today,
 }) {
@@ -79,7 +79,7 @@ export default function Header({
         <span style={{ fontSize:34, fontWeight:800, color:C.accent, fontFamily:"Phenomena, sans-serif", letterSpacing:-1, lineHeight:1 }}>NomadCal</span>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <button onClick={onSync} style={{ background:"none", border:"none", cursor:"pointer", padding:2, lineHeight:1, display:"flex" }}>
-              <IconSync color={syncColor}/>
+              {isOnline ? <IconSync color={syncColor}/> : <OfflineIcon size={22}/>}
             </button>
           <button onClick={onSettings} style={{ background:"none", border:"none", cursor:"pointer", padding:2, display:"flex" }}>
             <IconSettings/>

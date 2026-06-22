@@ -143,6 +143,7 @@ export default function App() {
   const [currentView,setCurrentView] = useState("week");
   const [syncing,setSyncing]         = useState(false);
   const [syncOk,setSyncOk]           = useState(true);
+  const [isOnline,setIsOnline]       = useState(navigator.onLine);
   const [saving,setSaving]           = useState(false); // Anti-doublon bouton Créer/Supprimer
   const [formOpen,setFormOpen]       = useState(false);
   const [taskFormOpen,setTaskFormOpen] = useState(false);
@@ -242,8 +243,8 @@ setEvents(prev =>
 
   // ── Re-sync au retour réseau ──────────────────────────────────────────────
   useEffect(()=>{
-    const onOnline  = () => { setSyncOk(true);  if(auth){ runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit, onDeleteSuccess: clearTombstone }); } };
-    const onOffline = () => { setSyncOk(false); };
+    const onOnline  = () => { setIsOnline(true); setSyncOk(true);  if(auth){ runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit, onDeleteSuccess: clearTombstone }); } };
+    const onOffline = () => { setIsOnline(false); setSyncOk(false); };
     window.addEventListener("online",  onOnline);
     window.addEventListener("offline", onOffline);
     return()=>{
@@ -469,12 +470,14 @@ return (
 
       {nomadBookOpen&&(
         <div style={{position:"fixed",inset:0,zIndex:400,background:C.bg,overflowY:"auto"}}>
-          <NomadBook onClose={()=>setNomadBookOpen(false)} auth={auth}/>
+          <NomadBook onClose={()=>setNomadBookOpen(false)} auth={auth}
+            onPeriodDeleted={periodUid => setEvents(prev => prev.filter(e => e.id !== periodUid))}
+          />
         </div>
       )}
 
       <Header
-        weekDays={weekDays} syncing={syncing} syncOk={syncOk}
+        weekDays={weekDays} syncing={syncing} syncOk={syncOk} isOnline={isOnline}
         onSync={() => runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit, onDeleteSuccess: clearTombstone })} onSettings={()=>setScreen("settings")}
         onAddEvent={()=>{setEditEv(null);setSlotPrefill({
   startDate: todayISO(),
