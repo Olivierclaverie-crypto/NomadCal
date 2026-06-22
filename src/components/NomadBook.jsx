@@ -425,7 +425,7 @@ function NoteCard({note,onDelete,onEdit}){
 }
 
 // ── Composant principal ───────────────────────────────────────────────────────
-export default function NomadBook({ onClose, auth }) {
+export default function NomadBook({ onClose, auth, onPeriodDeleted }) {
   const [tab,setTab]               = useState("notes");
   const [notes,setNotes]           = useState(()=>load("nb_notes",[]));
   // Recharge les notes à chaque ouverture ET retour de veille
@@ -653,6 +653,7 @@ Veuillez choisir des dates sans chevauchement.`);
     save("nb_periods_cache", pruned);
     // Supprime aussi les notes locales de cette période
     setNotes(prev=>prev.filter(n=>n.periodId!==p.uid));
+    onPeriodDeleted?.(p.uid);
     await loadPeriods(true);
     setConfirmDelPeriod(null);
   }
@@ -774,6 +775,10 @@ Veuillez choisir des dates sans chevauchement.`);
                 {pastPeriods.length} passée{pastPeriods.length>1?"s":""} · {currentPeriod?1:0} en cours · {futurePeriods.length} à venir
               </div>
 
+              <Btn onClick={()=>{setEditingPeriod(null);setPeriodFormOpen(true);}} variant="soft" style={{width:"100%",justifyContent:"center",display:"flex",marginBottom:16}}>
+                + Nouvelle période
+              </Btn>
+
               {/* PASSÉS */}
               {pastPeriods.length>0&&(<>
                 <div style={{fontSize:11,color:C.muted,fontWeight:700,letterSpacing:.5,textTransform:"uppercase",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
@@ -859,9 +864,6 @@ Veuillez choisir des dates sans chevauchement.`);
                 ))}
               </>)}
 
-              <Btn onClick={()=>{setEditingPeriod(null);setPeriodFormOpen(true);}} variant="soft" style={{width:"100%",justifyContent:"center",display:"flex",marginTop:8}}>
-                + Nouvelle période
-              </Btn>
             </>)}
           </div>
         )}

@@ -43,7 +43,13 @@ export default function NomadTask({
   onOpenNomadFeed,
 }) {
   const [activeTab, setActiveTab] = useState(null);
-  const openTasks = tasks.filter(t => !t.done);
+  const PRIORITY_ORDER = { high:0, normal:1, low:2 };
+  const openTasks = tasks.filter(t => !t.done).sort((a,b) => {
+    if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
+    if (a.dueDate && !b.dueDate) return -1;
+    if (!a.dueDate && b.dueDate) return 1;
+    return (PRIORITY_ORDER[a.priority||"normal"]) - (PRIORITY_ORDER[b.priority||"normal"]);
+  });
 
   const MESSAGES = {
     notes: "NomadBook — Carnet de route terrain",
