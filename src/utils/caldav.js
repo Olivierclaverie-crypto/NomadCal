@@ -155,6 +155,8 @@ export function parseICS(ics, href, calHref, calColor, calName) {
     rrule, exdates,
     status: evStatus,
     type: "event",
+    rawICS: ics,
+    recurrenceId: get("RECURRENCE-ID") || null,
   };
 }
 
@@ -162,6 +164,11 @@ export function parseICS(ics, href, calHref, calColor, calName) {
 function toISO(d) {
   if (typeof d === "string") return d.slice(0,10);
   return d.toISOString().slice(0,10);
+}
+function toLocalISO(d) {
+  return d.getFullYear() + "-" +
+    String(d.getMonth()+1).padStart(2,"0") + "-" +
+    String(d.getDate()).padStart(2,"0");
 }
 function toTime(d) {
   return d.toTimeString().slice(0,5);
@@ -206,11 +213,16 @@ export function expandRecurring(ev, rangeStart, rangeEnd) {
   const DAYS_MAP = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
   const DAY_CODES= ["SU","MO","TU","WE","TH","FR","SA"];
 
-  // ── Parse UNTIL ────────────────────────────────────────────────────────────
-  let untilISO = null;
+  // ── Parse UNTIL as UTC instant (RFC 5545 : UNTIL is always UTC) ─────────────
+  let untilTs = null;
   if (params.UNTIL) {
     const u = params.UNTIL.replace(/Z$/, "");
-    untilISO = u.slice(0,4) + "-" + u.slice(4,6) + "-" + u.slice(6,8);
+    untilTs = Date.UTC(
+      +u.slice(0,4), +u.slice(4,6)-1, +u.slice(6,8),
+      u.length >= 13 ? +u.slice(9,11) : 23,
+      u.length >= 15 ? +u.slice(11,13) : 59,
+      u.length >= 17 ? +u.slice(13,15) : 59
+    );
   }
 
   // ── Parse BYDAY ────────────────────────────────────────────────────────────
@@ -235,7 +247,7 @@ export function expandRecurring(ev, rangeStart, rangeEnd) {
     const curISO = toISO(current);
 
     // Vérifie les bornes
-    if (untilISO && curISO > untilISO) break;
+    if (untilTs !== null && current.getTime() > untilTs) break;
     if (curISO > rangeEnd) break;
 
     // ── Calcul des occurrences selon FREQ ─────────────────────────────────
@@ -288,8 +300,8 @@ export function expandRecurring(ev, rangeStart, rangeEnd) {
       const candISO = toISO(cand);
       if (candISO < rangeStart) return;
       if (candISO > rangeEnd) return;
-      if (untilISO && candISO > untilISO) return;
-      if (ev.exdates?.includes(candISO)) return; // Exception
+      if (untilTs !== null && cand.getTime() > untilTs) return;
+      if (ev.exdates?.includes(toLocalISO(cand))) return;
 
       const occEnd = new Date(cand.getTime() + duration);
 

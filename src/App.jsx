@@ -13,6 +13,7 @@ import FeedbackButton from "./components/FeedbackButton.jsx";
 import EventForm from "./components/EventForm.jsx";
 import { checkCalendarExists, createCalendar, calendarDisplayName } from "./utils/caldavCalendar.js";
 import NomadTask from "./components/NomadTask.jsx";
+import DebugPanel from "./components/DebugPanel.jsx";
 import EventPopoverNew from "./components/EventPopover.jsx";
 import EventPopoverPaste from "./components/EventPopoverPaste.jsx";
 import { ToastProvider } from "./components/Toast/ToastContext.jsx";
@@ -137,7 +138,7 @@ export default function App() {
   const [events,setEvents]       = useState(()=>load(uKey(email,"cf_events"),[]));
   const [tasks,setTasks]         = useState(()=>load(uKey(email,"cf_tasks"),[]));
   const [calendars,setCalendars] = useState(()=>load(uKey(email,"cf_calendars"),[]));
-  const [settings,setSettings]   = useState(()=>load(uKey(email,"cf_settings"),{startHour:"8",endHour:"20",showDone:false,debugToast:false}));
+  const [settings,setSettings]   = useState(()=>load(uKey(email,"cf_settings"),{startHour:"8",endHour:"20",showDone:false,debugToast:false,showDebugPanel:false}));
 
   const [screen,setScreen]           = useState("main");
   const [currentView,setCurrentView] = useState("week");
@@ -199,7 +200,11 @@ export default function App() {
 
   // ── Sauvegarde préfixée par user ──────────────────────────────────────────
   useEffect(()=>{ if(email) save(uKey(email,"cf_tasks"),tasks); },[tasks,email]);
-  useEffect(()=>{ if(email) save(uKey(email,"cf_events"),events); },[events,email]);
+  useEffect(()=>{
+    if(!email) return;
+    const toSave = settings.showDebugPanel ? events : events.map(({rawICS,...e})=>e);
+    save(uKey(email,"cf_events"),toSave);
+  },[events,email,settings.showDebugPanel]);
   useEffect(()=>{ if(email) save(uKey(email,"cf_calendars"),calendars); },[calendars,email]);
   useEffect(()=>{ if(email) save(uKey(email,"cf_settings"),settings); },[settings,email]);
   useEffect(()=>{ if(typeof window!=="undefined") window.__debugToast=!!settings.debugToast; },[settings.debugToast]);
@@ -453,7 +458,8 @@ Page : ${f.page}
   }
 
   if(!auth) return <LoginScreen onLogin={handleLogin}/>;
-  if(screen==="settings") return <Settings settings={settings} setSettings={setSettings} calendars={calendars} onBack={()=>setScreen("main")} auth={auth}/>;
+  if(screen==="settings") return <Settings settings={settings} setSettings={setSettings} calendars={calendars} onBack={()=>setScreen("main")} auth={auth} onOpenDebug={()=>setScreen("debug")}/>;
+  if(screen==="debug") return <DebugPanel events={events} onBack={()=>setScreen("main")}/>;
 
   // ── Filtre les events synthèse obsolètes du cache local ─────────────────
   const allEvs = events.filter(e => !e.id?.startsWith("synth-"));
@@ -899,6 +905,23 @@ try {
       </Modal>
 
      <FeedbackButton auth={auth} currentPage={nomadBookOpen ? "NomadBook" : "NomadCal"} />
+     {settings.showDebugPanel && (
+       <button onClick={()=>setScreen("debug")} style={{
+         position:"fixed", bottom:178, right:16, zIndex:497,
+         width:44, height:44, borderRadius:"50%",
+         background: C.surface, border:`2px solid #8B5E20`,
+         boxShadow:"0 4px 16px rgba(139,94,32,.3)",
+         cursor:"pointer", display:"flex",
+         alignItems:"center", justifyContent:"center",
+         transition:"all .2s",
+       }}>
+         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+           <rect x="3" y="4" width="18" height="16" rx="2" stroke="#8B5E20" strokeWidth="1.7"/>
+           <path d="M7 8h4M7 12h8M7 16h5" stroke="#8B5E20" strokeWidth="1.5" strokeLinecap="round"/>
+           <circle cx="18" cy="8" r="2.5" fill="#F5C97A"/>
+         </svg>
+       </button>
+     )}
 
 </div>
   </ToastProvider>
