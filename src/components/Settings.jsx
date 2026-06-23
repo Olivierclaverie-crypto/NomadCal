@@ -10,7 +10,7 @@ const EXPORT_KEYS = [
   "nf4_notes", "nb_notes", "nb_periods", "nb_periods_cache", "nb_syntheses",
 ];
 
-export default function Settings({ settings, setSettings, calendars, onBack, auth }) {
+export default function Settings({ settings, setSettings, calendars, onBack, auth, onOpenDebug }) {
   const [importStatus, setImportStatus] = useState(null); // "success" | "error"
 
   const iStyle = {
@@ -137,6 +137,34 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
               <div style={{ position: "absolute", top: 3, left: settings.debugToast ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s", boxShadow: "0 1px 4px rgba(0,0,0,.2)" }}/>
             </div>
           </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
+            <div>
+              <span style={{ fontSize: 14, color: C.ink }}>Mode debug — voir ICS reçus</span>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Conserve le ICS brut iCloud pour analyse des récurrences</div>
+            </div>
+            <div onClick={() => setSettings(s => ({ ...s, showDebugPanel: !s.showDebugPanel }))}
+              style={{ width: 44, height: 26, borderRadius: 13, background: settings.showDebugPanel ? "#8B5E20" : C.border, cursor: "pointer", position: "relative", transition: "background .2s", flexShrink: 0, marginLeft: 12 }}>
+              <div style={{ position: "absolute", top: 3, left: settings.showDebugPanel ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s", boxShadow: "0 1px 4px rgba(0,0,0,.2)" }}/>
+            </div>
+          </div>
+          {settings.showDebugPanel && (
+            <button onClick={() => onOpenDebug && onOpenDebug()} style={{
+              marginTop: 10, width: "100%",
+              padding: "10px", borderRadius: 10,
+              border: `1.5px solid #8B5E20`,
+              background: "#fdf3e3", color: "#8B5E20",
+              fontSize: 13, fontWeight: 700,
+              cursor: "pointer", fontFamily: "inherit",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="4" width="18" height="16" rx="2" stroke="#8B5E20" strokeWidth="1.7"/>
+                <path d="M7 8h4M7 12h8M7 16h5" stroke="#8B5E20" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="18" cy="8" r="2.5" fill="#F5C97A"/>
+              </svg>
+              Voir ICS reçus
+            </button>
+          )}
         </div>
 
         {/* CALENDRIERS */}

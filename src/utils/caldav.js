@@ -155,6 +155,8 @@ export function parseICS(ics, href, calHref, calColor, calName) {
     rrule, exdates,
     status: evStatus,
     type: "event",
+    rawICS: ics,
+    recurrenceId: get("RECURRENCE-ID") || null,
   };
 }
 
