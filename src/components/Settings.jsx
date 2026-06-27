@@ -40,6 +40,7 @@ function copyText(text) {
 
 export default function Settings({ settings, setSettings, calendars, onBack, auth, onOpenDebug }) {
   const [importStatus, setImportStatus] = useState(null); // "success" | "error"
+  const [importText, setImportText]     = useState("");   // sauvegarde collée à restaurer
   const [backupMsg, setBackupMsg]       = useState(null); // résumé chiffré après copie
 
   const iStyle = {
@@ -97,34 +98,59 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
     const tCount = Array.isArray(tasksEntry?.value) ? tasksEntry.value.length : 0;
     const summary = `${nCount} note${nCount > 1 ? "s" : ""} · ${tCount} tâche${tCount > 1 ? "s" : ""} · réglages`;
 
-    copyText(JSON.stringify(backup)).then(() => {
+    // En-tête lisible (hors JSON) — date locale visible au collage dans Notes/Messages
+    const d = new Date(backup.createdAt);
+    const pad = n => String(n).padStart(2, "0");
+    const stamp = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const header = `// NomadCal backup — ${stamp}\n`;
+
+    copyText(header + JSON.stringify(backup)).then(() => {
       setBackupMsg(summary);
       setTimeout(() => setBackupMsg(null), 6000);
     });
   }
 
-  // ── Import JSON — restaure toutes les données ─────────────────────────────
-  function handleImport(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        let restored = 0;
-        Object.keys(data).forEach(k => {
-          if (k.startsWith("_")) return; // Ignore _exportDate, _email
-          localStorage.setItem(k, typeof data[k] === "string" ? data[k] : JSON.stringify(data[k]));
-          restored++;
-        });
-        setImportStatus("success");
-        setTimeout(() => { setImportStatus(null); window.location.reload(); }, 1500);
-      } catch {
-        setImportStatus("error");
-        setTimeout(() => setImportStatus(null), 3000);
-      }
-    };
-    reader.readAsText(file);
+  // ── Restauration — remplacement net depuis une sauvegarde collée ──────────
+  // Le backup fait foi : il écrase, pas de fusion. Whitelist BACKUP_ITEMS →
+  // seules les 6 clés connues sont écrites (cf_auth structurellement inatteignable).
+  function handleRestore() {
+    if (!importText.trim()) return;
+
+    // Tolère un en-tête commentaire avant le JSON : on part du premier '{'
+    const start = importText.indexOf("{");
+    let backup;
+    try {
+      backup = JSON.parse(start >= 0 ? importText.slice(start) : importText);
+    } catch {
+      setImportStatus("error");
+      setTimeout(() => setImportStatus(null), 4000);
+      return;
+    }
+
+    // Validation stricte — sinon aucune écriture
+    if (!backup || backup.format !== "nomadcal-backup" || backup.version !== 1 || !Array.isArray(backup.data)) {
+      setImportStatus("error");
+      setTimeout(() => setImportStatus(null), 4000);
+      return;
+    }
+    if (!auth?.email) {
+      setImportStatus("error");
+      setTimeout(() => setImportStatus(null), 4000);
+      return;
+    }
+
+    if (!window.confirm("Ceci remplacera vos données actuelles. Continuer ?")) return;
+
+    const prefix = userPrefix(auth.email);
+    backup.data.forEach(entry => {
+      const def = BACKUP_ITEMS.find(b => b.logicalName === entry.logicalName);
+      if (!def) return; // entrée inconnue → ignorée (jamais de clé arbitraire)
+      const storageKey = def.prefixed ? prefix + def.key : def.key;
+      try { localStorage.setItem(storageKey, JSON.stringify(entry.value)); } catch {}
+    });
+
+    setImportStatus("success");
+    setTimeout(() => { setImportStatus(null); window.location.reload(); }, 1500);
   }
 
   return (
@@ -257,21 +283,32 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
             </div>
           )}
 
-          <label style={{ display: "block", width: "100%", padding: "11px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.bg, color: C.muted, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "center", boxSizing: "border-box" }}>
-            Importer une sauvegarde
-            <input type="file" accept=".json" onChange={handleImport} style={{ display: "none" }}/>
-          </label>
+          <div style={{ marginTop: 4, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 10, lineHeight: 1.6 }}>
+              Colle ici une sauvegarde pour restaurer tes données. Cela remplacera tes notes, tâches, synthèses et réglages actuels.
+            </div>
+            <textarea
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+              placeholder="Colle ta sauvegarde ici…"
+              rows={3}
+              style={{ ...iStyle, resize: "none", fontFamily: "monospace", fontSize: 12, marginBottom: 10 }}
+            />
+            <button onClick={handleRestore} disabled={!importText.trim()} style={{ width: "100%", padding: "11px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: importText.trim() ? C.bg : C.surface, color: importText.trim() ? C.ink : C.muted, fontSize: 13, fontWeight: 700, cursor: importText.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+              Restaurer une sauvegarde
+            </button>
 
-          {importStatus === "success" && (
-            <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 10, background: C.greenLight, border: `1px solid ${C.green}44`, color: C.green, fontSize: 13, fontWeight: 700, textAlign: "center" }}>
-              ✓ Données restaurées — rechargement…
-            </div>
-          )}
-          {importStatus === "error" && (
-            <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 10, background: C.redLight, border: `1px solid ${C.red}44`, color: C.red, fontSize: 13, fontWeight: 700, textAlign: "center" }}>
-              Fichier invalide — vérifie le format
-            </div>
-          )}
+            {importStatus === "success" && (
+              <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 10, background: C.greenLight, border: `1px solid ${C.green}44`, color: C.green, fontSize: 13, fontWeight: 700, textAlign: "center" }}>
+                ✓ Données restaurées — rechargement…
+              </div>
+            )}
+            {importStatus === "error" && (
+              <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 10, background: C.redLight, border: `1px solid ${C.red}44`, color: C.red, fontSize: 13, fontWeight: 700, textAlign: "center" }}>
+                Sauvegarde invalide ou illisible — rien n'a été modifié.
+              </div>
+            )}
+          </div>
         </div>
 
         {/* DÉCONNEXION — ne supprime QUE cf_auth */}
