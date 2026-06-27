@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { C } from '../utils/constants.js';
+import { userPrefix } from '../utils/helpers.js';
 
 // ── Clés localStorage à protéger lors de la déconnexion ──────────────────────
 const PROTECTED_KEYS = ["cf_auth"];
@@ -10,8 +11,36 @@ const EXPORT_KEYS = [
   "nf4_notes", "nb_notes", "nb_periods", "nb_periods_cache", "nb_syntheses",
 ];
 
+// ── Sauvegarde : nom logique → { clé, préfixée ? } ───────────────────────────
+// Le nom logique + le flag prefixed permettent à la restauration de réécrire
+// au bon endroit quel que soit le préfixe user du device d'import.
+const BACKUP_ITEMS = [
+  { logicalName: "notes",     key: "nb_notes",     prefixed: false },
+  { logicalName: "nf4_notes", key: "nf4_notes",    prefixed: false },
+  { logicalName: "periods",   key: "nb_periods",   prefixed: false },
+  { logicalName: "syntheses", key: "nb_syntheses", prefixed: false },
+  { logicalName: "tasks",     key: "cf_tasks",     prefixed: true  },
+  { logicalName: "settings",  key: "cf_settings",  prefixed: true  },
+];
+
+// ── Copie presse-papier avec fallback iOS (même pattern que DebugPanel) ──────
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+  const el = document.createElement("textarea");
+  el.value = text;
+  el.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0";
+  document.body.appendChild(el);
+  el.select();
+  try { document.execCommand("copy"); } catch (_) {}
+  document.body.removeChild(el);
+  return Promise.resolve();
+}
+
 export default function Settings({ settings, setSettings, calendars, onBack, auth, onOpenDebug }) {
   const [importStatus, setImportStatus] = useState(null); // "success" | "error"
+  const [backupMsg, setBackupMsg]       = useState(null); // résumé chiffré après copie
 
   const iStyle = {
     width: "100%", padding: "10px 12px", borderRadius: 10,
@@ -39,30 +68,39 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
     window.location.reload();
   }
 
-  // ── Export JSON — toutes les données (clés brutes + clés préfixées user) ──
-  function handleExport() {
-    const data = {};
-    // Parcourt TOUTES les clés localStorage → capture aussi les clés préfixées
-    for (let i = 0; i < localStorage.length; i++) {
-      const fullKey = localStorage.key(i);
-      if (fullKey === "cf_auth") continue; // Jamais exporter les identifiants
-      const isRelevant = EXPORT_KEYS.some(k => fullKey === k || fullKey.endsWith("_" + k))
-        || fullKey.startsWith("nb_") || fullKey.startsWith("nf4_");
-      if (isRelevant) {
-        try { data[fullKey] = JSON.parse(localStorage.getItem(fullKey)); }
-        catch { data[fullKey] = localStorage.getItem(fullKey); }
-      }
-    }
-    data._exportDate = new Date().toISOString();
-    data._email = auth?.email || "unknown";
+  // ── Sauvegarde — empaquette 6 clés ciblées + copie presse-papier ──────────
+  // Lecture seule : aucune écriture localStorage. Format portable (nom logique
+  // + flag prefixed) pour restauration sur n'importe quel device/préfixe.
+  function handleBackup() {
+    const prefix = userPrefix(auth?.email);
+    const items = [];
+    BACKUP_ITEMS.forEach(item => {
+      const storageKey = item.prefixed ? prefix + item.key : item.key;
+      const raw = localStorage.getItem(storageKey);
+      if (raw === null) return; // clé absente → on saute (ex: nb_periods legacy)
+      let value;
+      try { value = JSON.parse(raw); } catch { value = raw; }
+      items.push({ logicalName: item.logicalName, prefixed: item.prefixed, value });
+    });
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `nomadcal-backup-${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const backup = {
+      format: "nomadcal-backup",
+      version: 1,
+      createdAt: new Date().toISOString(),
+      data: items,
+    };
+
+    // Résumé chiffré pour confirmer ce qui vient d'être capturé
+    const notesEntry = items.find(i => i.logicalName === "notes");
+    const tasksEntry = items.find(i => i.logicalName === "tasks");
+    const nCount = Array.isArray(notesEntry?.value) ? notesEntry.value.length : 0;
+    const tCount = Array.isArray(tasksEntry?.value) ? tasksEntry.value.length : 0;
+    const summary = `${nCount} note${nCount > 1 ? "s" : ""} · ${tCount} tâche${tCount > 1 ? "s" : ""} · réglages`;
+
+    copyText(JSON.stringify(backup)).then(() => {
+      setBackupMsg(summary);
+      setTimeout(() => setBackupMsg(null), 6000);
+    });
   }
 
   // ── Import JSON — restaure toutes les données ─────────────────────────────
@@ -206,12 +244,18 @@ export default function Settings({ settings, setSettings, calendars, onBack, aut
             Sauvegarde & Restauration
           </div>
           <div style={{ fontSize: 12, color: C.muted, marginBottom: 14, lineHeight: 1.6 }}>
-            Exporte toutes tes données (notes, tâches, synthèses, périodes) dans un fichier JSON. Conserve ce fichier précieusement — c'est ta sauvegarde complète.
+            Copie un point de restauration de tes notes, tâches, synthèses et réglages. Colle-le dans un message ou une note pour le garder en lieu sûr.
           </div>
 
-          <button onClick={handleExport} style={{ width: "100%", padding: "11px", borderRadius: 10, border: `1.5px solid ${C.accentBorder}`, background: C.accentLight, color: C.accent, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginBottom: 10 }}>
-            Exporter mes données (.json)
+          <button onClick={handleBackup} style={{ width: "100%", padding: "11px", borderRadius: 10, border: `1.5px solid ${C.accentBorder}`, background: C.accentLight, color: C.accent, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginBottom: 10 }}>
+            Sauvegarder mes données
           </button>
+
+          {backupMsg && (
+            <div style={{ marginBottom: 10, padding: "10px 14px", borderRadius: 10, background: C.greenLight, border: `1px solid ${C.green}44`, color: C.green, fontSize: 13, fontWeight: 700, textAlign: "center" }}>
+              Copié ✓ — {backupMsg}
+            </div>
+          )}
 
           <label style={{ display: "block", width: "100%", padding: "11px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.bg, color: C.muted, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "center", boxSizing: "border-box" }}>
             Importer une sauvegarde
