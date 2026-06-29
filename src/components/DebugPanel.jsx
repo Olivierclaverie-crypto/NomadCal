@@ -15,7 +15,7 @@ function copyText(text) {
   return Promise.resolve();
 }
 
-function EventICSCard({ ev }) {
+function EventICSCard({ ev, count = 1 }) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -57,6 +57,11 @@ function EventICSCard({ ev }) {
               RECURRENCE-ID: {recId}
             </div>
           )}
+          {count > 1 && (
+            <div style={{ fontSize: 10, color: C.green, marginTop: 3, fontWeight: 700 }}>
+              {count} occurrences dépliées
+            </div>
+          )}
         </div>
         <button onClick={handleCopy} style={{
           flexShrink: 0,
@@ -92,12 +97,23 @@ function EventICSCard({ ev }) {
 export default function DebugPanel({ events, onBack }) {
   const [rruleOnly, setRruleOnly] = useState(true);
 
+  // ── Regroupe les occurrences expansées en séries — 1 carte par master ──────
+  // Une série récurrente arrive ici en N occurrences (masterUid commun), chacune
+  // portant une copie identique du rawICS. On n'en affiche qu'une, avec le compte.
+  // Un event non-récurrent (pas de masterUid) retombe sur son id → carte unique.
   const withRaw = events.filter(e => e.rawICS);
-  const filtered = rruleOnly
-    ? withRaw.filter(e => /RRULE:/.test(e.rawICS || ""))
-    : withRaw;
+  const groupsMap = new Map();
+  withRaw.forEach(e => {
+    const key = e.masterUid || e.id;
+    const g = groupsMap.get(key);
+    if (g) g.count++;
+    else groupsMap.set(key, { rep: e, count: 1 });
+  });
+  const groups = Array.from(groupsMap.values());
 
-  const rruleCount = withRaw.filter(e => /RRULE:/.test(e.rawICS || "")).length;
+  const isRecurrent = g => /RRULE:/.test(g.rep.rawICS || "");
+  const filtered = rruleOnly ? groups.filter(isRecurrent) : groups;
+  const rruleCount = groups.filter(isRecurrent).length;
 
   return (
     <div style={{
@@ -127,7 +143,7 @@ export default function DebugPanel({ events, onBack }) {
               Debug ICS
             </div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>
-              {withRaw.length} events avec ICS · {rruleCount} récurrents
+              {groups.length} série{groups.length > 1 ? "s" : ""} · {rruleCount} récurrente{rruleCount > 1 ? "s" : ""}
             </div>
           </div>
         </div>
@@ -162,7 +178,7 @@ export default function DebugPanel({ events, onBack }) {
               : "Aucun event avec ICS dans le cache.\nFais une synchro d'abord."}
           </div>
         ) : (
-          filtered.map(ev => <EventICSCard key={ev.id} ev={ev} />)
+          filtered.map(g => <EventICSCard key={g.rep.masterUid || g.rep.id} ev={g.rep} count={g.count} />)
         )}
       </div>
     </div>
