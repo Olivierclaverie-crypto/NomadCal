@@ -25,8 +25,9 @@ function EventICSCard({ ev, count = 1 }) {
     });
   }
 
-  const rruleMatch = ev.rawICS ? ev.rawICS.match(/RRULE:[^\r\n]+/) : null;
-  const rrule = rruleMatch ? rruleMatch[0] : null;
+  // RRULE déjà parsée par parseICS (bornée au VEVENT) — NE PAS re-scanner le
+  // rawICS complet, qui capterait la RRULE du VTIMEZONE (transitions DST).
+  const rrule = ev.rrule ? `RRULE:${ev.rrule}` : null;
   const recId = ev.recurrenceId;
 
   return (
@@ -111,7 +112,7 @@ export default function DebugPanel({ events, onBack }) {
   });
   const groups = Array.from(groupsMap.values());
 
-  const isRecurrent = g => /RRULE:/.test(g.rep.rawICS || "");
+  const isRecurrent = g => !!g.rep.rrule;
   const filtered = rruleOnly ? groups.filter(isRecurrent) : groups;
   const rruleCount = groups.filter(isRecurrent).length;
 
