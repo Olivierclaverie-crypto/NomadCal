@@ -1,17 +1,30 @@
 // ── CalDAV helpers ────────────────────────────────────────────────────────────
 
-export async function caldavRequest(method, path, auth, body = "", extraHeaders = {}) {
-  const res = await fetch(`/api/caldav?path=${encodeURIComponent(path)}`, {
-    method,
-    headers: {
-      "Authorization": auth,
-      "Content-Type": "application/xml; charset=utf-8",
-      ...extraHeaders,
-    },
-    body: method === "GET" || method === "HEAD" ? undefined : body,
-  });
-  const text = await res.text();
-  return { status: res.status, text };
+export async function caldavRequest(method, path, auth, body = "", extraHeaders = {}, timeoutMs = 20000) {
+  // Timeout dur : une requête CalDAV qui pend (hang mobile WKWebView : socket figée
+  // sur bascule WiFi↔cellulaire) devient un échec borné, sinon elle bloque la synchro.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`/api/caldav?path=${encodeURIComponent(path)}`, {
+      method,
+      headers: {
+        "Authorization": auth,
+        "Content-Type": "application/xml; charset=utf-8",
+        ...extraHeaders,
+      },
+      body: method === "GET" || method === "HEAD" ? undefined : body,
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    return { status: res.status, text };
+  } catch (err) {
+    // Abort (timeout) → échec propre dans le contrat { status, text }, aucun appelant impacté.
+    if (err.name === "AbortError") return { status: 408, text: "" };
+    throw err; // vraie erreur réseau : comportement inchangé
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function parseCalendars(xml) {
