@@ -1,19 +1,31 @@
 // ── CalDAV helpers ────────────────────────────────────────────────────────────
 
+// Méthodes HTTP standard acceptées par le routage Vercel. Les méthodes WebDAV
+// (PROPFIND, REPORT, MKCALENDAR) sont rejetées en 405 (x-vercel-error:
+// INVALID_REQUEST_METHOD) AVANT d'atteindre la fonction proxy → on les tunnelise
+// en POST + en-tête X-HTTP-Method-Override, que le proxy rétablit vers iCloud.
+const STD_METHODS = new Set(["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]);
+
 export async function caldavRequest(method, path, auth, body = "", extraHeaders = {}, timeoutMs = 20000) {
   // Timeout dur : une requête CalDAV qui pend (hang mobile WKWebView : socket figée
   // sur bascule WiFi↔cellulaire) devient un échec borné, sinon elle bloque la synchro.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const tunnel = !STD_METHODS.has(method);          // méthode WebDAV → à tunneliser
+  const wireMethod = tunnel ? "POST" : method;      // ce que voit Vercel
+  const headers = {
+    "Authorization": auth,
+    "Content-Type": "application/xml; charset=utf-8",
+    ...extraHeaders,
+  };
+  if (tunnel) headers["X-HTTP-Method-Override"] = method; // le proxy rétablit le vrai verbe
+
   try {
     const res = await fetch(`/api/caldav?path=${encodeURIComponent(path)}`, {
-      method,
-      headers: {
-        "Authorization": auth,
-        "Content-Type": "application/xml; charset=utf-8",
-        ...extraHeaders,
-      },
-      body: method === "GET" || method === "HEAD" ? undefined : body,
+      method: wireMethod,
+      headers,
+      body: wireMethod === "GET" || wireMethod === "HEAD" ? undefined : body,
       signal: controller.signal,
     });
     const text = await res.text();
