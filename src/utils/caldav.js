@@ -66,21 +66,37 @@ export function parseEvents(xml, calHref, calColor, calName) {
     const href = r.querySelector("href")?.textContent || "";
     const calData = r.querySelector("calendar-data")?.textContent || "";
     if (!calData) return;
-    try {
-      const ev = parseICS(calData, href, calHref, calColor, calName);
-      if (ev) events.push(ev);
-    } catch (e) {}
+    // iCloud livre master + occurrences modifiées (RECURRENCE-ID) dans la MÊME
+    // ressource → on découpe TOUS les blocs VEVENT et on parse chacun.
+    const unfolded = calData.replace(/\r\n[ \t]/g, "").replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+    const blocks = unfolded.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/g) || [];
+    if (blocks.length <= 1) {
+      // Cas simple (0 ou 1 VEVENT) : chemin identique à avant → non-régression stricte.
+      try {
+        const ev = parseICS(calData, href, calHref, calColor, calName);
+        if (ev) events.push(ev);
+      } catch (e) {}
+    } else {
+      // Master + exceptions : un objet par bloc (rawICS reste l'enveloppe complète).
+      blocks.forEach(block => {
+        try {
+          const ev = parseICS(calData, href, calHref, calColor, calName, block);
+          if (ev) events.push(ev);
+        } catch (e) {}
+      });
+    }
   });
   return events;
 }
 
-export function parseICS(ics, href, calHref, calColor, calName) {
+export function parseICS(ics, href, calHref, calColor, calName, veventBlock = null) {
   // ── Fix iOS : unfold les lignes continues ──────────────────────────────────
   const unfolded = ics.replace(/\r\n[ \t]/g, "").replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
-  // ── Fix « Annuel fantôme » : isoler le bloc VEVENT ──────────────────────────
-  // (sinon le RRULE du VTIMEZONE — règle du changement d'heure, annuelle — est capté à tort)
+  // ── Isolation du bloc VEVENT ────────────────────────────────────────────────
+  // veventBlock fourni (multi-VEVENT : master OU exception) → on parse ce bloc précis.
+  // Sinon : 1er VEVENT de l'enveloppe (évite aussi le RRULE du VTIMEZONE, annuel).
   const veventMatch = unfolded.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/);
-  const lines = (veventMatch ? veventMatch[0] : unfolded).split("\n");
+  const lines = (veventBlock || (veventMatch ? veventMatch[0] : unfolded)).split("\n");
 
   const get = key => {
     const line = lines.find(l => l.startsWith(key + ":") || l.startsWith(key + ";"));
