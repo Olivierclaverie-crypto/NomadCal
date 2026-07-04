@@ -3,7 +3,7 @@ import { loadQueue, saveQueue, enqueueWrite, pushEvent, deleteEvent, mergeEvents
 import { useState, useEffect, useRef } from "react";
 import { C, PRIORITY, GRID_START, GRID_END, GRID_TOTAL, SLOT_H, GRID_H, GRID_DEFAULT_SCROLL, RECURRENCE_OPTIONS } from "./utils/constants.js";
 import { load, save, toISO, todayISO, getWeekStart, getWeekDays, fmtDay, fmtDayNum, fmtWeekRange, timeToMinutes, minutesToHHMM, timeToY, durationToH, slideTasksToToday, rruleToFr, makeAuthHeader, userPrefix, uKey } from "./utils/helpers.js";
-import { caldavRequest, parseCalendars, parseEvents, expandRecurring } from "./utils/caldav.js";
+import { caldavRequest, parseCalendars, parseEvents, expandRecurring, mergeRecurrenceExceptions } from "./utils/caldav.js";
 import Modal, { Btn } from "./components/Modal.jsx";
 import Header from "./components/Header.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
@@ -461,8 +461,8 @@ Page : ${f.page}
   if(screen==="settings") return <Settings settings={settings} setSettings={setSettings} calendars={calendars} onBack={()=>setScreen("main")} auth={auth} onOpenDebug={()=>setScreen("debug")}/>;
   if(screen==="debug") return <DebugPanel events={events} onBack={()=>setScreen("main")}/>;
 
-  // ── Filtre les events synthèse obsolètes du cache local ─────────────────
-  const allEvs = events.filter(e => !e.id?.startsWith("synth-"));
+  // ── Fusion couche 2 (exceptions RECURRENCE-ID) + filtre synthèses obsolètes ──
+  const allEvs = mergeRecurrenceExceptions(events).filter(e => !e.id?.startsWith("synth-"));
 
 return (
   <ToastProvider>

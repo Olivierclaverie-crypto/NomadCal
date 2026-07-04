@@ -392,3 +392,54 @@ export function expandRecurring(ev, rangeStart, rangeEnd) {
 
   return occurrences.length > 0 ? occurrences : [ev];
 }
+
+// ── Couche 2 : fusion master + exceptions (RECURRENCE-ID) ─────────────────────
+// Lecture PURE, appliquée à l'AFFICHAGE. Pour chaque exception lue (PR-a), on
+// retire l'occurrence développée par le master dont l'INSTANT de départ ==
+// RECURRENCE-ID de l'exception, et on garde l'exception (vraie heure + données).
+// Matching sur instant absolu (getTime), jamais de chaîne UTC tronquée → DST-safe.
+
+// RECURRENCE-ID (heure locale "YYYYMMDDTHHMMSS", ou date "YYYYMMDD", éventuel Z UTC)
+// → instant absolu, construit en heure locale du device comme les occurrences.
+function recurrenceIdToInstant(rid) {
+  if (!rid) return null;
+  const utc = /Z$/.test(rid);
+  const s = rid.replace(/Z$/, "");
+  const y = +s.slice(0, 4), mo = +s.slice(4, 6) - 1, d = +s.slice(6, 8);
+  if (s.length <= 8) {
+    return utc ? Date.UTC(y, mo, d) : new Date(y, mo, d).getTime(); // all-day → minuit local
+  }
+  const h = +s.slice(9, 11), mi = +s.slice(11, 13), se = +s.slice(13, 15) || 0;
+  return utc ? Date.UTC(y, mo, d, h, mi, se) : new Date(y, mo, d, h, mi, se).getTime();
+}
+
+// Instant d'une occurrence développée — même construction (heure locale) que expandRecurring.
+function occurrenceInstant(e) {
+  return new Date(`${e.startDate}T${e.startTime || "00:00"}:00`).getTime();
+}
+
+export function mergeRecurrenceExceptions(events) {
+  const exceptions = events.filter(e => e.recurrenceId);
+  if (!exceptions.length) return events; // rien à fusionner → non-régression stricte
+
+  // Instants d'origine à masquer, clés par UID de série : `${masterUid}@${instant}`
+  const toRemove = new Set();
+  exceptions.forEach(ex => {
+    const inst = recurrenceIdToInstant(ex.recurrenceId);
+    if (inst !== null) toRemove.add(`${ex.id}@${inst}`);
+  });
+
+  return events
+    .filter(e => {
+      if (e.recurrenceId) return true; // exception → gardée
+      // occurrence développée dont l'instant == RECURRENCE-ID d'une exception de la même série → retirée
+      if (e.isRecurring && e.masterUid) {
+        return !toRemove.has(`${e.masterUid}@${occurrenceInstant(e)}`);
+      }
+      return true; // master pur (non développé), event simple → inchangés
+    })
+    .map(e =>
+      // clé unique d'affichage : l'id brut d'une exception vaut son UID (collision master/exceptions)
+      e.recurrenceId ? { ...e, id: `${e.id}_exc_${e.recurrenceId}` } : e
+    );
+}
