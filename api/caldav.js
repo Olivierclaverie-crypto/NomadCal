@@ -4,12 +4,16 @@
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,PROPFIND,REPORT,MKCALENDAR,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Depth,Prefer,If-Match,If-None-Match");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Depth,Prefer,If-Match,If-None-Match,X-HTTP-Method-Override");
 
   if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
   }
+
+  // Method tunneling : les méthodes WebDAV arrivent en POST + X-HTTP-Method-Override
+  // (le routage Vercel rejette PROPFIND/REPORT/MKCALENDAR en 405). On rétablit le vrai verbe.
+  const realMethod = req.headers["x-http-method-override"] || req.method;
 
   const { path: caldavPath } = req.query;
   if (!caldavPath) {
@@ -29,7 +33,7 @@ export default async function handler(req, res) {
 
   try {
     const fetchOptions = {
-      method: req.method,
+      method: realMethod,
       headers: {
         "Authorization": authHeader,
         "Content-Type": req.headers["content-type"] || "application/xml; charset=utf-8",
@@ -41,7 +45,7 @@ export default async function handler(req, res) {
       redirect: "follow",
     };
 
-    if (req.method !== "GET" && req.method !== "HEAD") {
+    if (realMethod !== "GET" && realMethod !== "HEAD") {
       const chunks = [];
       for await (const chunk of req) chunks.push(chunk);
       fetchOptions.body = Buffer.concat(chunks);

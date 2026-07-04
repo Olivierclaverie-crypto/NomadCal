@@ -1,17 +1,42 @@
 // ── CalDAV helpers ────────────────────────────────────────────────────────────
 
-export async function caldavRequest(method, path, auth, body = "", extraHeaders = {}) {
-  const res = await fetch(`/api/caldav?path=${encodeURIComponent(path)}`, {
-    method,
-    headers: {
-      "Authorization": auth,
-      "Content-Type": "application/xml; charset=utf-8",
-      ...extraHeaders,
-    },
-    body: method === "GET" || method === "HEAD" ? undefined : body,
-  });
-  const text = await res.text();
-  return { status: res.status, text };
+// Méthodes HTTP standard acceptées par le routage Vercel. Les méthodes WebDAV
+// (PROPFIND, REPORT, MKCALENDAR) sont rejetées en 405 (x-vercel-error:
+// INVALID_REQUEST_METHOD) AVANT d'atteindre la fonction proxy → on les tunnelise
+// en POST + en-tête X-HTTP-Method-Override, que le proxy rétablit vers iCloud.
+const STD_METHODS = new Set(["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]);
+
+export async function caldavRequest(method, path, auth, body = "", extraHeaders = {}, timeoutMs = 20000) {
+  // Timeout dur : une requête CalDAV qui pend (hang mobile WKWebView : socket figée
+  // sur bascule WiFi↔cellulaire) devient un échec borné, sinon elle bloque la synchro.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const tunnel = !STD_METHODS.has(method);          // méthode WebDAV → à tunneliser
+  const wireMethod = tunnel ? "POST" : method;      // ce que voit Vercel
+  const headers = {
+    "Authorization": auth,
+    "Content-Type": "application/xml; charset=utf-8",
+    ...extraHeaders,
+  };
+  if (tunnel) headers["X-HTTP-Method-Override"] = method; // le proxy rétablit le vrai verbe
+
+  try {
+    const res = await fetch(`/api/caldav?path=${encodeURIComponent(path)}`, {
+      method: wireMethod,
+      headers,
+      body: wireMethod === "GET" || wireMethod === "HEAD" ? undefined : body,
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    return { status: res.status, text };
+  } catch (err) {
+    // Abort (timeout) → échec propre dans le contrat { status, text }, aucun appelant impacté.
+    if (err.name === "AbortError") return { status: 408, text: "" };
+    throw err; // vraie erreur réseau : comportement inchangé
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function parseCalendars(xml) {
@@ -41,21 +66,37 @@ export function parseEvents(xml, calHref, calColor, calName) {
     const href = r.querySelector("href")?.textContent || "";
     const calData = r.querySelector("calendar-data")?.textContent || "";
     if (!calData) return;
-    try {
-      const ev = parseICS(calData, href, calHref, calColor, calName);
-      if (ev) events.push(ev);
-    } catch (e) {}
+    // iCloud livre master + occurrences modifiées (RECURRENCE-ID) dans la MÊME
+    // ressource → on découpe TOUS les blocs VEVENT et on parse chacun.
+    const unfolded = calData.replace(/\r\n[ \t]/g, "").replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+    const blocks = unfolded.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/g) || [];
+    if (blocks.length <= 1) {
+      // Cas simple (0 ou 1 VEVENT) : chemin identique à avant → non-régression stricte.
+      try {
+        const ev = parseICS(calData, href, calHref, calColor, calName);
+        if (ev) events.push(ev);
+      } catch (e) {}
+    } else {
+      // Master + exceptions : un objet par bloc (rawICS reste l'enveloppe complète).
+      blocks.forEach(block => {
+        try {
+          const ev = parseICS(calData, href, calHref, calColor, calName, block);
+          if (ev) events.push(ev);
+        } catch (e) {}
+      });
+    }
   });
   return events;
 }
 
-export function parseICS(ics, href, calHref, calColor, calName) {
+export function parseICS(ics, href, calHref, calColor, calName, veventBlock = null) {
   // ── Fix iOS : unfold les lignes continues ──────────────────────────────────
   const unfolded = ics.replace(/\r\n[ \t]/g, "").replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
-  // ── Fix « Annuel fantôme » : isoler le bloc VEVENT ──────────────────────────
-  // (sinon le RRULE du VTIMEZONE — règle du changement d'heure, annuelle — est capté à tort)
+  // ── Isolation du bloc VEVENT ────────────────────────────────────────────────
+  // veventBlock fourni (multi-VEVENT : master OU exception) → on parse ce bloc précis.
+  // Sinon : 1er VEVENT de l'enveloppe (évite aussi le RRULE du VTIMEZONE, annuel).
   const veventMatch = unfolded.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/);
-  const lines = (veventMatch ? veventMatch[0] : unfolded).split("\n");
+  const lines = (veventBlock || (veventMatch ? veventMatch[0] : unfolded)).split("\n");
 
   const get = key => {
     const line = lines.find(l => l.startsWith(key + ":") || l.startsWith(key + ";"));
@@ -350,4 +391,55 @@ export function expandRecurring(ev, rangeStart, rangeEnd) {
   }
 
   return occurrences.length > 0 ? occurrences : [ev];
+}
+
+// ── Couche 2 : fusion master + exceptions (RECURRENCE-ID) ─────────────────────
+// Lecture PURE, appliquée à l'AFFICHAGE. Pour chaque exception lue (PR-a), on
+// retire l'occurrence développée par le master dont l'INSTANT de départ ==
+// RECURRENCE-ID de l'exception, et on garde l'exception (vraie heure + données).
+// Matching sur instant absolu (getTime), jamais de chaîne UTC tronquée → DST-safe.
+
+// RECURRENCE-ID (heure locale "YYYYMMDDTHHMMSS", ou date "YYYYMMDD", éventuel Z UTC)
+// → instant absolu, construit en heure locale du device comme les occurrences.
+function recurrenceIdToInstant(rid) {
+  if (!rid) return null;
+  const utc = /Z$/.test(rid);
+  const s = rid.replace(/Z$/, "");
+  const y = +s.slice(0, 4), mo = +s.slice(4, 6) - 1, d = +s.slice(6, 8);
+  if (s.length <= 8) {
+    return utc ? Date.UTC(y, mo, d) : new Date(y, mo, d).getTime(); // all-day → minuit local
+  }
+  const h = +s.slice(9, 11), mi = +s.slice(11, 13), se = +s.slice(13, 15) || 0;
+  return utc ? Date.UTC(y, mo, d, h, mi, se) : new Date(y, mo, d, h, mi, se).getTime();
+}
+
+// Instant d'une occurrence développée — même construction (heure locale) que expandRecurring.
+function occurrenceInstant(e) {
+  return new Date(`${e.startDate}T${e.startTime || "00:00"}:00`).getTime();
+}
+
+export function mergeRecurrenceExceptions(events) {
+  const exceptions = events.filter(e => e.recurrenceId);
+  if (!exceptions.length) return events; // rien à fusionner → non-régression stricte
+
+  // Instants d'origine à masquer, clés par UID de série : `${masterUid}@${instant}`
+  const toRemove = new Set();
+  exceptions.forEach(ex => {
+    const inst = recurrenceIdToInstant(ex.recurrenceId);
+    if (inst !== null) toRemove.add(`${ex.id}@${inst}`);
+  });
+
+  return events
+    .filter(e => {
+      if (e.recurrenceId) return true; // exception → gardée
+      // occurrence développée dont l'instant == RECURRENCE-ID d'une exception de la même série → retirée
+      if (e.isRecurring && e.masterUid) {
+        return !toRemove.has(`${e.masterUid}@${occurrenceInstant(e)}`);
+      }
+      return true; // master pur (non développé), event simple → inchangés
+    })
+    .map(e =>
+      // clé unique d'affichage : l'id brut d'une exception vaut son UID (collision master/exceptions)
+      e.recurrenceId ? { ...e, id: `${e.id}_exc_${e.recurrenceId}` } : e
+    );
 }
