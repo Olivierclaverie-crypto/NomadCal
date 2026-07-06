@@ -1,7 +1,8 @@
 # NomadCal
 
-**Calendrier pro pour commercial terrain**  
-PWA mobile-first connectée à iCloud via CalDAV. Agenda hebdomadaire, tâches glissantes, journal de terrain (NomadBook) et sync offline-first — sans aucune dépendance UI.
+*Vérifié fichier par fichier contre `main` au commit `7d7763a` — 2026-07-05.*
+
+**Calendrier pro pour commercial terrain** — PWA mobile-first (iPhone-first) connectée à iCloud via CalDAV. Agenda hebdomadaire, tâches glissantes, journal de terrain (NomadBook), sync offline-first. Aucune librairie de composants UI.
 
 ---
 
@@ -9,277 +10,150 @@ PWA mobile-first connectée à iCloud via CalDAV. Agenda hebdomadaire, tâches g
 
 | Couche | Choix |
 |---|---|
-| UI | React 18.3.1 — JSX inline, CSS-in-JS vanilla, aucune librairie de composants |
+| UI | React 18.3.1 — JSX, styles inline (CSS-in-JS vanilla), zéro lib de composants |
 | Build | Vite 5.4.1 + `@vitejs/plugin-react` |
 | Backend | 2 Vercel Serverless Functions (`api/`) |
-| Calendrier | CalDAV iCloud (caldav.icloud.com) via proxy CORS |
-| Persistance locale | localStorage (events, tâches, settings) + IndexedDB (photos) |
+| Calendrier | CalDAV iCloud (`caldav.icloud.com`) via proxy serveur |
+| Persistance locale | localStorage (events, tâches, notes, settings) + IndexedDB (photos) |
 | PWA | Service Worker manuel (`public/sw.js`) |
-| Police | Phenomena (TTF bundled) |
+| Police | Phenomena (TTF embarqué) |
+| Hébergement | Vercel — prod : `cal-flow-jade.vercel.app` |
+
+> **Neon (backend planifié, ~fin août)** : mentionné dans la doc projet, **pas encore présent dans le code**. Objectif : remplacer localStorage et régler l'isolation des contextes WKWebView. Roadmap, pas encore une dépendance.
 
 ---
 
-## Architecture
+## Arborescence réelle (`main`)
 
 ```
 NomadCal/
-├── api/
-│   ├── caldav.js          proxy CORS Vercel → iCloud (export default handler)
-│   └── feedback.js        log structuré des feedbacks utilisateur
+├── api/                            # Fonctions serverless Vercel (Node)
+│   ├── caldav.js                   # ⚠️ PROXY SERVEUR → iCloud : CORS + tunneling X-HTTP-Method-Override
+│   └── feedback.js                 # Log structuré des feedbacks (POST → console.log Vercel)
 │
 ├── src/
-│   ├── main.jsx           point d'entrée React + enregistrement Service Worker
-│   ├── App.jsx            (~1 010 lignes) orchestration centrale : auth, grille,
-│   │                      sync CalDAV, boîte d'envoi offline, gestion tâches
+│   ├── main.jsx                    # Entrée React + enregistrement Service Worker (update on visibility)
+│   ├── App.jsx                     # Orchestration : auth, grille, merge, syncCalDAV/syncCalendar, boîte d'envoi, tâches
 │   │
 │   ├── components/
-│   │   ├── EventForm.jsx      formulaire création/édition événement
-│   │   ├── EventPopover.jsx   popover contextuel (copier/modifier/supprimer)
-│   │   ├── Header.jsx         barre navigation, statut sync, date picker
-│   │   ├── LoginScreen.jsx    écran d'authentification (email + App Password iCloud)
-│   │   ├── Settings.jsx       paramètres, calendrier par défaut, export/import JSON
-│   │   ├── Modal.jsx          composant modal générique + Btn
-│   │   ├── NomadBook.jsx      journal de terrain : notes, périodes, dictée vocale
-│   │   ├── TaskDrawer.jsx     tiroir latéral des tâches glissantes
-│   │   ├── FeedbackButton.jsx bouton feedback flottant
-│   │   └── icons/             18 composants SVG (strokeWidth 1.5, bleu #2B5A9E + or #F5C97A)
+│   │   ├── Header.jsx              # Barre nav, statut sync (online/offline), date picker, vues
+│   │   ├── LoginScreen.jsx         # Connexion iCloud (email + mot de passe d'application)
+│   │   ├── EventForm.jsx           # Formulaire création/édition d'événement (WheelSelect)
+│   │   ├── EventPopover.jsx        # Popover d'un event existant (copier / modifier / supprimer)
+│   │   ├── EventPopoverPaste.jsx   # Popover de collage d'un event copié (WheelSelect, heure)
+│   │   ├── Modal.jsx               # Modal générique + bouton `Btn` réutilisable
+│   │   ├── WheelSelect.jsx         # Sélecteur type molette (date/heure), tactile
+│   │   ├── NomadTask.jsx           # Tiroir des tâches glissantes (swipe-to-delete, tri urgence)
+│   │   ├── NomadBook.jsx           # Journal de terrain : notes (chapitres), périodes, photos, dictée
+│   │   ├── Settings.jsx            # Réglages, calendrier défaut, sauvegarde/restauration, toggle debug
+│   │   ├── DebugPanel.jsx          # Écran « Debug ICS » (lecture cache, diagnostic récurrence) — off par défaut
+│   │   ├── FeedbackButton.jsx      # Bouton feedback flottant (beta users)
+│   │   ├── Toast/
+│   │   │   ├── Toast.jsx           # Composant toast (type / title / body / durée)
+│   │   │   └── ToastContext.jsx    # ToastProvider + pont global `window.__showToast`
+│   │   └── icons/                  # 25 icônes SVG maison + index.js (barrel)
 │   │
 │   ├── services/
-│   │   ├── syncService.js     runSync() : flushQueue → syncCalDAV (12 lignes)
-│   │   └── eventActions.js    deleteEventAction(ev) — utilisé dans EventPopover.jsx
+│   │   ├── syncService.js          # runSync() : flushQueue → syncCalDAV (orchestrateur, ~12 lignes)
+│   │   └── eventActions.js         # deleteEventAction(ev) — helper minimal utilisé par EventPopover
+│   │
+│   ├── sync/                       # ⭐ Cœur offline-first / écritures
+│   │   ├── index.js                # Barrel : ré-exporte queue + pushEvent/deleteEvent + mergeEvents
+│   │   ├── pushEvent.js            # 🔒 pushEvent() + deleteEvent() (2 des 4 fonctions sacrées)
+│   │   ├── pendingQueue.js         # Boîte d'envoi (loadQueue/enqueueWrite) + tombstones
+│   │   └── mergeStrategy.js        # mergeEvents(icloud, local, tombstones) — merge sans perte
 │   │
 │   └── utils/
-│       ├── caldav.js          ⚠️ CLIENT navigateur — caldavRequest(), parseCalendars(),
-│       │                      parseEvents(), parseICS(), expandRecurring()
-│       │                      ≠ api/caldav.js qui est le proxy serveur
-│       ├── caldavCalendar.js  CRUD CalDAV dédié au calendrier NomadCal OC :
-│       │                      checkCalendarExists, createCalendar, CRUD périodes,
-│       │                      syncNoteCount, autoLabel
-│       ├── constants.js       tokens design (C), grille (SLOT_H=56, GRID_H=1344),
-│       │                      PRIORITY, RECURRENCE_OPTIONS, SYNTHESE_DEADLINES
-│       ├── helpers.js         date/time, load/save localStorage, makeAuthHeader,
-│       │                      slideTasksToToday, rruleToFr
-│       └── photoStore.js      compressImage (canvas, max 1600px, q=70%),
-│                              savePhoto/getPhotoURL/deletePhoto (IndexedDB),
-│                              requestPersistentStorage
+│       ├── caldav.js               # ⚠️ CLIENT navigateur : caldavRequest, parseEvents, parseICS,
+│       │                           #    expandRecurring, mergeRecurrenceExceptions
+│       ├── caldavCalendar.js       # CRUD du calendrier « NomadCal OC » (périodes NomadBook, MKCALENDAR)
+│       ├── constants.js            # Palette C, PRIORITY, grille (SLOT_H=56, GRID_H=1344), RECURRENCE_OPTIONS
+│       ├── helpers.js              # Dates/heures, load/save localStorage, makeAuthHeader, uKey, slideTasks
+│       └── photoStore.js           # « Vestiaire » photos : compression canvas + IndexedDB
 │
 ├── public/
-│   ├── sw.js              Service Worker v4-20260603
-│   └── Phenomena-*.ttf    police embarquée
+│   ├── sw.js                       # Service Worker (CACHE_VERSION nomadcal-v4… ; assets cache, API jamais interceptée)
+│   ├── Phenomena-Bold.ttf
+│   └── Phenomena-Regular.ttf
 │
 ├── index.html
-├── vite.config.js
-└── vercel.json
+├── vite.config.js                  # Plugins react + swVersion (injecte timestamp dans sw.js) ; proxy /api→:3000
+├── vercel.json                     # Headers cache + rewrite SPA (`/((?!api/).*)` → index.html)
+└── package.json
 ```
 
-### ⚠️ Les deux fichiers `caldav.js`
+---
 
-| Fichier | Rôle | Export principal |
+## ⚠️ Les deux `caldav.js` — à ne jamais confondre
+
+| Fichier | Rôle | Export |
 |---|---|---|
-| `api/caldav.js` | **Proxy serveur** Vercel — reçoit les requêtes du navigateur, les retransmet à `caldav.icloud.com` avec les bons headers CORS | `export default async function handler(req, res)` |
-| `src/utils/caldav.js` | **Client navigateur** — parse le XML CalDAV/iCalendar, étend les récurrences | `caldavRequest`, `parseCalendars`, `parseEvents`, `expandRecurring` |
+| `api/caldav.js` | **Proxy serveur** Vercel. Reçoit les requêtes du navigateur, les relaie à `caldav.icloud.com`, gère CORS + le **tunneling** des méthodes WebDAV (`X-HTTP-Method-Override` → PROPFIND/REPORT/MKCALENDAR, que Vercel rejette sinon en 405). | `export default handler(req, res)` |
+| `src/utils/caldav.js` | **Client navigateur.** Émet les requêtes (`caldavRequest`), parse le XML CalDAV/iCal (`parseCalendars`, `parseEvents`, `parseICS`), développe les récurrences (`expandRecurring`) et fusionne les exceptions `RECURRENCE-ID` (`mergeRecurrenceExceptions`). | fonctions nommées |
 
-Ne pas les confondre : `src/utils/caldav.js` appelle toujours `/api/caldav?path=…`, jamais iCloud directement.
-
----
-
-## Fonctionnalités
-
-### Agenda ✅
-
-- Vue semaine 7 jours, grille horaire 0h–24h (SLOT_H = 56 px/heure, GRID_H = 1 344 px)
-- Scroll initial positionné à **midi** (`GRID_DEFAULT_SCROLL = 12 × 60` dans `constants.js`)
-- Événements positionnés par `layoutEvents()` avec gestion des chevauchements (colonnes)
-- Bannière « Jour entier » au-dessus de la grille ✅
-- Indicateur heure actuelle (trait rouge) ✅
-- Navigation semaine par swipe horizontal (seuil 50 px, tolérance verticale 80 px) ✅
-- Numéro de semaine ISO (commence lundi) ✅
-- **Tap long (450 ms) sur zone vide → ouverture EventForm** avec pré-remplissage créneau ✅
-- Tap long sur un événement → popover (copier / modifier / supprimer) ✅
-- Tap court sur zone vide → 🔧 **bug** (voir section Limitations)
-- Copier-coller un événement (presse-papier local + tap long pour coller) ✅
-- Rappel 48 h avant un événement « à confirmer » via `window.confirm` ✅
-
-### Événements CalDAV ✅
-
-- Création, modification, suppression avec sync iCloud
-- Champs : prénom/nom (compose le SUMMARY), rue/CP/ville, email, téléphone, notes, calendrier, statut, récurrence
-- Statuts : Confirmé / À confirmer (tentative)
-- Récurrence : Quotidienne, hebdomadaire, bi-hebdomadaire, mensuelle (date fixe ou Nᵉ jour), annuelle, Lun–Ven — expansion `BYDAY`, `BYMONTHDAY`, `UNTIL`, `COUNT`, `EXDATE` ✅
-- Mode édition récurrence (cet événement / suivants / tous) : 🔧 **UI présente mais non prise en compte** (App.jsx ignore `editMode` lors du save)
-- Alerte, invitation e-mail, lien visio, pièce jointe, partage : ⏳ marqués « à venir » dans l'UI
-
-### Tâches glissantes ✅
-
-- Stockées uniquement en localStorage (`cf_tasks`), pas dans CalDAV
-- Champs : titre, notes, priorité (high/normal/low), date d'apparition, échéance, récurrence
-- **Glissement automatique à aujourd'hui** à minuit si non faites (`slideTasksToToday`) ✅
-- Récurrence propre (recrée la tâche) vs glissement (décalage pur)
-- Validation → crée un event `done-${id}` dans la grille (heure de validation) ✅
-- Vibration haptique sur validation ✅
-- Tiroir latéral (TaskDrawer) avec swipe-to-delete ✅
-
-### NomadBook — Journal de terrain ✅
-
-- Périodes de rapport sauvegardées dans le calendrier NomadCal OC sur iCloud (VEVENT all-day avec catégorie `RAPPORT`) ✅
-- Alarmes CalDAV intégrées dans l'ICS : 7 jours avant + veille ✅
-- Notes texte classées en 13 chapitres (Client, Marché, Concurrence, Nouveautés, Logistique, Propositions, Performances, Alertes, Réassorts, Opérations en cours, Saisonnalité, Demandes de dédicace, Outils) ✅
-- **Photos sur les notes** : ajout depuis galerie ou appareil photo, compression canvas (max 1 600 px, qualité 70 %), stockage IndexedDB ✅
-- Édition d'une note existante avec gestion des photos (conservation / suppression sélective) ✅
-- Dictée vocale (Web Speech API, langue fr-FR) ✅
-- Swipe-to-delete sur notes et périodes ✅
-- Copier les notes de la période courante (texte brut structuré par chapitres) ✅
-- Brainstorming IA (AIChat) : ⏳ **non opérationnel** (voir Limitations)
-- Export PDF : ⏳ marqué « à venir »
-- Archives des synthèses : ⏳ marqué « à venir »
-- NomadFeed : ⏳ `alert("NomadFeed — bientôt disponible !")` — non implémenté
-
-### Sync & Offline ✅
-
-- **Boîte d'envoi** (`${email}_cf_pending`) : toute écriture hors-ligne est mise en file, rejouée au retour réseau
-- `runSync()` (syncService.js) : `flushQueue(auth)` → `syncCalDAV()`
-- Déclencheurs sync : démarrage app (300 ms), retour réseau (`window.online`), appui manuel
-- Garde-fous anti-effacement : si sync retourne 0 events/calendriers → cache conservé
-- `syncCalendar(calHref)` : sync légère d'un seul calendrier (dernière heure), utilisée après création
-- Service Worker : HTML network-first / assets cache-first / API jamais interceptée
-
-### UX mobile ✅
-
-- `height: 100dvh` (respecte les safe areas iOS)
-- `env(safe-area-inset-top)` dans EventForm header
-- `requestPersistentStorage()` pour protéger IndexedDB des purges iOS
-- Toast générique (DOM injection) pour les confirmations légères
-- `localStorage.setItem("last_feedback_prompt", ...)` anti-spam 1× /jour
+**Règle :** `src/utils/caldav.js` appelle **toujours** `/api/caldav?path=…`, **jamais** iCloud en direct (cross-origin impossible depuis le navigateur).
 
 ---
 
-## Données
+## Les 4 « fonctions sacrées » (signatures intouchables)
+
+| Fonction | Emplacement réel |
+|---|---|
+| `pushEvent(ev, auth, invalidateCache=true, queueable=true)` | `src/sync/pushEvent.js` |
+| `deleteEvent(ev, auth, queueable=true)` | `src/sync/pushEvent.js` |
+| `syncCalendar(calHref)` | `src/App.jsx` |
+| `syncCalDAV()` | `src/App.jsx` |
+
+---
+
+## Sync & offline-first
+
+- **Boîte d'envoi** (`${email}_cf_pending`) : toute écriture hors-ligne est mise en file (`pendingQueue.js`), rejouée au retour réseau.
+- **`runSync()`** (`syncService.js`) : `flushQueue(auth)` → `syncCalDAV()`.
+- **Déclencheurs** : démarrage app (300 ms), retour réseau (`window.online`), appui manuel.
+- **Tombstones** : ids supprimés localement, pour empêcher un event effacé de « ressusciter » tant qu'iCloud n'a pas confirmé (`pendingQueue.js` + `mergeStrategy.js`).
+- **Récurrence** : `expandRecurring` développe les séries (BYDAY / BYMONTHDAY / UNTIL / COUNT / EXDATE, DST-safe) ; `mergeRecurrenceExceptions` applique les occurrences modifiées (`RECURRENCE-ID`) au rendu.
+- **Garde-fous anti-effacement** : une synchro qui revient sans aucun calendrier/event conserve le cache.
+
+---
+
+## Données (localStorage / IndexedDB)
 
 | Donnée | Stockage | Clé |
 |---|---|---|
-| Auth (email + App Password) | localStorage global | `cf_auth` |
-| Événements CalDAV (cache) | localStorage préfixé | `${prefix}_cf_events` |
-| Tâches | localStorage préfixé | `${prefix}_cf_tasks` |
-| Calendriers | localStorage préfixé | `${prefix}_cf_calendars` |
-| Paramètres | localStorage préfixé | `${prefix}_cf_settings` |
+| Auth (email + mot de passe d'app) | localStorage global | `cf_auth` |
+| Événements (cache) | localStorage préfixé | `${prefix}cf_events` |
+| Tâches | localStorage préfixé | `${prefix}cf_tasks` |
+| Calendriers | localStorage préfixé | `${prefix}cf_calendars` |
+| Paramètres | localStorage préfixé | `${prefix}cf_settings` |
 | File offline | localStorage | `${email}_cf_pending` |
+| Tombstones | localStorage | `${email}_cf_tombstones` |
 | Notes NomadBook | localStorage global | `nb_notes` |
 | Périodes (cache) | localStorage global | `nb_periods_cache` |
 | Synthèses | localStorage global | `nb_syntheses` |
 | Photos | IndexedDB | base `nomadcal-photos` |
 
-**Préfixe user** : `${partieAvant@email}${JJMMAAAA}\_` — migration silencieuse des anciennes clés non préfixées au premier login.
-
-**Périodes NomadBook** : stockées comme VEVENT all-day dans le calendrier iCloud NomadCal OC (tag `CATEGORIES:NOMADCAL,RAPPORT`). Les **notes** restent uniquement en localStorage — elles ne sont pas répliquées sur iCloud.
+**Préfixe user** : `${nomAvant@}${JJMMAAAA}_` (helpers.js `userPrefix`/`uKey`), avec migration silencieuse des anciennes clés au 1er login. `cf_auth` n'est **jamais** préfixée. La sauvegarde manuelle (Settings) couvre 6 clés (notes/tâches/réglages), **pas** `cf_events` (redondants avec iCloud).
 
 ---
 
-## Design — Palette ORCHARD
+## Design — palette ORCHARD (extrait de `constants.js`)
 
-```js
-bg:      "#fdf8f0"  // crème chaud
-surface: "#ffffff"
-accent:  "#2B5A9E"  // bleu acier
-ink:     "#0F1D2B"  // encre profonde
-gold:    "#F5C97A"  // or nomade
-green:   "#2d7a4f"
-red:     "#c0392b"
-muted:   "#5a6e7f"
+```
+bg #fdf8f0 · surface #ffffff · accent #2B5A9E (bleu acier) · ink #0F1D2B
+gold #F5C97A · green #2d7a4f · red #c0392b · muted #5a6e7f  (+ card, subtle, *Light…)
 ```
 
-- Police **Phenomena** (TTF embarqué) sur tous les titres et labels
-- 18 icônes SVG custom (dossier `icons/`) : strokeWidth 1.5, traits bleu + or, aucun emoji de navigation
-- Arrondi 10–16 px selon le contexte, bordures 1–1.5 px
-
----
-
-## Roadmap
-
-### V1 — Base terrain (✅ livré)
-- ✅ Agenda semaine CalDAV iCloud
-- ✅ Tâches glissantes
-- ✅ NomadBook (notes + photos + périodes + dictée)
-- ✅ Offline-first (boîte d'envoi)
-- ✅ PWA iOS installable
-
-### V1.5 — Corrections & finitions (🔧 en cours)
-- 🔧 Corriger bug `ev` undefined sur tap court cellule vide
-- 🔧 Corriger mapping status TENTATIVE → `"pending"` vs `"tentative"` (perte après sync)
-- 🔧 Implémenter réellement les modes édition récurrence (cet événement / suivants / tous)
-- 🔧 Corriger comportement feedback `window.location.href = mail` (navigue hors PWA)
-- Purger le dead code : `EventPopover_OLD`, `EventDetail`, 4 exports inutilisés d'`eventActions.js`
-
-### V2 — Premium
-- ⏳ Module Frais (forfaits km/repas/nuitée) — UI partielle dans Settings
-- ⏳ Alertes sur événements (VALARM)
-- ⏳ Invitation e-mail
-- ⏳ Lien visio
-- ⏳ Pièce jointe
-
-### V3 — Intelligence
-- ⏳ Brainstorming IA (AIChat via proxy sécurisé avec clé Anthropic côté serveur)
-- ⏳ Export PDF rapport terrain
-- ⏳ Archives et historique des synthèses
-- ⏳ NomadFeed
-- ⏳ Recherche IA de nouveau créneau après annulation
-
----
-
-## Limitations connues (version interne)
-
-### 🔧 Bug — Tap court sur cellule vide (App.jsx ~l. 719 et l. 740)
-
-Les handlers `onTouchEnd` et `onClick` du fond de grille utilisent la variable `ev` qui appartient au scope `layoutEvents(dayEvs).map(ev => {...})` défini plus bas dans le même rendu JSX. En dehors de ce map, `ev` est **undefined**.
-
-Résultat : un tap court sur une zone vide ouvre le popover avec `ev=undefined` → `EventPopoverNew` retourne `null` immédiatement (`if (!ev || !position) return null`). En pratique, **tap court sur zone vide = rien ne se passe**.
-
-### 🔧 Perte du statut « à confirmer » après sync iCloud
-
-`src/utils/caldav.js` : `TENTATIVE` est mappé vers `"pending"` (ligne 116).  
-`App.jsx::pushEvent()` : vérifie `ev.status === "tentative"` pour émettre `STATUS:TENTATIVE`.  
-Un événement récupéré d'iCloud avec `status="pending"` sera réécrit `STATUS:CONFIRMED`.  
-De plus, le check d'affichage (`isPending = ev.status === "tentative"` dans EventPopover.jsx l. 22) ne détecte pas les events venant d'iCloud.  
-**Correction** : unifier sur une seule valeur, par exemple `"tentative"` partout.
-
-### 🔧 Mode édition récurrence non fonctionnel
-
-EventForm.jsx expose « Cet événement / Suivants / Tous » et envoie `editMode` dans le payload. App.jsx ignore `editMode` dans le handler `onSave` et met toujours à jour l'occurrence unique.
-
-### ⏳ Brainstorming IA inaccessible et non fonctionnel
-
-`NomadBook.jsx` contient un composant `AIChat` qui appelle `https://api.anthropic.com/v1/messages` **sans header `x-api-key`** → 401 en production. De plus, aucun bouton UI ne déclenche `chatOpen=true` (le div « Brainstorming » affiche « à venir » et n'a pas de `onClick`).
-
-### ⚠️ Feedback auto-email navigue hors PWA
-
-L'`useEffect` (~l. 415, App.jsx) ouvre le lien `mailto:` via `window.location.href`, ce qui quitte l'app PWA sur iOS.
-
-### ⚠️ Scroll initial à midi, pas à 8 h
-
-`GRID_DEFAULT_SCROLL = 12 * 60 = 720` dans `constants.js` → l'app s'ouvre positionnée sur **12 h**, pas 8 h.
+- Police **Phenomena** (TTF embarqué) sur titres et labels.
+- **25 icônes SVG maison** (`components/icons/`, exportées via `index.js`) : viewBox 24×24, couleur passée en prop (défaut selon l'usage : muted/green/accent), `strokeWidth` **2.2–2.4** sur les récentes. Pas d'emoji de navigation.
 
 ---
 
 ## Déploiement
 
 ```bash
-# Développement
-npm run dev       # Vite dev server + proxy /api → localhost:3000
-
-# Production
-npm run build     # → dist/
+npm run dev     # Vite + proxy /api → localhost:3000
+npm run build   # → dist/
 ```
 
-Hébergé sur **Vercel** : fonctions serverless dans `api/`, SPA statique dans `dist/`.  
-Aucune variable d'environnement requise pour la version free (le proxy CalDAV transfère le header `Authorization` de l'utilisateur).
-
----
-
-## Authentification
-
-L'app utilise un **App Password iCloud** (pas le mot de passe Apple ID principal).  
-Génération : [appleid.apple.com](https://appleid.apple.com) → Sécurité → Mots de passe spécifiques aux apps.  
-Stockage : `localStorage["cf_auth"]` = `{ email, appPassword }` — **non chiffré**.
-
----
-
-*README interne — version publique disponible sur demande (sans la section Limitations).*
+Vercel : fonctions dans `api/`, SPA statique dans `dist/`. **Aucune variable d'environnement requise** — le proxy relaie le header `Authorization` de l'utilisateur (mot de passe d'application iCloud, généré sur appleid.apple.com). Stockage `cf_auth` **non chiffré** (localStorage).
