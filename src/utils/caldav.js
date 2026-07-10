@@ -6,12 +6,12 @@
 // en POST + en-tête X-HTTP-Method-Override, que le proxy rétablit vers iCloud.
 const STD_METHODS = new Set(["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]);
 
-export async function caldavRequest(method, path, auth, body = "", extraHeaders = {}, timeoutMs = 20000) {
-  // Timeout dur : une requête CalDAV qui pend (hang mobile WKWebView : socket figée
-  // sur bascule WiFi↔cellulaire) devient un échec borné, sinon elle bloque la synchro.
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+// Lectures CalDAV : SEULES méthodes bornées par le timeout (option B). Les écritures
+// (PUT/DELETE/MKCALENDAR) ne sont JAMAIS avortées — un PUT lent mais abouti côté iCloud
+// ne doit pas être cru échoué puis ré-émis (risque de doublon iCloud).
+const READ_METHODS = new Set(["PROPFIND", "REPORT"]);
 
+export async function caldavRequest(method, path, auth, body = "", extraHeaders = {}, timeoutMs = 20000) {
   const tunnel = !STD_METHODS.has(method);          // méthode WebDAV → à tunneliser
   const wireMethod = tunnel ? "POST" : method;      // ce que voit Vercel
   const headers = {
@@ -21,21 +21,27 @@ export async function caldavRequest(method, path, auth, body = "", extraHeaders 
   };
   if (tunnel) headers["X-HTTP-Method-Override"] = method; // le proxy rétablit le vrai verbe
 
+  // Timeout dur (hang mobile WKWebView : socket figée sur bascule WiFi↔cellulaire) —
+  // appliqué UNIQUEMENT aux lectures. Aucun timer/signal pour les écritures.
+  const useTimeout = READ_METHODS.has(method);
+  const controller = useTimeout ? new AbortController() : null;
+  const timer = useTimeout ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
   try {
     const res = await fetch(`/api/caldav?path=${encodeURIComponent(path)}`, {
       method: wireMethod,
       headers,
       body: wireMethod === "GET" || wireMethod === "HEAD" ? undefined : body,
-      signal: controller.signal,
+      ...(controller ? { signal: controller.signal } : {}),
     });
     const text = await res.text();
     return { status: res.status, text };
   } catch (err) {
-    // Abort (timeout) → échec propre dans le contrat { status, text }, aucun appelant impacté.
-    if (err.name === "AbortError") return { status: 408, text: "" };
+    // Abort (timeout, lectures seules) → échec propre dans le contrat { status, text }.
+    if (useTimeout && err.name === "AbortError") return { status: 408, text: "" };
     throw err; // vraie erreur réseau : comportement inchangé
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
