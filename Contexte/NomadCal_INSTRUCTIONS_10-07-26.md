@@ -27,6 +27,10 @@ NomadCal = PWA React (calendrier + tâches + notes), iPhone-first, pour le trava
 - **Jamais merger pour tester :** tester (preview/local) PUIS merger.
 - **Minimum de code V1** (Neon réécrira ~fin août).
 
+## TESTS D'ÉCRITURE — CALENDRIER DÉDIÉ
+- **`ZZ-TEST-REC` = calendrier iCloud dédié à nos tests.** Toute création/suppression d'event de test se fait DANS ce calendrier. **JAMAIS sur l'agenda pro réel** (outil de travail — un doublon ou un écrasement au milieu des RV = vrai problème).
+- Cas de test propres : créer dans **Apple natif** (structure iCloud saine), pas dans WeekCal (exceptions parasites).
+
 ## 4 SACRÉES — signatures intouchables + EMPLACEMENT RÉEL
 - `pushEvent(ev,auth,invalidateCache=true,queueable=true)` → `src/sync/pushEvent.js`
 - `deleteEvent(ev,auth,queueable=true)` → `src/sync/pushEvent.js`
@@ -36,6 +40,7 @@ NomadCal = PWA React (calendrier + tâches + notes), iPhone-first, pour le trava
 
 ## GARDE-FOUS (appris à la dure)
 - Sauvegarde manuelle = 6 clés (notes/tâches/réglages), **PAS les events** (`cf_events` exclus). « J'ai une sauvegarde » ≠ « ce merge est sûr ».
+- **Clés localStorage PRÉFIXÉES par l'utilisateur** (ex. `olivierclaverie01072026_cf_events`, jamais `cf_events` nu). Avant tout backup : `Object.keys(localStorage)` pour lister les vrais noms. Détail → Journal.
 - Drame localStorage = **isolation WKWebView** (chaque URL/raccourci = bac séparé) ; le préfixe n'est qu'un symptôme. Réglé structurellement par Neon seul.
 - Neon ne corrige PAS les bugs d'affichage (rendu ≠ stockage).
 - Complexité technique jamais à la charge de l'utilisateur (vaut pour l'IA à venir : invisible).
