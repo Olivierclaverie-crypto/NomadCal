@@ -3,6 +3,15 @@
 
 ---
 
+## 🧭 BRIEF EVENTFORM AVISÉ + ROADMAP RÉCURRENCE ÉTAGÉE — CADRÉ (12-07-26, aprèm)
+*Session brainstorm + rédaction brief EXÉCUTER. Aucun code écrit. Le cousin a lu EventForm+WheelSelect et avisé avant de coder.*
+
+- **Roadmap récurrence = objectif FERME, chemin étagé (décision capitaine, tranchée après débat).** Le compositeur complet (niveau des grands) n'est PAS optionnel : c'est un ticket d'entrée de la sortie publique. On étage le CALENDRIER (paliers A1→A4 + COUNT), pas l'AMBITION. Olivier assume de décaler la sortie publique. Piège de conception évité : ne PAS confondre « V1 test famille » (socle fiable, dogfooding IRL) avec « sortie publique » (crédibilité concurrentielle) — les deux n'exigent pas les mêmes paliers. **A1 (intervalle libre) entre en V1** car sans lui, pas de tournée réelle dans NC → pas de test IRL (la force du projet). Multi-jours/positionnel = paliers suivants, pas dans le vécu terrain d'Olivier.
+- **Vécu terrain qui fige A1 :** « je reviens jeudi ? — OK — et si on régularisait, toutes les 4 semaines ? — jeudi oui mais plutôt toutes les 6 » → `FREQ=WEEKLY;INTERVAL=6;BYDAY=TH`. Un jour + intervalle libre. Pas de multi-jours dans ce geste.
+- **Le cousin AVISE (protocole payant, encore).** Sur le brief 3-lots : (1) faisabilité OK, contenu à `WheelSelect`+`EventForm`+`constants` ; (2) LOT 2 jugé **TRIVIAL** — `rrule` reste une string, `pushEvent` (sacrée) inchangée, une `composeRRule()` remplace juste ce qui remplit la string → la condition d'arrêt du brief était prudente mais inutile ici ; (3) calcul UNTIL DST-safe validé (`new Date(y,mo-1,d,23,59,59).toISOString()` nettoyé → `20260930T215959Z`).
+- **⚠️ ALERTE SÉQUENCEMENT levée par le cousin (le point neuf) :** ce brief améliore la SAISIE mais **ne corrige pas le bug B** (fantôme à la création). Or mettre la vraie tournée dans NC = créer des récurrents = **déclencher le fantôme B à chaque fois**. L'améliration de saisie et le sol troué sont deux choses : soigner la saisie ne suffit pas au test IRL. **Décision non tranchée** (corriger B avant / discipline / confirmer B terrain). Leçon : un chantier « qualité de saisie » peut buter sur un bug « qualité de donnée » sous-jacent — les séquencer, ne pas les mélanger.
+- **Décision design LOT 2 = option (i) :** remplacer le select figé par « unité + champ N » ; positionnels retirés de l'UI V1 mais **restent lisibles** (parsing inchangé). Non *créables* ≠ non *affichables*.
+
 ## 🍏 CONFORMITÉ NC vs APPLE + BRIQUE 2 (UNTIL) CADRÉE — CLOUÉ (12-07-26)
 *Étape 0 du chantier EventForm : INVESTIGUER « écarts NC vs Apple », lecture seule, serveur sain. 3 events récurrents identiques créés dans `1925D1D3-…`, montés sur iCloud, bruts lus côte à côte.*
 
