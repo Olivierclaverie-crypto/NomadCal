@@ -1,6 +1,5 @@
-
 # ÉTAT DU PROJET NOMADCAL
-*Document VIVANT — l'établi : SEULEMENT le chantier actif, les vérifs ouvertes, et la reprise. Le déjà-fait scellé vit dans le JOURNAL/ACQUIS. Dernière MAJ : 12/07/2026 (matin : conformité NC vs Apple observée au brut → NC quasi conforme ; **refonte EventForm CADRÉE** ; brique 2 = UNTIL décidé ; chantier « récurrences avancées » sorti en file).*
+*Document VIVANT — l'établi : SEULEMENT le chantier actif, les vérifs ouvertes, et la reprise. Le déjà-fait scellé vit dans le JOURNAL/ACQUIS. Dernière MAJ : 12/07/2026 (après-midi : **brief EXÉCUTER EventForm rédigé + avisé par le cousin** ; **roadmap récurrence étagée A1→A4 décidée** ; 2 décisions Olivier en attente dont séquencement bug B).*
 
 ---
 
@@ -21,12 +20,24 @@
 
 **Emplacement repéré (timonier, lecture seule) :** le picker de fin va en zone **conditionnelle sous `Répéter`** (visible si `rrule` ≠ « Aucune »), réutilise `WheelSelect` en `['day','month','year']`. EventForm **n'est pas une sacrée** et n'en contient pas → chantier sans risque sur le cœur écriture.
 
-**Séquence à la reprise :** cadrage complet → **brief EXÉCUTER** rédigé par le timonier → « OK go » cousin → **go explicite d'Olivier** → PR isolée + test preview → merge.
+**Brief V1 (test famille) = 3 lots batchés :** LOT 1 roue des jours adaptative (socle) · LOT 2 A1 intervalle libre (« toutes les [N] unités », 1 jour) · LOT 3 UNTIL DST-safe + nettoyage INTERVAL=1. Détail complet + code proposé par le cousin → fichier provisoire `NomadCal_BRIEF_EVENTFORM_AVISE_12-07-26.md`.
 
-## 🧬 CHANTIER EN FILE — RÉCURRENCES AVANCÉES (sorti du lot, brainstorm dédié)
-- **Sujet :** la liste `RECURRENCE_OPTIONS` actuelle est **plate** (18 options figées) et **asymétrique** (1er/2e/3e lundi, mais mardi→vendredi s'arrêtent au 2e ; samedi/dimanche absents ; pas de « dernier X »).
-- **Modèle observé (captures Apple 12-07) :** Apple ne fait PAS une liste plate mais un **compositeur** à 2 étages — raccourcis (jours/semaines/mois/ans) + « Personnaliser » qui déploie, par fréquence, intervalle + **multi-jours** (L M M J V S D cochables) + positionnel (« le [premier] [jour] ») + jours du mois par numéro. Plus puissant, couvre l'infini sans liste à rallonge.
-- **Déclencheur :** surtout si extension clientèle (**professions libérales** → récurrences plus riches). **À traiter en chantier à part**, pas dans la refonte EventForm V1. NON ouvert.
+**ÉTAT DU BRIEF : rédigé + AVISÉ par le cousin (faisabilité 3 lots OK, contenu à `WheelSelect.jsx`+`EventForm.jsx`+`constants.js`, zéro sacrée).** LOT 2 jugé TRIVIAL (pas de refonte rrule : `rrule` reste une string, `pushEvent` inchangée). **2 décisions Olivier en attente avant go :**
+1. **Design LOT 2 — TRANCHÉ option (i)** : remplacer le `<select>` figé par « unité + champ N ». Positionnels retirés de l'UI V1, restent lisibles. (À confirmer : impact nul sur positionnels existants type EYROLLES.)
+2. **Séquencement bug B — NON TRANCHÉ (point ouvert).** Ce brief améliore la saisie mais ne corrige pas B (fantôme à la création). Mettre la vraie tournée dans NC pour le test IRL → chaque récurrent créé déclenche le fantôme B. Routes : (1) corriger B avant (protocole lourd, `mergeStrategy`) / (2) avancer sous discipline « jamais supprimer un doublon depuis iCal » / (3) confirmer B terrain d'abord. **À trancher au prochain brainstorm.**
+
+**Séquence :** décisions Olivier → **go explicite** → PR isolée + test preview → merge → MAJ moteurs.
+
+## 🧬 ROADMAP RÉCURRENCE ÉTAGÉE — OBJECTIF FERME, CHEMIN PAR PALIERS (décidé 12-07)
+*Décision capitaine : le compositeur de récurrence complet (niveau des grands du secteur) est un **objectif FERME de la sortie publique**, PAS une option conditionnelle. Seul le calendrier est étagé, pas l'ambition. Motif : une récurrence pauvre = « app amateur » = on se grille sur un standard que tous offrent gratuitement. Olivier accepte de décaler la sortie publique pour l'atteindre proprement.*
+
+- **A1 — intervalle libre** (« toutes les [N] jours/semaines/mois/ans », 1 jour). ➡️ **DANS LA V1 test famille** (brief en cours). Besoin terrain PROUVÉ (vécu : « jeudi, toutes les 6 semaines » — négocié avec le libraire). Sans A1, Olivier ne peut pas mettre sa vraie tournée dans NC → pas de test IRL, qui est LA force du projet.
+- **A2 — multi-jours hebdo** (`BYDAY=MO,TH` cochables). Palier suivant. NC sait déjà l'écrire, manque l'UI.
+- **A3 — positionnel mensuel** (« le [premier…dernier] [jour] »). Ajoute le « dernier X » manquant.
+- **A4 — jours du mois par numéro** (« le 4 et le 24 »).
+- **COUNT — fin par nombre d'occurrences** (« après X fois »). Cas professions libérales (série de 20 soins, 12 massages). Se greffe sur la fin de récurrence, indépendant de A2-A4.
+- **Modèle cible = compositeur Apple** (captures 12-07) : 2 étages (raccourcis + Personnaliser). **Ne PAS rallonger la liste plate.** A2→A4 + COUNT = paliers faits **avant sortie publique**, chacun sa PR (une variable à la fois).
+- **Note produit :** différenciateurs (todo flottante, NomadBook, NomadFeed) stables + montée par Néon → ne sont PAS le goulot ; le temps EventForm ne les menace pas comme craint initialement.
 
 ## 🔭 LES 3 BUGS RÉCURRENCE (3 PR séparées, une variable chacune) — après EventForm
 Ordre recommandé (à trancher par le capitaine) : **C → B → A**.
@@ -63,6 +74,6 @@ Ordre recommandé (à trancher par le capitaine) : **C → B → A**.
 ## 🟢 REPRENDRE EN DÉBUT DE SESSION
 1. **Préciser le carburant session à Claude** (ex. « il reste 58 % »).
 2. Lire cet État + le README. Consulter le JOURNAL/ACQUIS seulement si besoin.
-3. Chantier actif : **rédiger le brief EXÉCUTER EventForm** (briques décidées ci-dessus) — go explicite d'Olivier requis avant tout code. À défaut, corriger le **bug C** (le plus sûr). Backups + `ZZ-TEST-REC` avant tout PUT.
+3. Chantier actif : **brief EventForm rédigé + avisé** (fichier provisoire `..._BRIEF_EVENTFORM_AVISE_12-07-26.md`). Reprise = **trancher les 2 décisions ouvertes** (surtout séquencement bug B : routes (1) corriger avant / (2) discipline / (3) confirmer terrain) → go explicite → PR. Backups + `ZZ-TEST-REC` avant tout PUT.
 - **Atelier de test :** `1925D1D3-…` a servi aux 3 events de conformité (12-07). Nettoyage en cours. Cas de test du fix récurrence = série **fraîche** Apple natif, jamais un event déjà écrasé.
 - **NE RIEN coder/merger/appliquer sans le go explicite d'Olivier.**
