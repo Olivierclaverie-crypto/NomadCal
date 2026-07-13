@@ -3,6 +3,15 @@
 
 ---
 
+## 🔎 BUG B NON REPRODUIT + CONFUSION A/B LEVÉE — CLOUÉ (13-07-26)
+*INVESTIGUER terrain (route 3 : prouver avant de fixer). Atelier `ZZ-TEST-REC` vide au départ, serveur sain. Une seule écriture = le cas de test. Brut lu au Web Inspector.*
+
+- **Création d'un récurrent = SAINE (PROUVÉ).** `TEST B` créé dans NC → brut = **une seule** `<response>` : `calflow-1783927450435.ics`, `UID:calflow-1783927450435` (master pur), `RRULE:FREQ=WEEKLY;INTERVAL=1`. **Pas de master-local fantôme monté sur iCloud.** Le doublon décrit par la fiche B (master-local `calflow-<ts>` coexistant avec l'occurrence n°1) **n'apparaît PAS côté serveur** — s'il existe, c'est purement local (state React), jamais poussé. B ne mord pas à la création.
+- **Édition d'une occurrence = BUG A, pas B (PROUVÉ).** Modif horaire de la 2ᵉ occurrence → brut = **toujours une seule** ressource, MAIS `UID:calflow-1783927450435_20260725` (suffixé), `DTSTART:20260725T123000`, **RRULE disparue**. = **écrasement du master** = signature EXACTE du bug A (identique au 11-07 `Test I 1`). NC affiche 1 event = fidèle ; iCal Desk+iPhone montrent « série + modifié » = fantôme cache (série absente du serveur).
+- **CONFUSION A/B LEVÉE (l'acquis du jour).** Ce qu'Olivier appelait « le doublon B qui apparaît à l'édition » est en fait **le bug A** (écrasement). Confondu sur 2 sessions. Leçon : deux bugs de « famille identité master↔occurrence » se ressemblent au vécu ; **seul le brut les sépare** (A = 1 ressource écrasée sans RRULE ; B = 2 ressources dont un master-local en trop). B reste **théorique, non reproduit terrain** (ni création ni édition).
+- **DÉCISION : fix A avant EventForm.** Motif capitaine : garde-fou par discipline (« ne pas éditer une occurrence ») intenable au test famille (mains non averties + éloignement de la décision d'origine = fragilité croissante). Fix A tue aussi le fantôme cache Apple à la source (plus d'écrasement → plus de décalage iCloud/caches ; fantômes déjà posés = purge par appareil, non rétroactif).
+- **Cache Apple « têtu » = PAS un bug Apple.** Desk/iPhone gardent la série en cache après écrasement serveur : comportement normal d'un cache en retard sur la vérité. Le « bizarre » est en amont (notre bug A qui écrase), pas chez Apple. Question ouverte (radar, non prouvée) : pourquoi Apple resynchronise si mollement après écriture d'un client tiers.
+
 ## 🧭 BRIEF EVENTFORM AVISÉ + ROADMAP RÉCURRENCE ÉTAGÉE — CADRÉ (12-07-26, aprèm)
 *Session brainstorm + rédaction brief EXÉCUTER. Aucun code écrit. Le cousin a lu EventForm+WheelSelect et avisé avant de coder.*
 
