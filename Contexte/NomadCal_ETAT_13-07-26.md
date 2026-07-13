@@ -8,6 +8,7 @@
 - **Priorité capitaine :** ne pas laisser la faille derrière nous — le garde-fou par discipline (« ne pas éditer une occurrence ») **ne tient pas au test famille** (des mains non averties). La faille RÉELLE dangereuse = **bug A** (édition d'occurrence écrase la série). **Décidé : fix A AVANT le brief EventForm.**
 - **Effet attendu du fix A sur les caches Apple :** l'écrasement disparu → plus de décalage iCloud/caches → plus de nouveaux fantômes. (Les fantômes déjà installés ne s'effacent pas rétroactivement — purge par appareil.)
 - **Prochaine étape :** rédiger le **brief EXÉCUTER fix A** (sacrée `pushEvent` → protocole lourd). Mécanisme connu + prouvé 2× au brut (11-07 + 13-07).
+- **CIBLE DU FIX A — PROUVÉE AU BRUT (13-07, `TEST A` Apple natif).** Éditer une occupation → Apple garde master + exception dans **UNE SEULE ressource / un seul href**, avec **DEUX VEVENT** partageant le même UID : (1) master `RRULE` intacte ; (2) exception `RECURRENCE-ID;TZID=Europe/Paris:<date origine>` (heure murale locale, PAS de `Z`), nouveau DTSTART, **sans RRULE**, `X-RECURRENCE-EXCEPTION:True`. **PAS d'EXDATE.** → **Cible = « même ressource / 2 VEVENT » (A), cohérente PR-a.** Le brief initial disait « ressource séparée » (B) = ERREUR de rédaction, levée. Point dur implémentation (cousin) : re-sérialiser le master courant (RRULE incluse) dans le même PUT sans le casser.
 
 ## 🎯 OÙ ON EN EST (charnière)
 - **On est dans la couche 2 ÉCRITURE.** α est neutralisé et en prod (`ac0a025`) — le terrain d'écriture est sain.
