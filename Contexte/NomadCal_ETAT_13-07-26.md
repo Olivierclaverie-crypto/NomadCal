@@ -1,7 +1,13 @@
 # ÉTAT DU PROJET NOMADCAL
-*Document VIVANT — l'établi : SEULEMENT le chantier actif, les vérifs ouvertes, et la reprise. Le déjà-fait scellé vit dans le JOURNAL/ACQUIS. Dernière MAJ : 12/07/2026 (après-midi : **brief EXÉCUTER EventForm rédigé + avisé par le cousin** ; **roadmap récurrence étagée A1→A4 décidée** ; 2 décisions Olivier en attente dont séquencement bug B).*
+*Document VIVANT — l'établi : SEULEMENT le chantier actif, les vérifs ouvertes, et la reprise. Le déjà-fait scellé vit dans le JOURNAL/ACQUIS. Dernière MAJ : 13/07/2026 (matin : **bug B non reproduit au brut** (création + édition saines côté serveur) ; **édition d'occurrence = bug A re-confirmé** (confusion A/B levée) ; **séquencement décidé : FIX A avant EventForm**).*
 
 ---
+
+## 🔀 DÉCISION 13-07 — FIX A AVANT EVENTFORM (séquencement tranché)
+- **Bug B : NON reproduit au brut (13-07).** Création d'un récurrent NC (`TEST B`, `ZZ-TEST-REC`) → **une seule** ressource iCloud, master `calflow-<ts>` pur + `RRULE:FREQ=WEEKLY;INTERVAL=1`, **zéro doublon serveur**. Puis édition d'une occurrence → **une seule** ressource, UID suffixé `_20260725`, DTSTART décalé, **RRULE disparue** = **écrasement = BUG A**, pas B. → Ce qu'Olivier appelait « doublon B à l'édition » est en fait **le bug A**. **Confusion A/B levée.** B reste théorique, non reproduit terrain (ni création ni édition).
+- **Priorité capitaine :** ne pas laisser la faille derrière nous — le garde-fou par discipline (« ne pas éditer une occurrence ») **ne tient pas au test famille** (des mains non averties). La faille RÉELLE dangereuse = **bug A** (édition d'occurrence écrase la série). **Décidé : fix A AVANT le brief EventForm.**
+- **Effet attendu du fix A sur les caches Apple :** l'écrasement disparu → plus de décalage iCloud/caches → plus de nouveaux fantômes. (Les fantômes déjà installés ne s'effacent pas rétroactivement — purge par appareil.)
+- **Prochaine étape :** rédiger le **brief EXÉCUTER fix A** (sacrée `pushEvent` → protocole lourd). Mécanisme connu + prouvé 2× au brut (11-07 + 13-07).
 
 ## 🎯 OÙ ON EN EST (charnière)
 - **On est dans la couche 2 ÉCRITURE.** α est neutralisé et en prod (`ac0a025`) — le terrain d'écriture est sain.
@@ -74,6 +80,7 @@ Ordre recommandé (à trancher par le capitaine) : **C → B → A**.
 ## 🟢 REPRENDRE EN DÉBUT DE SESSION
 1. **Préciser le carburant session à Claude** (ex. « il reste 58 % »).
 2. Lire cet État + le README. Consulter le JOURNAL/ACQUIS seulement si besoin.
-3. Chantier actif : **brief EventForm rédigé + avisé** (fichier provisoire `..._BRIEF_EVENTFORM_AVISE_12-07-26.md`). Reprise = **trancher les 2 décisions ouvertes** (surtout séquencement bug B : routes (1) corriger avant / (2) discipline / (3) confirmer terrain) → go explicite → PR. Backups + `ZZ-TEST-REC` avant tout PUT.
+3. Chantier actif : **rédiger le brief EXÉCUTER fix A** (sacrée `pushEvent` → protocole lourd). Décidé 13-07 : **A avant EventForm**. Correctif = exception RFC 5545 (UID master + `RECURRENCE-ID`, nouvelle heure, PAS d'`EXDATE`) = ex-Brief 3, en réserve. Le brief EventForm avisé (`..._BRIEF_EVENTFORM_AVISE_12-07-26.md`) attend son tour APRÈS A. Backups + `ZZ-TEST-REC` avant tout PUT.
+- **Atelier de test :** `ZZ-TEST-REC` contient `TEST B` écrasé (13-07) = cas SALE → cas de test du fix A = série **fraîche** Apple natif, jamais un event déjà écrasé.
 - **Atelier de test :** `1925D1D3-…` a servi aux 3 events de conformité (12-07). Nettoyage en cours. Cas de test du fix récurrence = série **fraîche** Apple natif, jamais un event déjà écrasé.
 - **NE RIEN coder/merger/appliquer sans le go explicite d'Olivier.**
