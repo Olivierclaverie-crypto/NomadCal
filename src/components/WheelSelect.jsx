@@ -13,6 +13,10 @@ const ITEMS = {
   mm:    Array.from({length:12}, (_,i) => String(i*5).padStart(2,"0")),
 };
 
+// Nombre de jours du mois sélectionné (28/29/30/31, bissextile géré par JS).
+const daysInMonth = (y, m) => new Date(+y, +m, 0).getDate();
+const buildDays = (y, m) => Array.from({length: daysInMonth(y, m) || 31}, (_,i) => String(i+1).padStart(2,"0"));
+
 const FLEX = { day:0.7, month:0.7, year:1.1, hh:0.7, mm:0.7 };
 
 function SingleWheel({ items, selectedIdx, onChange }) {
@@ -43,12 +47,22 @@ function SingleWheel({ items, selectedIdx, onChange }) {
 }
 
 export default function WheelSelect({ wheels, value, onChange }) {
+  // La roue des jours s'adapte au mois/année sélectionnés (évite le « 31 février »).
+  function itemsFor(key) {
+    return key === "day" ? buildDays(value.year, value.month) : ITEMS[key];
+  }
   function idxOf(key) {
-    const idx = ITEMS[key].indexOf(value[key]);
+    const idx = itemsFor(key).indexOf(value[key]);
     return idx >= 0 ? idx : 0;
   }
   function handleChange(key, idx) {
-    onChange({ ...value, [key]: ITEMS[key][idx] });
+    const next = { ...value, [key]: itemsFor(key)[idx] };
+    // Clamp : changer de mois/année vers un mois plus court ramène le jour au dernier valide.
+    if ((key === "month" || key === "year") && next.day) {
+      const max = daysInMonth(next.year, next.month);
+      if (+next.day > max) next.day = String(max).padStart(2, "0");
+    }
+    onChange(next);
   }
   return (
     <div>
@@ -59,7 +73,7 @@ export default function WheelSelect({ wheels, value, onChange }) {
         {wheels.map(key => (
           <div key={key} style={{ flex: FLEX[key] || 1 }}>
             <SingleWheel
-              items={ITEMS[key]}
+              items={itemsFor(key)}
               selectedIdx={idxOf(key)}
               onChange={idx => handleChange(key, idx)}
             />
