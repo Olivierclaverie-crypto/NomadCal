@@ -1,91 +1,86 @@
 # ÉTAT DU PROJET NOMADCAL
-*Document VIVANT — l'établi : SEULEMENT le chantier actif, les vérifs ouvertes, et la reprise. Le déjà-fait scellé vit dans le JOURNAL/ACQUIS. Dernière MAJ : 14/07/2026 (**FIX BUG A PR 1 MERGÉ EN PROD** — PR #35, `pushOccurrenceException`, prouvé au brut ; **PR 2 (enqueue offline) = prochaine étape** ; puis EventForm).*
+*Document VIVANT — l'établi : SEULEMENT le chantier actif, les vérifs ouvertes, et la reprise. Le déjà-fait scellé vit dans le JOURNAL/ACQUIS. Dernière MAJ : 14/07/2026 (**RÉCURRENCE-ÉDITION OK — PR 1 #35 + PR 2 #36 MERGÉES EN PROD**, prouvées au brut ; blocage offline levé ; **prochaine étape = brief EventForm**).*
 
 ---
 
-## 🔀 CHANTIER RÉCURRENCE-ÉDITION — PR 1 MERGÉE, PR 2 À VENIR (14-07)
-- **✅ FIX BUG A — PR 1 (#35, commit final `ca19691`/merge) MERGÉE EN PROD, Vercel vert.** Éditer une occurrence n'écrase plus la série : `pushOccurrenceException(ev,auth)` (fonction voisine dans `src/sync/pushEvent.js`, `pushEvent` INTACTE) fait un **GET-modify-PUT** sur le href master → ajoute/remplace un VEVENT exception (même UID, `RECURRENCE-ID` heure locale+TZID, sans RRULE), master préservé.
-- **PROUVÉ AU BRUT (preview, série fraîche Apple natif) :** 1 édition → master + 1 exception ; 2ᵉ/3ᵉ → 3 puis 4 VEVENT, master RRULE toujours intacte ; RECURRENCE-ID heure murale locale (pas de `Z`) ; offline bloqué avec message, zéro écriture. Corrections avant merge validées : `X-RECURRENCE-EXCEPTION` dédupliqué (une seule ligne), VEVENT exception uniforme (`CREATED`/`LAST-MODIFIED`/`SEQUENCE:0`).
-- **⏭️ PR 2 = ENQUEUE OFFLINE (prochaine étape, NOUVEAU FIL).** Le blocage temporaire « modification d'une occurrence indisponible hors connexion » de PR 1 sera levé : op « exception » enqueue dans `pendingQueue`, rejouée au flush. **« Récurrence-édition OK » = fin de PR 2.** Zone sensible (boîte d'envoi) → PR distincte, jamais fusionnée avec PR 1.
-- **Bug B : NON reproduit au brut (13-07)** — création + édition d'occurrence = toutes deux saines côté serveur. L'édition d'occurrence = **bug A** (confusion A/B levée). B reste théorique, non reproduit terrain.
+## ✅ CHANTIER RÉCURRENCE-ÉDITION — CLOS (PR 1 + PR 2 MERGÉES 14-07)
+*Bloc de clôture — passera au JOURNAL/ACQUIS, puis sera retiré de l'établi.*
+- **PR 1 (#35, `pushOccurrenceException`) MERGÉE.** Éditer une occurrence n'écrase plus la série : GET-modify-PUT sur le href master → ajoute/remplace un VEVENT exception (même UID, `RECURRENCE-ID` heure locale+TZID, sans RRULE), master + RRULE préservés. `pushEvent`/`deleteEvent` intactes.
+- **PR 2 (#36, enqueue offline) MERGÉE.** Le blocage temporaire « modification d'occurrence indisponible hors connexion » est **levé**. Op `op:"exception"` enfilée dans `pendingQueue` (file générique `{op,ev,ts}`, aucun changement structurel), rejouée au flush par `pushOccurrenceException(item.ev,auth)` (re-GET master frais). 2 sites `App.jsx` touchés, non sacrés : save handler (→ `enqueueWrite`) + branche `flushQueue` (`else if op==="exception"`, contrôle `r.ok` : succès → quitte la file, 503 → reste pour retry). Écart mineur assumé (r.ok + `onPutSuccess` au lieu du seul `await`) : nécessaire pour « quitte après flush réussi » sans perdre l'op sur 503.
+- **PROUVÉ AU BRUT (preview `c7dd6e1` → prod, série FRAÎCHE Apple natif `Test flush`) :** édition offline → op en attente (aucune écriture serveur, message de blocage disparu) → retour réseau → flush → **1 href / 2 VEVENT** (master RRULE intact + exception `RECURRENCE-ID:20260725T180000` heure murale locale sans `Z`). File vide après flush (`cf_pending` absent). Idempotence : remplacement au même `RECURRENCE-ID` → pas de doublon au double flush. Marqueur `VALARM ACTION:NONE` (natif Apple) sur l'exception = bénin, ne déclenche rien.
+- **Bug B : NON reproduit au brut (13-07)** — création + édition d'occurrence saines côté serveur. B reste théorique, non reproduit terrain.
 
-## 🩹 CHANTIERS SÉPARÉS RÉVÉLÉS PAR PR 1 (à traiter à part, une variable chacun)
-- **Refresh d'affichage auto après modif/création** (idée capitaine). Après une édition d'occurrence, NC affiche transitoirement un doublon (ancienne + nouvelle version) jusqu'à un refresh manuel qui relance la fusion (`mergeRecurrenceExceptions`). **Données saines** (brut propre) — pur affichage = le « défaut refresh manuel » déjà connu. À traiter en chantier dédié (INVESTIGUER léger : où/quand déclencher le refresh sans boucle/clignotement). NE PAS bricoler dans une PR de fix.
-- **Sélecteur d'étendue d'édition** (« cette occurrence / suivantes / toute la série »). **N'a jamais existé** dans NC (pas une régression PR 1). PR 1 pose le socle technique (écriture d'exception) ; l'UI de choix ira dans le **chantier EventForm**.
+## 🩹 CHANTIERS SÉPARÉS RÉVÉLÉS PAR PR 1/2 (à traiter à part, une variable chacun)
+- **Refresh d'affichage auto après modif/création** (idée capitaine). Après une édition d'occurrence, NC affiche transitoirement un doublon (ancienne + nouvelle) jusqu'à un refresh manuel qui relance `mergeRecurrenceExceptions`. **Données saines** (brut propre) = pur affichage, le « défaut refresh manuel » connu. Chantier dédié (INVESTIGUER léger : où/quand déclencher le refresh sans boucle/clignotement). NE PAS bricoler dans une PR de fix.
+- **Sélecteur d'étendue d'édition** (« cette occurrence / suivantes / toute la série »). N'a jamais existé dans NC (pas une régression). Le socle technique (écriture d'exception) est posé ; l'UI de choix ira dans le **chantier EventForm**.
 
 ## 🎯 OÙ ON EN EST (charnière)
-- **On est dans la couche 2 ÉCRITURE.** α est neutralisé et en prod (`ac0a025`) — le terrain d'écriture est sain.
-- **Bug A : clos côté enquête.** Reproduit en réel + prouvé au brut iCloud (11-07). Écrasement pur de la série, une seule ressource serveur. Le « doublon » iCal = fantôme d'affichage Apple (cache local **par-appareil**, voir Journal). Correctif en réserve (ex-Brief 3), protocole lourd.
-- **Chantier actif du 12-07 : refonte EventForm, MAINTENANT CADRÉE.** Observation au brut (3 events récurrents identiques Apple iPhone / Apple Desk / NC, `ZZ-TEST-REC`) → **NC est déjà quasi conforme à Apple**. La « refonte » est donc LÉGÈRE, pas un big-bang. Reste à en faire un brief cousin.
+- **Couche 2 ÉCRITURE : terrain sain et éprouvé.** α neutralisé en prod (`ac0a025`). Récurrence-édition (A) close par exception RFC + enqueue offline.
+- **Chantier actif = refonte EventForm, CADRÉE + AVISÉE cousin.** Observation au brut (3 events récurrents identiques Apple iPhone / Apple Desk / NC) → **NC déjà quasi conforme à Apple** → refonte LÉGÈRE. Brief rédigé + avisé, **2 décisions Olivier en attente** (voir bloc dédié). Prochaine étape concrète du projet.
 
-## 🧰 REFONTE EVENTFORM — CADRAGE COMPLET (prêt pour brief EXÉCUTER, go Olivier requis)
-*Prérequis de testabilité (sans EventForm aligné Apple, pas de cas de test propres). Observation faite au brut le 12-07, serveur sain.*
+## 🧰 REFONTE EVENTFORM — CADRAGE COMPLET (brief AVISÉ, go Olivier requis)
+*Prérequis de testabilité (sans EventForm aligné Apple, pas de cas de test propres). Serveur sain.*
 
-**Constat conformité (PROUVÉ au brut) :** sur une récurrence hebdo simple, NC produit un VEVENT sain — `DTSTART;TZID=Europe/Paris` **identique** à Apple, structure OK, monte sans erreur sur iCloud. Écart unique = NC écrit `FREQ=WEEKLY;INTERVAL=1`, Apple écrit `FREQ=WEEKLY` nu (INTERVAL=1 = valeur par défaut → **équivalent RFC 5545**, juste bavard).
+**Constat conformité (PROUVÉ au brut) :** récurrence hebdo simple → NC produit un VEVENT sain, `DTSTART;TZID=Europe/Paris` identique à Apple. Écart unique : NC écrit `FREQ=WEEKLY;INTERVAL=1`, Apple écrit `FREQ=WEEKLY` nu (INTERVAL=1 = défaut → équivalent RFC 5545, juste bavard).
 
 **Les 3 briques, décidées :**
-1. **Roues (WheelSelect) — existent déjà** (Date jour/mois/année + Début hh/mm + Fin hh/mm). Vrai travail = **fiabiliser la roue des jours** : aujourd'hui `day` = toujours 01→31 → permet « 31 février » → date invalide. À rendre adaptative (28/29/30/31 selon mois + bissextile). **Racine corrigée UNE fois → la roue de fin de récurrence en hérite.**
-2. **Fin de récurrence — DÉCIDÉ : `UNTIL` (date de fin), PAS de `COUNT`.** Motif terrain (capitaine) : le rythme réel = « toutes les X semaines le [jour] » + fin pensée en saison commerciale (année/semestre) → **toujours une date**. UI = 2 choix (« aucune fin » / « se termine le [date] », roue de date). **Format cible capturé au brut Apple :** `UNTIL=AAAAMMJJT215959Z` = fin de journée LOCALE convertie en **UTC + suffixe `Z`** (le 21:59:59 = 23:59:59 Paris été → UTC). ⚠️ **Point dur du futur brief :** calcul UTC **DST-safe** obligatoire (`getTime()`, jamais `.toISOString().slice(0,10)` — cf. doctrine Journal), sinon off-by-one près de minuit / changement d'heure.
-3. **Nettoyage `INTERVAL=1` — DÉCIDÉ : on nettoie.** NC n'écrira `INTERVAL` que s'il est ≥ 2 (style épuré, aligné Apple).
+1. **Roues (WheelSelect) — existent déjà.** Vrai travail = fiabiliser la roue des jours (aujourd'hui `day` = 01→31 fixe → permet « 31 février »). À rendre adaptative (28/29/30/31 + bissextile). Racine corrigée UNE fois → la roue de fin de récurrence en hérite.
+2. **Fin de récurrence — DÉCIDÉ : `UNTIL` (date), PAS `COUNT`.** UI = 2 choix (« aucune fin » / « se termine le [date] »). Format cible brut Apple : `UNTIL=AAAAMMJJT215959Z` (fin de journée locale → UTC + `Z`). ⚠️ Calcul UTC **DST-safe** obligatoire (`getTime()`, jamais `.toISOString().slice(0,10)`).
+3. **Nettoyage `INTERVAL=1` — DÉCIDÉ : on nettoie.** NC n'écrit `INTERVAL` que si ≥ 2.
 
-**Emplacement repéré (timonier, lecture seule) :** le picker de fin va en zone **conditionnelle sous `Répéter`** (visible si `rrule` ≠ « Aucune »), réutilise `WheelSelect` en `['day','month','year']`. EventForm **n'est pas une sacrée** et n'en contient pas → chantier sans risque sur le cœur écriture.
+**Emplacement (timonier, lecture seule) :** picker de fin en zone conditionnelle sous `Répéter` (si `rrule` ≠ « Aucune »), réutilise `WheelSelect`. EventForm **n'est pas une sacrée** → chantier sans risque sur le cœur écriture.
 
-**Brief V1 (test famille) = 3 lots batchés :** LOT 1 roue des jours adaptative (socle) · LOT 2 A1 intervalle libre (« toutes les [N] unités », 1 jour) · LOT 3 UNTIL DST-safe + nettoyage INTERVAL=1. Détail complet + code proposé par le cousin → fichier provisoire `NomadCal_BRIEF_EVENTFORM_AVISE_12-07-26.md`.
+**Brief V1 (test famille) = 3 lots batchés :** LOT 1 roue des jours adaptative (socle) · LOT 2 A1 intervalle libre (« toutes les [N] unités ») · LOT 3 UNTIL DST-safe + nettoyage INTERVAL=1. Fichiers : `WheelSelect.jsx` + `EventForm.jsx` + `constants.js` (+ `helpers.js` si dates). Zéro sacrée. Détail : `NomadCal_BRIEF_EVENTFORM_AVISE_12-07-26.md`.
 
-**ÉTAT DU BRIEF : rédigé + AVISÉ par le cousin (faisabilité 3 lots OK, contenu à `WheelSelect.jsx`+`EventForm.jsx`+`constants.js`, zéro sacrée).** LOT 2 jugé TRIVIAL (pas de refonte rrule : `rrule` reste une string, `pushEvent` inchangée). **2 décisions Olivier en attente avant go :**
+**2 DÉCISIONS OLIVIER EN ATTENTE (avant go) :**
 1. **Design LOT 2 — TRANCHÉ option (i)** : remplacer le `<select>` figé par « unité + champ N ». Positionnels retirés de l'UI V1, restent lisibles. (À confirmer : impact nul sur positionnels existants type EYROLLES.)
-2. **Séquencement bug B — NON TRANCHÉ (point ouvert).** Ce brief améliore la saisie mais ne corrige pas B (fantôme à la création). Mettre la vraie tournée dans NC pour le test IRL → chaque récurrent créé déclenche le fantôme B. Routes : (1) corriger B avant (protocole lourd, `mergeStrategy`) / (2) avancer sous discipline « jamais supprimer un doublon depuis iCal » / (3) confirmer B terrain d'abord. **À trancher au prochain brainstorm.**
+2. **Séquencement bug B — NON TRANCHÉ (point ouvert).** Ce brief améliore la saisie mais ne corrige pas B (fantôme à la création). Routes : (1) corriger B avant (protocole lourd, `mergeStrategy`) / (2) avancer sous discipline « jamais supprimer un doublon depuis iCal » / (3) confirmer B terrain d'abord. **À trancher au prochain brainstorm.**
 
-**Séquence :** décisions Olivier → **go explicite** → PR isolée + test preview → merge → MAJ moteurs.
+**Séquence :** décisions Olivier → go explicite → PR isolée + test preview → merge → MAJ moteurs.
 
 ## 🧬 ROADMAP RÉCURRENCE ÉTAGÉE — OBJECTIF FERME, CHEMIN PAR PALIERS (décidé 12-07)
-*Décision capitaine : le compositeur de récurrence complet (niveau des grands du secteur) est un **objectif FERME de la sortie publique**, PAS une option conditionnelle. Seul le calendrier est étagé, pas l'ambition. Motif : une récurrence pauvre = « app amateur » = on se grille sur un standard que tous offrent gratuitement. Olivier accepte de décaler la sortie publique pour l'atteindre proprement.*
-
-- **A1 — intervalle libre** (« toutes les [N] jours/semaines/mois/ans », 1 jour). ➡️ **DANS LA V1 test famille** (brief en cours). Besoin terrain PROUVÉ (vécu : « jeudi, toutes les 6 semaines » — négocié avec le libraire). Sans A1, Olivier ne peut pas mettre sa vraie tournée dans NC → pas de test IRL, qui est LA force du projet.
-- **A2 — multi-jours hebdo** (`BYDAY=MO,TH` cochables). Palier suivant. NC sait déjà l'écrire, manque l'UI.
-- **A3 — positionnel mensuel** (« le [premier…dernier] [jour] »). Ajoute le « dernier X » manquant.
+*Compositeur de récurrence complet = objectif FERME de la sortie publique, PAS une option. Seul le calendrier est étagé, pas l'ambition.*
+- **A1 — intervalle libre** (« toutes les [N] jours/semaines/mois/ans »). ➡️ **DANS LA V1 test famille** (brief EventForm). Besoin terrain PROUVÉ.
+- **A2 — multi-jours hebdo** (`BYDAY=MO,TH`). NC sait l'écrire, manque l'UI.
+- **A3 — positionnel mensuel** (« le [premier…dernier] [jour] »).
 - **A4 — jours du mois par numéro** (« le 4 et le 24 »).
-- **COUNT — fin par nombre d'occurrences** (« après X fois »). Cas professions libérales (série de 20 soins, 12 massages). Se greffe sur la fin de récurrence, indépendant de A2-A4.
-- **Modèle cible = compositeur Apple** (captures 12-07) : 2 étages (raccourcis + Personnaliser). **Ne PAS rallonger la liste plate.** A2→A4 + COUNT = paliers faits **avant sortie publique**, chacun sa PR (une variable à la fois).
-- **Note produit :** différenciateurs (todo flottante, NomadBook, NomadFeed) stables + montée par Néon → ne sont PAS le goulot ; le temps EventForm ne les menace pas comme craint initialement.
+- **COUNT — fin par nombre d'occurrences.** Cas professions libérales. Indépendant de A2-A4.
+- **Modèle cible = compositeur Apple** (2 étages : raccourcis + Personnaliser). A2→A4 + COUNT = paliers faits **avant sortie publique**, chacun sa PR.
+- **Note produit :** différenciateurs (todo flottante, NomadBook, NomadFeed) stables → pas le goulot.
 
-## 🔭 LES 3 BUGS RÉCURRENCE (3 PR séparées, une variable chacune) — après EventForm
-Ordre recommandé (à trancher par le capitaine) : **C → B → A**.
-- **Bug A — édition d'occurrence écrase la série. ✅ PROUVÉ TERRAIN iCLOUD (11-07).** `pushEvent` PUT sur href/UID du master, RRULE omise → série remplacée par event unique daté. Correctif = exception RFC 5545 (UID master + `RECURRENCE-ID`, pas d'`EXDATE`) = ex-Brief 3, EN RÉSERVE. Touche le corps de `pushEvent` → protocole lourd. Évitable par discipline.
-- **Bug B — fantôme à la création (LE PLUS DANGEREUX).** `mergeEvents` (`mergeStrategy.js:14-20`) préserve le master-local `calflow-<ts>` → coexiste avec l'occurrence n°1 → doublon. Le fantôme EST la ressource master → DELETE dessus efface toute la série. Danger PASSIF (frappe à la création + sync, sans action). Prouvé localement ; iCloud non prouvé sans réseau. Zone cœur écriture → protocole maximal.
-- **Bug C — event à cheval sur minuit mal affiché.** `App.jsx:643-644` : rendu sans clip par jour → recolle `startTime` (23:00) sur J+1. Pur AFFICHAGE, zéro donnée. Correctif = clip par jour. Le plus sûr (réversible, aucune sacrée).
+## 🔭 LES 3 BUGS RÉCURRENCE — après EventForm
+Ordre recommandé : **C → B → A**. *(A traité par discipline + PR 1/2 ; le correctif de fond A = exception RFC, désormais EN PLACE.)*
+- **Bug A — édition d'occurrence écrase la série. ✅ CORRIGÉ (PR 1 exception + PR 2 offline).** Reste la discipline pour les séries déjà écrasées avant fix.
+- **Bug B — fantôme à la création (LE PLUS DANGEREUX).** `mergeEvents` (`mergeStrategy.js:14-20`) préserve le master-local `calflow-<ts>` → coexiste avec l'occurrence n°1 → doublon. Le fantôme EST la ressource master → DELETE dessus efface la série. Danger PASSIF. Prouvé localement ; iCloud non prouvé. Zone cœur écriture → protocole maximal.
+- **Bug C — event à cheval sur minuit mal affiché.** `App.jsx:643-644` : rendu sans clip par jour. Pur AFFICHAGE. Correctif = clip par jour. Le plus sûr (réversible, aucune sacrée).
 
-## 🧩 OPTION « DÉBUT DATÉ + FIN DATÉE » (piste candidate d'Olivier) — PARTIELLE
-- Corrige la SAISIE NC d'events à cheval / multi-jours (`endDate` existe déjà, `EventForm.jsx:33` ; `pushEvent` sait sérialiser `endDate||startDate`, `pushEvent.js:16-17`). Aucune sacrée touchée.
-- Laisse debout A, B, C (C entre par la LECTURE). À traiter à part. Recoupe partiellement la refonte EventForm.
-
-## 🛟 GARDE-FOUS COMPORTEMENTAUX PROVISOIRES (en attendant les fix)
-- **Bug A :** ne pas éditer une occurrence unique (pratique depuis ~3 mois).
-- **Bug B :** ne **JAMAIS** supprimer un doublon suspect depuis iCal — c'est CE geste qui efface la série. Si besoin : supprimer la série entière depuis NC puis recréer.
-- **Fantôme iCal (11-07) :** après un écrasement, iCal peut afficher une série morte que ni « actualiser » ni OFF/ON du calendrier iCloud ne dissolvent, **et le cache est par-appareil** (purgé sur un device, persiste sur l'autre). **Seul le brut Web Inspector fait foi.** Exception « supprimer depuis iCal » tolérée UNIQUEMENT si le brut a prouvé qu'aucune ressource ne vit derrière (cas 11-07 — voir Journal).
-- **Serveur iCloud en 503 / maintenance / verrouillé :** **toute observation suspendue** — ne jamais diagnostiquer conformité / caches / sync dessus (bruts non fiables). Un event créé pendant le 503 peut rester coincé en local, jamais monté sur iCloud → inexploitable.
+## 🛟 GARDE-FOUS COMPORTEMENTAUX (toujours valables)
+- **Bug B :** ne **JAMAIS** supprimer un doublon suspect depuis iCal — CE geste efface la série. Si besoin : supprimer la série entière depuis NC puis recréer.
+- **Fantôme iCal :** après un écrasement, iCal peut afficher une série morte que ni « actualiser » ni OFF/ON iCloud ne dissolvent, **cache par-appareil**. **Seul le brut Web Inspector fait foi.** Exception « supprimer depuis iCal » tolérée UNIQUEMENT si le brut a prouvé qu'aucune ressource ne vit derrière.
+- **iCloud en 503 / maintenance :** toute observation suspendue (bruts non fiables).
+- **Cache PWA iOS :** force-refresh Safari avant de soupçonner le code (sert l'ancien après deploy).
 
 ## 📋 RESTE À FAIRE POUR V1 (ordre)
-1. ~~Couche 2 LECTURE~~ · ~~α neutralisé~~ · ~~investigation 3 bugs~~ · ~~bug A confirmé terrain~~ · ~~conformité NC vs Apple observée~~ · ~~cadrage EventForm~~ → **FAITS.**
-2. **Refonte EventForm** (cadrée ci-dessus) : brief cousin à rédiger → go Olivier → PR.
-3. **Corriger les 3 bugs :** C (sûr) → B (danger max, protocole lourd) → A (écriture RFC = ex-Brief 3).
+1. ~~Couche 2 LECTURE~~ · ~~α neutralisé~~ · ~~investigation 3 bugs~~ · ~~bug A confirmé~~ · ~~conformité NC vs Apple~~ · ~~cadrage EventForm~~ · ~~récurrence-édition (PR 1 + PR 2)~~ → **FAITS.**
+2. **Refonte EventForm** (cadrée, brief avisé) : 2 décisions Olivier → go → PR.
+3. **Corriger les bugs restants :** C (sûr) → B (danger max, protocole lourd). *(A = corrigé.)*
 4. **Nettoyage** events de test + **γ** (clearTombstone sur échec).
 5. **EYROLLES** (23/07, 2 UID — cas distinct).
-6. Drag & drop (dépend écriture). 7. Vues jour/mois/année. 8. **Récurrences avancées** (chantier en file ci-dessus). 9. Fonction rapport NomadBook (`NomadCal_FONCTION_RAPPORT_06-07-26.md`). 10. Settings + cosmétique.
+6. Drag & drop. 7. Vues jour/mois/année. 8. **Récurrences avancées** (roadmap étagée). 9. Fonction rapport NomadBook (`NomadCal_FONCTION_RAPPORT_06-07-26.md`). 10. Settings + cosmétique.
 
 ## 📋 ITEMS EN FILE (pas urgents)
 - Défauts synchro de fond : B1 (erreurs avalées `App.jsx:406`), B3 (garde anti-réentrance morte), B4 (couplage flush→lecture), γ (tombstone).
 - **Défaut « refresh manuel »** : la synchro d'affichage ne se rafraîchit pas seule.
-- **Dette « deux `toISO` divergents »** : `helpers.js:13` (locale) vs `caldav.js:211` (UTC). N'est PAS la cause des 3 bugs, mais `toISO` UTC dans `expandRecurring` (`caldav.js:347`) = off-by-one possible près de minuit → à surveiller. **NB :** recoupe le point dur UNTIL de la brique 2 (même famille de piège UTC/local).
-- **À porter au README quand on CODERA les fix** : rendu multi-jour sans clip (`App.jsx:643`) ; `mergeEvents` garde le master-local ; deux `toISO` divergents.
+- **Dette « deux `toISO` divergents »** : `helpers.js:13` (locale) vs `caldav.js:211` (UTC). Recoupe le point dur UNTIL de la brique 2 EventForm.
+- **À porter au README quand on CODERA les fix** : rendu multi-jour sans clip (`App.jsx:643`) ; `mergeEvents` garde le master-local ; deux `toISO` divergents ; **nouvel `op:"exception"` de la file (PR 2)**.
+- **🔐 Sécurité (hors code) :** mot de passe d'app iCloud passé en clair le 14-07 → **à régénérer** sur appleid.apple.com puis ressaisir dans NC.
 - Tests récurrence (QCM 17) : après les fix. Cosmétique = FERMÉ jusqu'à V1.
 - **Essaimage** des items transposables (méthode briefing, deux jauges) vers les autres projets.
 
 ## 🟢 REPRENDRE EN DÉBUT DE SESSION
 1. **Préciser le carburant session à Claude** (ex. « il reste 58 % »).
-2. Lire cet État + le README. Consulter le JOURNAL/ACQUIS seulement si besoin.
-3. Chantier actif : **PR 2 — enqueue offline** (lève le blocage temporaire d'édition d'occurrence hors réseau). Op « exception » dans `pendingQueue`, rejouée au flush. À traiter dans un **NOUVEAU FIL** (celui du fix A est plein). Zone sensible (boîte d'envoi) → PR isolée + preuve : éditer une occurrence offline → op en attente → retour réseau → flush → brut = 1 href / 2 VEVENT. « Récurrence-édition OK » = à la fin de PR 2. PUIS brief EventForm (`..._BRIEF_EVENTFORM_AVISE_12-07-26.md`).
-- **Chantiers séparés notés (voir bloc dédié) :** refresh-auto après modif (défaut refresh manuel) ; sélecteur d'étendue d'édition (→ EventForm).
-- **Atelier de test :** `ZZ-TEST-REC` contient des séries de test PR 1 (`Test pr 1.2` etc.) avec exceptions — à nettoyer. Cas de test PR 2 = série **fraîche** Apple natif.
-- **Atelier de test :** `1925D1D3-…` a servi aux 3 events de conformité (12-07). Nettoyage en cours. Cas de test du fix récurrence = série **fraîche** Apple natif, jamais un event déjà écrasé.
+2. Lire cet État + le README. JOURNAL/ACQUIS seulement si besoin.
+3. **Chantier actif : refonte EventForm.** Brief rédigé + avisé (`NomadCal_BRIEF_EVENTFORM_AVISE_12-07-26.md`). **2 décisions Olivier à trancher** (design LOT 2 confirmé sur positionnels existants ; séquencement bug B) → go explicite → PR isolée + test preview → merge.
+- **Chantiers séparés notés :** refresh-auto après modif ; sélecteur d'étendue d'édition (→ EventForm).
+- **Atelier de test :** `ZZ-TEST-REC` (`1925D1D3-…`) contient des séries de test (`Test flush`, `Test pr 1.2`…) avec exceptions — à nettoyer. Cas de test = série **fraîche** Apple natif, jamais un event déjà écrasé.
 - **NE RIEN coder/merger/appliquer sans le go explicite d'Olivier.**
