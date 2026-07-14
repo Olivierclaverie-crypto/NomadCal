@@ -134,16 +134,21 @@ function buildExceptionVevent(ev) {
   const icsStatus = ev.status === "tentative" ? "STATUS:TENTATIVE"
     : ev.status === "cancelled" ? "STATUS:CANCELLED"
     : "STATUS:CONFIRMED";
+  // X-RECURRENCE-EXCEPTION retiré volontairement : iCloud le pose lui-même →
+  // l'émettre le dédoublait. L'appariement master↔exception se fait par RECURRENCE-ID.
+  const stamp = `${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`;
   return [
     "BEGIN:VEVENT",
     `UID:${ev.masterUid}`,                                   // UID master PUR (pas suffixé)
-    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`,
+    `DTSTAMP:${stamp}`,
+    `CREATED:${stamp}`,
+    `LAST-MODIFIED:${stamp}`,
+    "SEQUENCE:0",
     recId,
     dtstart,
     dtend,
     `SUMMARY:${ev.title}`,
     icsStatus,
-    "X-RECURRENCE-EXCEPTION:True",
     ev.location ? `LOCATION:${ev.location}` : "",
     ev.email ? `URL:mailto:${ev.email}` : "",
     ev.tel ? `CONTACT:${ev.tel}` : "",
