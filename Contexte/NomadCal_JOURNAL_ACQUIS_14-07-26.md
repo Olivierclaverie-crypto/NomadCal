@@ -3,6 +3,17 @@
 
 ---
 
+## ✅ FIX BUG A — PR #35 SCELLÉE EN PROD (14-07-26)
+*Premier fix sur voisinage de sacrée mené de bout en bout via le trio. `pushEvent` jamais touchée. Prouvé au brut, mergé, Vercel vert.*
+
+- **CE QUI EST EN PROD :** `pushOccurrenceException(ev,auth)` (fonction voisine, `src/sync/pushEvent.js`) + routage save handler (`App.jsx`, `editMode==="this"`) + export barrel (`index.js`). **`pushEvent` INTACTE** (ni signature ni corps). `api/caldav.js`/`Contexte/` non touchés.
+- **MÉCANIQUE = GET-modify-PUT** sur le href master : relire l'ICS existant → ajouter/remplacer le VEVENT exception (matching `RECURRENCE-ID`) → PUT. Master préservé à l'octet près (RRULE incluse), multi-exceptions natif.
+- **PREUVE AU BRUT (preview, série fraîche Apple natif) :** 1 édition → 2 VEVENT (master RRULE + exception) ; 2ᵉ/3ᵉ → 3 puis 4 VEVENT, master toujours intact ; exception éditée sur l'occurrence-ancre (= DTSTART master) → OK, master préservé ; `RECURRENCE-ID;TZID=Europe/Paris:<origine>` heure murale locale, **pas de `Z`** ; offline → message de blocage, **zéro écriture**.
+- **2 finitions avant merge (2ᵉ passe cousin, `ca19691`) :** (1) `X-RECURRENCE-EXCEPTION` était écrit en DOUBLE → **retiré** de `buildExceptionVevent` (iCloud pose le sien ; l'appariement passe par `RECURRENCE-ID`, ce X-prop est superflu) → une seule ligne désormais. (2) VEVENT exception **uniformisé** : ajout `CREATED`/`LAST-MODIFIED`/`SEQUENCE:0` → structure déterministe à chaque PUT. Le remplacement (ré-édition) remplace le bloc VEVENT entier → aucune fusion/duplication.
+- **⚠️ LEÇON MÉTHODE — la mauvaise preview a failli faire valider un faux positif.** Un brut montrait les 2 corrections ABSENTES → réflexe : « le cousin a raté les deux » ? NON → **on inspectait l'ANCIENNE preview** (cache/URL). Les DEUX corrections absentes d'un coup = signal que ce n'est pas le code mais la cible d'inspection. Après bascule sur la bonne preview + force-refresh → brut propre. **Doctrine re-confirmée (déjà au Journal) : vérifier le titre/URL du Web Inspector + force-refresh AVANT de conclure. Un fix qui « ne marche pas » sur preview = suspecter la preview avant le code.** C'est le brut + le doute méthodique qui ont évité de merger sur l'ancien bundle.
+- **DOUBLON D'AFFICHAGE POST-MODIF (non bloquant, chantier séparé).** Après édition, NC affiche transitoirement 2 versions de l'occurrence jusqu'à un refresh manuel → **données saines** (brut propre), pur affichage = « défaut refresh manuel » connu. Idée capitaine : refresh-auto après modif/création → chantier dédié (pas dans une PR de fix).
+- **RESTE : PR 2 (enqueue offline)** lèvera le blocage temporaire → « récurrence-édition OK » à la fin de PR 2. Sélecteur d'étendue d'édition (jamais existé) → chantier EventForm.
+
 ## 🔎 BUG B NON REPRODUIT + CONFUSION A/B LEVÉE — CLOUÉ (13-07-26)
 *INVESTIGUER terrain (route 3 : prouver avant de fixer). Atelier `ZZ-TEST-REC` vide au départ, serveur sain. Une seule écriture = le cas de test. Brut lu au Web Inspector.*
 
@@ -134,7 +145,7 @@
 
 ## 🗂️ ARTEFACTS DE RÉFÉRENCE
 - **Certification archi : `main` @ `7d7763a`.**
-- Commits : `ac0a025` (α scopé) · `4c2d5cc` (#31) · `b73e5c0` (#32, jamais prod) · `9b0a126` (α d'origine) · `e1e7763` (tunneling) · `70e595e` (PR-a) · `349ade1` (PR-b).
+- Commits : `ac0a025` (α scopé) · `4c2d5cc` (#31) · `b73e5c0` (#32, jamais prod) · `9b0a126` (α d'origine) · `e1e7763` (tunneling) · `70e595e` (PR-a) · `349ade1` (PR-b) · **`ca19691` (#35, FIX BUG A `pushOccurrenceException`, mergé prod 14-07)**.
 - **Calendrier de test : `ZZ-TEST-REC`** (iCloud, dédié — jamais l'agenda pro).
 - **Pièce à conviction bug A (11-07) :** `calflow-1783755744987.ics` (calendrier `1925D1D3-…`), event écrasé `Test I 1` du 18/07 sans RRULE. Cas SALE → pas un banc d'essai pour le fix.
 - **Bruts conformité (12-07) :** Apple iPhone `1B94DD7E-….ics`, Apple Desk `CD88A2D6-….ics` (avec UNTIL `20260930T215959Z`), NC `calflow-1783835296152.ics` — calendrier `1925D1D3-…`.
