@@ -1,5 +1,5 @@
 import { runSync } from "./services/syncService.js";
-import { loadQueue, saveQueue, enqueueWrite, pushEvent, deleteEvent, mergeEvents, loadTombstones, addTombstone, removeTombstone } from "./sync/index.js";
+import { loadQueue, saveQueue, enqueueWrite, pushEvent, deleteEvent, pushOccurrenceException, mergeEvents, loadTombstones, addTombstone, removeTombstone } from "./sync/index.js";
 import { useState, useEffect, useRef } from "react";
 import { C, PRIORITY, GRID_START, GRID_END, GRID_TOTAL, SLOT_H, GRID_H, GRID_DEFAULT_SCROLL, RECURRENCE_OPTIONS } from "./utils/constants.js";
 import { load, save, toISO, todayISO, getWeekStart, getWeekDays, fmtDay, fmtDayNum, fmtWeekRange, timeToMinutes, minutesToHHMM, timeToY, durationToH, slideTasksToToday, rruleToFr, makeAuthHeader, userPrefix, uKey } from "./utils/helpers.js";
@@ -754,8 +754,23 @@ onTaskClick={t=>{
       {formOpen && (
         <EventForm initial={editEv||slotPrefill} calendars={calendars} defaultCalHref={settings.defaultCalHref} saving={saving} onCancel={()=>{setFormOpen(false);setEditEv(null);setSlotPrefill(null);}} onSave={async ev=>{
   if(saving) return;
-  setSaving(true);
 const wasEdit = !!editEv;
+// Édition d'UNE occurrence récurrente ("cet événement uniquement") → exception RFC 5545
+const isOccEdit = wasEdit && editEv?.isRecurring && ev.editMode === "this";
+// PR1 : occurrence online uniquement (enqueue offline = PR2)
+if (isOccEdit && !navigator.onLine) {
+  window.__showToast?.({ type:"error", title:"Hors connexion", body:"Modification d'une occurrence indisponible hors connexion.", duration:4000 });
+  return;
+}
+  setSaving(true);
+// Instant ORIGINAL de l'occurrence, capturé AVANT que le form ne le remplace
+const occMasterUid = editEv?.masterUid || (editEv?.id || "").split("_exc_")[0];
+const occHref      = editEv?.href;
+const occAllDay    = editEv?.allDay;
+const occRidVal    = editEv?.recurrenceId
+  || (editEv?.allDay
+        ? (editEv?.startDate || "").replace(/-/g, "")
+        : `${(editEv?.startDate || "").replace(/-/g, "")}T${(editEv?.startTime || "00:00").replace(":", "")}00`);
 const newId = editEv?.id || `calflow-${Date.now()}`;
 const newEv = {
   ...(editEv || {}),
@@ -772,7 +787,9 @@ const newEv = {
   setFormOpen(false); setEditEv(null);
   setSaving(false);
 
-const pushResult = await pushEvent(newEv, auth);
+const pushResult = isOccEdit
+  ? await pushOccurrenceException({ ...newEv, masterUid: occMasterUid, href: occHref, recurrenceId: occRidVal, allDay: occAllDay }, auth)
+  : await pushEvent(newEv, auth);
 if (pushResult?.ok) {
   // runSync protégé : _pendingEdit reste actif pendant la sync, effacé après
   await runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit, onDeleteSuccess: clearTombstone });
