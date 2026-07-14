@@ -1,8 +1,48 @@
 import { useState } from "react";
-import { C, GRID_END, RECURRENCE_OPTIONS } from "../utils/constants.js";
+import { C, GRID_END } from "../utils/constants.js";
 import { todayISO, timeToMinutes, minutesToHHMM } from "../utils/helpers.js";
 import { CancelIcon, ConfirmIcon } from "./icons";
 import WheelSelect from "./WheelSelect.jsx";
+
+// ── Récurrence V1 : composition / parsing RRULE (FREQ + INTERVAL + BYDAY mono-jour + UNTIL) ──
+const BYDAY_CODES = ["SU","MO","TU","WE","TH","FR","SA"];
+const bydayFromDate = iso => BYDAY_CODES[new Date(iso + "T12:00:00").getDay()];
+const UNIT_LABEL = { DAILY:"jour(s)", WEEKLY:"semaine(s)", MONTHLY:"mois", YEARLY:"an(s)" };
+
+// Date locale "AAAA-MM-JJ" → UNTIL = fin de journée locale en instant absolu UTC (DST-safe).
+function untilFromLocalDate(iso) {
+  const [y, mo, d] = iso.split("-");
+  const inst = new Date(+y, +mo - 1, +d, 23, 59, 59);
+  return inst.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); // → 20260930T215959Z
+}
+// UNTIL "20260930T215959Z" → date locale "AAAA-MM-JJ" (ré-affichage de la roue).
+function localDateFromUntil(u) {
+  const s = u.replace(/Z$/, "");
+  const inst = new Date(Date.UTC(
+    +s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8),
+    s.length>=13?+s.slice(9,11):23, s.length>=15?+s.slice(11,13):59, s.length>=17?+s.slice(13,15):59
+  ));
+  return `${inst.getFullYear()}-${String(inst.getMonth()+1).padStart(2,"0")}-${String(inst.getDate()).padStart(2,"0")}`;
+}
+function composeRRule({ unit, interval, byday, until }) {
+  if (!unit) return "";
+  let r = `FREQ=${unit}`;
+  if (interval >= 2) r += `;INTERVAL=${interval}`;          // INTERVAL=1 jamais écrit (défaut RFC)
+  if (unit === "WEEKLY" && byday) r += `;BYDAY=${byday}`;
+  if (until) r += `;UNTIL=${until}`;
+  return r;
+}
+function parseRRuleToUI(rrule) {
+  if (!rrule) return { unit:"", interval:1, endMode:"none", until:"" };
+  const p = {};
+  rrule.split(";").forEach(kv => { const [k,v] = kv.split("="); p[k] = v; });
+  return {
+    unit: p.FREQ || "",
+    interval: p.INTERVAL ? Math.max(1, parseInt(p.INTERVAL)) : 1,
+    endMode: p.UNTIL ? "until" : "none",
+    until: p.UNTIL ? localDateFromUntil(p.UNTIL) : "",
+  };
+}
 
 export default function EventForm({ initial, calendars, onSave, onCancel, defaultCalHref, saving=false }) {
   const [title,setTitle]       = useState(initial?.title||"");
@@ -39,7 +79,11 @@ const [endTime,setET]   = useState(computedEnd);
   const [email,setEmail]       = useState(initial?.email||"");
   const [tel,setTel]           = useState(initial?.tel||"");
   const [notes,setNotes]       = useState(initial?.notes||"");
-  const [rrule,setRrule]       = useState(initial?.rrule||"");
+  const _rec = parseRRuleToUI(initial?.rrule);
+  const [recurUnit,setRecurUnit]         = useState(_rec.unit);
+  const [recurInterval,setRecurInterval] = useState(_rec.interval);
+  const [recurEndMode,setRecurEndMode]   = useState(_rec.endMode);
+  const [recurUntil,setRecurUntil]       = useState(_rec.until || todayISO());
   const [editMode,setEditMode] = useState("this");
   const [status,setStatus]     = useState(initial?.status||"confirmed");
 
@@ -69,6 +113,12 @@ const hasContent =
 
     const title = [prenom.trim(), nom.trim(), entreprise.trim()].filter(Boolean).join(" ");
     const fullNotes = notes.trim();
+
+    // ── Composition RRULE (garde-fou : N ≥ 1) ──
+    const interval = Math.max(1, parseInt(recurInterval) || 1);
+    const byday = recurUnit === "WEEKLY" ? bydayFromDate(startDate) : "";
+    const until = recurEndMode === "until" && recurUntil ? untilFromLocalDate(recurUntil) : "";
+    const rrule = composeRRule({ unit: recurUnit, interval, byday, until });
 
     onSave({
       title, allDay,
@@ -248,10 +298,39 @@ const hasContent =
           <div style={card}>
             <div style={{display:"flex",alignItems:"center",padding:"8px 12px"}}>
               <span style={{fontSize:15,color:C.ink}}>Répéter</span>
-              <select value={rrule} onChange={e=>setRrule(e.target.value)} style={{marginLeft:"auto",border:`1.5px solid ${C.border}`,background:C.bg,borderRadius:9,padding:"7px 10px",color:C.ink,fontSize:14,fontFamily:"inherit",outline:"none",maxWidth:200}}>
-                {RECURRENCE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+              <select value={recurUnit} onChange={e=>setRecurUnit(e.target.value)} style={{marginLeft:"auto",border:`1.5px solid ${C.border}`,background:C.bg,borderRadius:9,padding:"7px 10px",color:C.ink,fontSize:14,fontFamily:"inherit",outline:"none",maxWidth:200}}>
+                <option value="">Aucune</option>
+                <option value="DAILY">Jour(s)</option>
+                <option value="WEEKLY">Semaine(s)</option>
+                <option value="MONTHLY">Mois</option>
+                <option value="YEARLY">An(s)</option>
               </select>
             </div>
+            {recurUnit && (
+              <>
+                <div style={{display:"flex",alignItems:"center",padding:"11px 12px",...div1}}>
+                  <span style={{fontSize:15,color:C.ink}}>Tous les</span>
+                  <input type="number" min="1" inputMode="numeric" value={recurInterval}
+                    onChange={e=>setRecurInterval(e.target.value)}
+                    onBlur={()=>setRecurInterval(v=>Math.max(1,parseInt(v)||1))}
+                    style={{marginLeft:"auto",width:60,textAlign:"center",border:`1.5px solid ${C.border}`,background:C.bg,borderRadius:9,padding:"7px 8px",color:C.ink,fontSize:15,fontFamily:"inherit",fontWeight:600,outline:"none"}}/>
+                  <span style={{marginLeft:10,fontSize:14,color:C.muted}}>{UNIT_LABEL[recurUnit]}{recurUnit==="WEEKLY"?` · ${["dim.","lun.","mar.","mer.","jeu.","ven.","sam."][new Date(startDate+"T12:00:00").getDay()]}`:""}</span>
+                </div>
+                <div style={{display:"flex",gap:8,padding:"10px 12px",...div1}}>
+                  <button onClick={()=>setRecurEndMode("none")} style={{flex:1,padding:"9px 6px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${recurEndMode==="none"?C.accent:C.border}`,background:recurEndMode==="none"?C.accentLight:"transparent",color:recurEndMode==="none"?C.accent:C.muted,fontSize:12,fontWeight:700}}>Aucune fin</button>
+                  <button onClick={()=>setRecurEndMode("until")} style={{flex:1,padding:"9px 6px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${recurEndMode==="until"?C.accent:C.border}`,background:recurEndMode==="until"?C.accentLight:"transparent",color:recurEndMode==="until"?C.accent:C.muted,fontSize:12,fontWeight:700}}>Se termine le</button>
+                </div>
+                {recurEndMode==="until" && (
+                  <div style={{...div1, padding:"8px 12px 4px"}}>
+                    <WheelSelect
+                      wheels={['day','month','year']}
+                      value={{ day:recurUntil.split('-')[2], month:recurUntil.split('-')[1], year:recurUntil.split('-')[0] }}
+                      onChange={v => setRecurUntil(`${v.year}-${v.month}-${v.day}`)}
+                    />
+                  </div>
+                )}
+              </>
+            )}
             {initial?.rrule&&<div style={{display:"flex",gap:6,padding:"10px 12px",...div1}}>
               {[["this","Cet événement"],["following","Suivants"],["all","Tous"]].map(([v,l])=>(
                 <button key={v} onClick={()=>setEditMode(v)} style={{flex:1,padding:"8px 4px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${editMode===v?C.accent:C.border}`,background:editMode===v?C.accentLight:"transparent",color:editMode===v?C.accent:C.muted,fontSize:11,fontWeight:700}}>{l}</button>
