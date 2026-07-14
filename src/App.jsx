@@ -47,6 +47,7 @@ async function flushQueue(auth, onPutSuccess, onDeleteSuccess){
     try{
       if(item.op==="put")         { await pushEvent(item.ev, auth, false, false); onPutSuccess?.(item.ev.id); }
       else if(item.op==="delete") { await deleteEvent(item.ev, auth, false); onDeleteSuccess?.(item.ev.id); }
+      else if(item.op==="exception") { const r = await pushOccurrenceException(item.ev, auth); if(r?.ok) onPutSuccess?.(item.ev.id); else remaining.push(item); }
     }catch(e){ remaining.push(item); }   // échec → on garde pour la prochaine tentative
   }
   saveQueue(auth.email, remaining);
@@ -757,11 +758,6 @@ onTaskClick={t=>{
 const wasEdit = !!editEv;
 // Édition d'UNE occurrence récurrente ("cet événement uniquement") → exception RFC 5545
 const isOccEdit = wasEdit && editEv?.isRecurring && ev.editMode === "this";
-// PR1 : occurrence online uniquement (enqueue offline = PR2)
-if (isOccEdit && !navigator.onLine) {
-  window.__showToast?.({ type:"error", title:"Hors connexion", body:"Modification d'une occurrence indisponible hors connexion.", duration:4000 });
-  return;
-}
   setSaving(true);
 // Instant ORIGINAL de l'occurrence, capturé AVANT que le form ne le remplace
 const occMasterUid = editEv?.masterUid || (editEv?.id || "").split("_exc_")[0];
@@ -787,9 +783,20 @@ const newEv = {
   setFormOpen(false); setEditEv(null);
   setSaving(false);
 
-const pushResult = isOccEdit
-  ? await pushOccurrenceException({ ...newEv, masterUid: occMasterUid, href: occHref, recurrenceId: occRidVal, allDay: occAllDay }, auth)
-  : await pushEvent(newEv, auth);
+let pushResult;
+if (isOccEdit) {
+  const exEv = { ...newEv, masterUid: occMasterUid, href: occHref, recurrenceId: occRidVal, allDay: occAllDay };
+  if (navigator.onLine) {
+    pushResult = await pushOccurrenceException(exEv, auth);
+  } else {
+    // Hors-ligne : op "exception" en file, rejouée par flushQueue au retour réseau.
+    // L'optimistic (_pendingEdit) reste en place pour afficher l'occurrence modifiée.
+    enqueueWrite(auth.email, { op: "exception", ev: exEv });
+    pushResult = { ok: false, queued: true };
+  }
+} else {
+  pushResult = await pushEvent(newEv, auth);
+}
 if (pushResult?.ok) {
   // runSync protégé : _pendingEdit reste actif pendant la sync, effacé après
   await runSync({ auth, flushQueue, syncCalDAV, onPutSuccess: clearPendingEdit, onDeleteSuccess: clearTombstone });
