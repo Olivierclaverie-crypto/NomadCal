@@ -1,110 +1,105 @@
 # ÉTAT DU PROJET NOMADCAL
-*Document VIVANT — l'établi : SEULEMENT le chantier actif, les vérifs ouvertes, la reprise. Le déjà-fait scellé vit dans le JOURNAL/ACQUIS. Dernière MAJ : 16/07/2026 (**ALERTE NOMADBOOK — notes invisibles : ZÉRO PERTE prouvée**, cause racine `periodId` trouvée au code, terrain rouvre une 2ᵉ piste → investigation à finir en DESK. Garde-fous périodes ACTIFS.).*
+*Document VIVANT — l'établi : SEULEMENT le chantier actif, les vérifs ouvertes, la reprise. Le déjà-fait scellé vit dans le JOURNAL/ACQUIS. Dernière MAJ : 19/07/2026 (**LOT C MERGÉ #39** — identité des périodes figée, prouvé au brut ; découverte : la bascule venait de `syncNoteCount` à CHAQUE ajout de note ; brut serveur = 10 ressources réelles (5 paires) ; **lots B puis A restent à faire** ; pastille onglet Notes à investiguer).*
 
 ---
 
-## 🚨 CHANTIER OUVERT 16-07 — NOMADBOOK : NOTES INVISIBLES (`periodId`)
-*Alerte terrain (iPhone solo, 100 % carburant). Aucune écriture décidée. Rien de mergé.*
+## 🚧 CHANTIER EN COURS — NOMADBOOK : DÉDOUBLONNER LES PÉRIODES + RATTRAPER LES NOTES
 
-### ✅ VERDICT QUI COMPTE : ZÉRO PERTE (PROUVÉ)
-- **Brut de substitution = export natif Settings du 16/07 12:49** (pas de Web Inspector sur iPhone). **10 notes vivantes** en stockage (06/07 → 16/07), texte intact.
-- Le piège « sauvegarde basée sur un affichage tronqué » **ne s'est PAS refermé** : la note « marché » écrite APRÈS l'incident n'a rien gravé de mauvais — les 9 autres ont survécu. **NomadBook réécrit le tableau complet, pas le tableau vu à l'écran.**
-- **« Rendu ≠ stockage » — démonstration parfaite.** Symptôme = 6 notes disparues de l'affichage ; réalité = pur rangement.
-- **Tâches terminées « disparues » = FAUSSE ALERTE** : 7 tâches `done:true` + réglage `showDone:false` → NC obéit. Caché ≠ perdu.
+### ✅ LOT C — FIGER L'IDENTITÉ DES PÉRIODES — MERGÉ (#39, 19-07)
+*« Arrêter l'hémorragie ». PR isolée, prouvée au brut sur preview AVANT merge.*
+- **C1 — `updatePeriodEvent` préserve le vrai UID** (paramètre) au lieu de le dériver du basename du href. `href.split("/").pop().replace(".ics","")` (`caldavCalendar.js:276`) **supprimé**. `syncNoteCount` propage l'UID.
+- **C2 — tous les filtres note↔période alignés sur `period.href`** (clé stable, préservée par `:290`) : `NomadBook.jsx` `:469`, `:475`, `:601` (fabrication), `:633`, `:655`, `:789`, `:856`. **7 sites** (les 4 du brief + `:633`/`:655` remontés par le cousin + fabrication `:601`).
+- **PR #39** — `+12 / −11`, 2 fichiers (`caldavCalendar.js` + `NomadBook.jsx`). 4 sacrées intactes, `createPeriodEvent` inchangé, zéro écriture/suppression iCloud.
+- **PREUVE AU BRUT (preview `9f36424`, ressource `nomadcal-rapport-1782035089446@nomadcal`) :** après ajout d'une note de test → `getetag mrg6ps2h→mrg6ps2i`, `DTSTAMP 20260716→20260719T153852Z` (PUT frais confirmé) **MAIS `UID` INCHANGÉ** (`…1782035089446@nomadcal`, PAS devenu `rapport-2026-09-07`). ✅ **C1 prouvé** : le geste qui faisait basculer l'UID ne le fait plus. Note de test **survit au refresh** → ✅ **C2 prouvé** (figée sur `href`, retrouvée par le filtre).
+- **Attendu, pas un échec :** les notes ANCIENNES (ancien `periodId`) restent invisibles → c'est le **LOT B** qui les rattrape. Le compteur `📊 Notes saisies` du bloc est passé 2→1 (les 2 anciennes ne matchent plus `href`, la note neuve = 1) → cohérent avec le fix.
 
-### 🔎 CAUSE RACINE — PROUVÉE AU CODE (rapport cousin, INVESTIGUER lecture seule)
-- **Filtre = égalité STRICTE** `note.periodId === currentPeriod.uid` (`NomadBook.jsx:468-469` ; idem compteurs `:475`, `:789`, `:856`). Un `periodId` non identique = note **invisible**.
-- **La note FIGE l'étiquette à sa création** : `const periodId = currentPeriod?.uid || "pending"` (`NomadBook.jsx:601-602`). Si le `.uid` change ensuite, la note **ne migre pas**.
-- **DEUX producteurs incohérents du `UID` de période :**
+### 🔑 DÉCOUVERTE MAJEURE (résout le mystère du 16/07)
+- **La bascule d'UID venait de `syncNoteCount`, à CHAQUE ajout de note** — PAS de l'édition manuelle. `syncNoteCount` (`caldavCalendar.js:405`) appelle `updatePeriodEvent` (`:406`), déclenché à chaque note (`NomadBook.jsx:608`). → écrire une note réécrivait l'UID de sa propre période → détachait les notes précédentes. **La note « marché » du 16/07 n'a pas disparu par une édition fantôme : l'écrire a suffi.** C1 corrige les DEUX chemins (ajout + édition) d'un coup.
 
-| Geste | Ligne | UID écrit dans le VEVENT | Format |
-|---|---|---|---|
-| **créer** (`createPeriodEvent`) | `caldavCalendar.js:242` | `nomadcal-rapport-<ts>@nomadcal` | UID iCloud |
-| **éditer** (`updatePeriodEvent`) | `caldavCalendar.js:276` | `href.split("/").pop().replace(".ics","")` → `rapport-<endISO>` | slug de fichier |
+### 🩺 CAUSE RACINE (prouvée au code, INVESTIGUER 16/07 + verdicts cousin 19/07)
+- Filtre STRICT `note.periodId === currentPeriod.uid` (`:469`) ; note fige la clé à sa création (`:601`) ; `currentPeriod = periods.find(...)` (`:463`) pioche UN jumeau ; `periods` = cache (`:530`) PUIS iCloud (`:557`).
+- **DEUX maladies distinctes** (verdict cousin) : (1) **bascule d'UID** — 1 ressource change d'identité (`updatePeriodEvent:276`, code vivant) → réglé par LOT C. (2) **jumeaux** — 2 href réels par période (origine externe/manuelle) → à ranger au LOT A.
 
-- **`updatePeriodEvent` ne CONSERVE pas l'UID : il le RECALCULE depuis le nom de fichier** → la période **change d'identité**. `getPeriodEvents` relit `UID` du VEVENT (`:373`) → `currentPeriod.uid` bascule → le filtre se réoriente.
-- **Métaphore :** on repeint le numéro sur la porte du tiroir sans repasser sur les étiquettes des dossiers. Rien n'est perdu — plus rien ne se retrouve.
-- **Verdict cousin = lecture (a)** : UNE période dont l'identité bascule (PAS deux objets distincts). *Le timonier pariait (b) → **s'est trompé**. Le doute était inscrit dans le brief au lieu d'être gravé → leçon du 13/07 resservie.*
+### 📡 BRUT SERVEUR — PROUVÉ (PROPFIND nomadcal-oc, 19/07)
+- **10 ressources réelles = 5 périodes × 2 (paires).** Thèse **(b) confirmée** (jumeaux réels iCloud) ET **(a) vraie** (bascule d'UID). Les deux cohabitent.
+- Paires alignées par **date de fin** (même `endISO` → même slug) :
 
-### 📦 LA DONNÉE (export 16/07)
-- **9 notes dans la période EN COURS** (fin 07/09), coupées en **2 identités** : **7** `rapport-2026-09-07` (slug) + **2** `nomadcal-rapport-1782035089446@nomadcal` (UID).
-- **1 note** dans `rapport-2026-07-06` = période **passée**, rangement **légitime** (⚠️ ce n'est PAS un 3ᵉ tiroir parasite — correction d'une erreur du timonier).
-- **Pièce à conviction :** note `1783413716041` (07/07 **08:41**) → UID ; note `1783413811016` (07/07 **08:43**) → slug. **2 minutes, 2 identités.**
-- **Cohérent au terrain :** à l'incident, **une seule** note portait l'UID (« Journée jeunesse ») → c'est bien elle qui restait affichée. ✅
+| Période | Jumeau UID `@nomadcal` (PRODID //NomadCal//FR ou //Apple) | Jumeau slug `rapport-<fin>` (PRODID //Apple) |
+|---|---|---|
+| Juin–Juil | `…1780419959323` | `rapport-2026-07-06` (12 notes) |
+| **Juil–Sept (courante)** | `…1782035089446` (2 notes, //NomadCal//FR) | `rapport-2026-09-07` (7 notes) |
+| Sept–Oct | `…1780249100225` | `rapport-2026-10-05` (0) |
+| Oct–Nov | `…1780249139816` | `rapport-2026-11-02` (0) |
+| Nov–Déc | `…1780334867453` | `rapport-2026-12-07` (0) |
 
-### ⚠️ CE QUE LA THÈSE (a) N'EXPLIQUE PAS — LE TERRAIN ROUVRE (b)
-- **La bascule fait l'ALLER-RETOUR.** (a) prédit un sens unique (UID → slug à l'édition). Or la note « marché » du **16/07** porte… **l'UID**, puis une resync a fait disparaître les 2 notes UID. **Ça rebascule à chaque resync**, pas une fois.
-- **Olivier n'a AUCUN souvenir d'édition de période le 07/07 ~08h42** → la thèse (a) perd son déclencheur sur ce cas.
-- **DOUBLON DE PÉRIODES OBSERVÉ (terrain) : dans la grille NomadBook ET dans iCal — TRIPLON sur nov–déc.** ⚠️ **HYPOTHÈSE, PAS PREUVE** : iCal ment (doctrine 11/07) et NC affiche son cache avant iCloud → **aucune des deux fenêtres n'est juge**. Seul le brut tranchera.
-- **Mécanisme suspecté (hypothèse) :** `const currentPeriod = periods.find(p=>getPeriodStatus(p)==="current") || periods[0]` (`NomadBook.jsx:463`) = **prend le PREMIER qui colle**. Avec des jumeaux dans la liste (un UID, un slug), `currentPeriod` dépend de **qui arrive premier** → **pile ou face à chaque resync**.
-- **Deux sources de `periods`, l'une après l'autre :** cache `nb_periods_cache` au démarrage (`:530-532`) **PUIS** iCloud qui écrase (`:557`). Le 07/07 08:41→08:43 = **la fenêtre de resync**, pas une édition.
-- **Origine plausible des jumeaux (hypothèse) :** changement de protocole de création des périodes + allers-retours event iCloud ↔ event NC (localStorage).
-- **Famille connue :** cache local qui ment contre la vérité serveur (le fantôme iCal, en plus petit) **+** identité qui dérape local ↔ iCloud (cousine de A et B).
-- **⚠️ Les périodes ne passent PAS par `mergeStrategy.js`** → le fix B (#38) ne les a jamais protégées. Tuyauterie propre : `caldavCalendar.js` + `nb_periods_cache`.
+- **Origine des jumeaux = ancienne + manuelle (témoin capitaine).** Doublons vus À PLUSIEURS REPRISES avant l'incident du 16/07. Probablement les allers-retours NC ↔ Apple lors du changement de protocole de création. NON tranché au code — et **pas nécessaire de trancher pour ranger**. L'hypothèse « Apple réécrit l'UID depuis le basename » du timonier = NON prouvée, abandonnée (le PRODID = dernier scribe, pas acte de naissance).
+- **« Triplon » = artefact de cache CLIENT.** L'export macOS (`NomadCal_OC.ics`, PRODID //Apple//macOS) montrait **11 VEVENT** dont **3** pour Juil–Sept → mais le PROPFIND serveur n'en montre que **2**. Le 3ᵉ = fantôme de cache Mac (X-WR-ALARMUID empilés, dates identiques). Doctrine 11/07 : l'export client ment, le PROPFIND prime. ⚠️ **Ne JAMAIS compter les jumeaux à supprimer depuis un export client** — uniquement depuis le PROPFIND, href par href.
 
-### ➡️ CONSÉQUENCE SUR LE FIX (acté)
-**Réparer `updatePeriodEvent` seul NE GUÉRIT PAS.** Ça empêche de fabriquer de **nouveaux** jumeaux ; ça ne **range pas** ceux qui existent déjà, et ça ne départage pas `.find()`. Un fix qui rassure sans soigner. **Pistes du cousin (non tranchées, aucun brief EXÉCUTER ouvert) :** (1) *source* — `updatePeriodEvent` conserve l'UID existant ; (2) *robustesse* — filtrer sur une clé stable (href / endISO) + **migration** ré-étiquetant les notes orphelines.
+### 🎯 DÉCISIONS CAPITAINE SCELLÉES (19/07)
+1. **Survivant par paire = la ressource slug `rapport-<endISO>.ics`** (clé dérivable, préservée par `:290`).
+2. **Clé stable du filtre = `period.href`** (unique, contient déjà l'endISO, anti-collision). `endISO` = plan B si le cousin trouve une raison technique.
+3. **3 lots SÉPARÉS, ordre imposé C → B → A** (pas de batch — A irréversible, B doit précéder A).
 
----
-
-## 🛟 GARDE-FOUS ACTIFS — NOMADBOOK (à respecter jusqu'au verdict brut)
-- 🚨 **AUCUNE période éditée, supprimée ou créée — ni dans NC, ni dans iCal.** `NomadBook.jsx:655` : `setNotes(prev=>prev.filter(n=>n.periodId!==p.uid))` → **supprimer une période EFFACE les notes qui y sont rangées**, sans avertissement. Devant un triplon, le réflexe « j'en vire deux » est **le piège** : chaque jumeau tient une part des notes.
-- 🚨 **AUCUNE purge de notes. AUCUN rapport généré.** La fonction rapport ramasse par période → rapport **amputé** ; + purge = **la perte réelle** (celle évitée le 16/07).
-- **Filet = export natif du 16/07 12:49** (à conserver). ⚠️ Il couvre les **notes**, **PAS** `nb_periods_cache`.
-- Éditer une période **reste** un déclencheur prouvé de bascule d'identité, même si ce n'est pas le seul.
+### 🔭 POINT OUVERT — PASTILLE ONGLET NOTES (pied de page)
+- Après le test C1 : la note de test **s'affiche et survit au refresh** ✅ MAIS **pas de pastille** dans l'onglet Notes du pied de page grid.
+- ⚠️ **HYPOTHÈSE, non tranchée.** Deux lectures : (1) bénin/transitoire (indicateur branché sur un autre calcul, faussé par l'état hybride ancien+neuf, se résout au LOT B) ; (2) **8ᵉ site de compteur oublié**, resté sur `.uid`. → **micro-INVESTIGUER cousin** : où est calculée la pastille, sur quelle clé, est-elle dans les 7 sites de C2 ?
 
 ---
 
-## ✅ SCELLÉ (14→15-07) — passera au JOURNAL/ACQUIS
-- **Récurrence-édition OK — PR 1 (#35 exception) + PR 2 (#36 enqueue offline).** Édition d'occurrence online+offline → 1 href / 2 VEVENT, master intact.
-- **EVENTFORM MERGÉ (#37) — 3 lots prouvés au brut.** LOT 1 roue des jours adaptative (bissextile, clamp) · LOT 2 intervalle libre A1 `composeRRule` + `parseRRuleToUI` · LOT 3 UNTIL DST-safe + `INTERVAL=1` jamais écrit. Brut : `FREQ=WEEKLY;UNTIL=…215959Z;INTERVAL=6;BYDAY=TH` ✅.
-- **FIX BUG B MERGÉ (#38) — fantôme mort.** `mergeStrategy.js` seul (`+7/−1`) : `roundTrippedMasters` (Set des `masterUid` iCloud) + condition `!(e.rrule && roundTrippedMasters.has(e.id))` sur la branche `_pending`. Zéro sacrée, zéro DELETE ajouté, non-récurrent inchangé. **PROUVÉ AU BRUT — 4 scénarios, zéro perte.**
+## ➡️ RESTE À FAIRE — CHANTIER PÉRIODES (ordre)
+1. **LOT B — migration des notes orphelines.** Ré-étiqueter les notes existantes (ancien `periodId` UID/slug) vers la **clé stable `href` du survivant**, AVANT toute suppression. Réversible (local + backup). → rattrape les 9 notes actuelles (7 slug + 2 UID sur Juil–Sept) + les autres périodes.
+2. **LOT A — dédoublonnage iCloud.** Pour chaque paire, supprimer UN jumeau (garder le slug `rapport-<fin>.ics`). **IRRÉVERSIBLE.** ⚠️ Backup FRAIS obligatoire avant (export 6 clés + sauvegarde iCloud). ⚠️ `deletePeriod` (`:655`) efface les notes du tiroir supprimé → B DOIT être fait et vérifié avant A. Identifier le survivant au BRUT (href exact) avant tout DELETE.
+3. **Pastille** — micro-INVESTIGUER (ci-dessus), à batcher avec d'autres micro-chantiers NomadBook tant qu'on y est.
 
-## ⚠️ CE QUE LE FIX B NE COUVRE PAS (acté, sujet distinct)
-Le fix retire le **fantôme**. **Mais supprimer une occurrence *normale* efface encore la série** (toutes héritent `href = calflow-<ts>.ics`). → chantier sélecteur d'étendue.
+---
 
-## 🎯 DEUX CHANTIERS OUVERTS — **PRIORITÉ À TRANCHER (capitaine)**
-1. **NomadBook `periodId`** (ci-dessus). Investigation à finir **en DESK**. Impact : notes invisibles + fonction rapport bloquée.
-2. **Sélecteur d'étendue + delete d'occurrence** (priorité décidée le 15-07, **avant l'alerte**). « celui-là / suivants / toute la série » : `EXDATE` (ou exception `CANCELLED`), **split de série** (`UNTIL` + nouvelle série), édition master. Ferme le piège « supprimer une occurrence efface la série ». **GROS chantier ÉCRITURE — à ouvrir AVEC carburant.** Cadrage + brief à faire.
-- **Bug C — event à cheval sur minuit** (`App.jsx:643-644`, rendu sans clip). Pur affichage, réversible, aucune sacrée. **Petit filler sûr**, pas un prérequis.
+## 🛟 GARDE-FOUS ACTIFS — NOMADBOOK (jusqu'à fin des lots B+A)
+- 🚨 **AUCUNE période supprimée** (ni NC, ni iCal) tant que LOT B n'est pas fait+vérifié. `:655` efface les notes rangées dans la période supprimée. Devant les paires : ne PAS « en virer une » à la main.
+- 🚨 **AUCUNE purge de notes. AUCUN rapport généré** (ramasse par période → amputé tant que B pas fait).
+- **NomadBook est VERROUILLÉ sur `nomadcal-oc`** (pas de calendrier de test séparé ; NC crée/demande ce cal en attendant Neon). → tout test d'écriture se fait sur une période EXISTANTE (ajout de note), jamais en créant une période dans le vrai calendrier.
+- **Filet notes = export natif Settings du 16/07 12:49** + un export FRAIS du 19/07 (6 clés). ⚠️ Ne couvre PAS `nb_periods_cache`. Le backup qui compte pour A = celui pris JUSTE avant A.
+- **La note « TEST C1 – à supprimer »** vit dans la période courante (Juil–Sept) → à retirer après validation.
+
+## 🧭 LIGNE PRODUIT — POUR NEON (~fin août)
+- **Les périodes NomadBook sont un FEATURE NC, pas un cadeau iCloud** que l'user emporte en désinstallant sans payer (rapport, archivage 12 mois, accès par lien vivent DANS NC). → à l'arrivée de Neon, les périodes deviennent des objets **backend NC** ; iCloud = simple fenêtre d'affichage. Principe directeur d'archi, PAS à coder dans le fix de dédoublonnage (ne pas mélanger les horizons).
+
+---
+
+## 🎯 AUTRES CHANTIERS CALENDRIER (hors périodes)
+- **Sélecteur d'étendue + delete d'occurrence** (`EXDATE` / split de série / édition master). Ferme « supprimer une occurrence efface la série » (href hérité). GROS chantier ÉCRITURE — cadrage + brief à faire, avec carburant. Priorité à réarbitrer avec le chantier périodes.
+- **Bug C — event à cheval sur minuit** (`App.jsx:643-644`, rendu sans clip). Pur affichage, réversible, aucune sacrée. Petit filler sûr. *(T4 cousin 19/07 : PAS de la même famille que "période all-day 2 jours" — le DTEND exclusif des périodes est le pattern all-day CORRECT, coïncidence de surface.)*
 
 ## 🩹 CHANTIERS SÉPARÉS (une variable chacun)
-- **Périodes en all-day sur 2 jours** (NomadBook). Défaut d'affichage. **Piste NON prouvée :** `DTEND` exclusif. Distinct du `periodId` — ne pas mélanger.
+- **Périodes en all-day sur 2 jours** (NomadBook). `DTEND = endISO+1` = pattern all-day standard correct (`buildPeriodICS`) → si défaut d'affichage, c'est au RENDU, pas au format. Distinct du `periodId`.
 - **Refresh d'affichage auto après modif** (défaut refresh manuel). Données saines, pur affichage. INVESTIGUER léger.
 
 ## 🛟 DISCIPLINE / GARDE-FOUS (calendrier)
-- **Bug B : ALLÉGÉE (fix #38).** Le fantôme n'existe plus. **Reste :** ne pas supprimer une **occurrence isolée** d'un récurrent (efface la série via href hérité) tant que le sélecteur d'étendue n'est pas fait. Si besoin : supprimer la série entière depuis NC + recréer.
-- **Fantôme iCal :** cache par-appareil, seul le **brut** fait foi.
-- **iCloud 503 :** observation suspendue. **Cache PWA iOS :** force-refresh Safari avant de soupçonner le code.
+- **Bug B ALLÉGÉE (fix #38).** Reste : ne pas supprimer une occurrence isolée d'un récurrent (efface la série) tant que le sélecteur d'étendue n'est pas fait.
+- **Fantôme iCal / export client :** cache par-appareil, seul le brut PROPFIND fait foi.
+- **iCloud 503 :** observation suspendue. **Cache PWA iOS :** force-refresh Safari avant de soupçonner le code. **Web Inspector :** vérifier titre/URL avant d'inspecter (boussole).
 
 ## 🧬 ROADMAP RÉCURRENCE ÉTAGÉE (objectif ferme sortie publique)
-A1 intervalle libre ✅ (EventForm). Restent, chacun sa PR, avant sortie publique : **A2** multi-jours hebdo (`BYDAY=MO,TH`) · **A3** positionnel mensuel · **A4** jours du mois par numéro · **COUNT** (fin par nombre). Modèle cible = compositeur Apple 2 étages.
+A1 intervalle libre ✅. Restent, chacun sa PR : **A2** multi-jours hebdo · **A3** positionnel mensuel · **A4** jours du mois par numéro · **COUNT**. Modèle = compositeur Apple 2 étages.
 
 ## 🔭 BUGS RÉCURRENCE
-- **A ✅ corrigé** (exception RFC + offline). **B ✅ corrigé** (#38, fantôme mort). **C — reste** (affichage minuit, filler sûr).
+- **A ✅** (exception RFC + offline). **B ✅** (#38). **C — reste** (affichage minuit, filler sûr).
 
-## 📋 RESTE À FAIRE POUR V1 (ordre — à réarbitrer avec le chantier NomadBook)
-1. ~~Couche 2~~ · ~~bug A~~ · ~~récurrence-édition PR1+2~~ · ~~EventForm A1~~ · ~~verdict + fix B~~ → **FAITS.**
-2. **NomadBook `periodId`** — investigation desk à finir, puis cadrage fix. *(nouveau, 16-07)*
-3. **Sélecteur d'étendue + delete d'occurrence** (`EXDATE`) — à ouvrir avec carburant.
+## 📋 RESTE À FAIRE POUR V1 (ordre — à réarbitrer)
+1. ~~Couche 2~~ · ~~bug A~~ · ~~récurrence-édition PR1+2~~ · ~~EventForm A1~~ · ~~verdict+fix B~~ · **~~périodes LOT C~~ (#39)** → **FAITS.**
+2. **Périodes LOT B** (migration notes) puis **LOT A** (dédoublonnage, backup). + pastille.
+3. **Sélecteur d'étendue + delete d'occurrence** (`EXDATE`) — avec carburant.
 4. **Bug C** (affichage minuit, filler sûr).
 5. Paliers récurrence **A2→A4 + COUNT**.
-6. Nettoyage events de test + γ. 7. EYROLLES (23/07, 2 UID). 8. Drag & drop. 9. Vues jour/mois/année. 10. **Fonction rapport NomadBook** *(dépend du fix `periodId`)*. 11. Settings + cosmétique.
+6. Nettoyage events de test + γ. 7. EYROLLES (23/07, 2 UID). 8. Drag & drop. 9. Vues jour/mois/année. 10. **Fonction rapport NomadBook** *(dépend des lots B+A)*. 11. Settings + cosmétique.
 
 ## 📋 ITEMS EN FILE
 - Défauts synchro de fond : B1/B3/B4/γ. Défaut « refresh manuel ». Dette « deux `toISO` divergents ».
-- **À porter au README quand on CODERA les fix :** rendu multi-jour sans clip (`App.jsx:643` → bug C) ; `op:"exception"` de la file (PR 2) ; `composeRRule` + `untilFromLocalDate` DST-safe (EventForm) ; `mergeEvents` ne préserve plus le master `_pending` récurrent round-trippé (#38) ; **`periodId` : filtre strict `:469` + UID recalculé `caldavCalendar.js:276`**.
-- **🔐 Sécurité :** mot de passe d'app iCloud régénéré + sécurisé (reco faciale) le 14-07. ✅
-- Tests récurrence (QCM 17) après les fix. Cosmétique FERMÉ jusqu'à V1. Essaimage méthode briefing/deux jauges vers autres projets.
-
-## 🟢 REPRENDRE — POINTS OUVERTS NOMADBOOK (desk)
-1. **Brut des périodes** (Web Inspector, PROPFIND) : **combien de ressources réelles** par période ? → tranche **(a) / (b) / les deux**. ⚠️ Un **export ICS depuis iCal = copie du CLIENT** (donc du cache, celui qui a menti le 11/07) → utile, mais **le PROPFIND prime**. Les deux ensemble = idéal.
-2. **Q6 et Q7 du brief : JAMAIS RÉPONDUES** par le cousin (contrat de sortie non rempli). **Q6** = la fonction rapport ramasse-t-elle par `periodId` ? **Q7** = les notes invisibles sont-elles **atteignables** par un chemin existant de l'UI ? *(C'étaient les 2 qui servaient le plus vite.)*
-3. **Compteurs de notes par carte de période** (`:789`, `:856` = `notes.filter(n=>n.periodId===p.uid).length`). **Lecture gratuite, jouable même sur iPhone** : chaque carte dit combien de notes lui appartiennent → sur le triplon, on VOIT les tiroirs (ex. 7 / 2 / 0).
-4. Puis seulement : **cadrage du fix** (source + robustesse + migration), brief EXÉCUTER → cousin OK go → go Olivier → PR.
+- **Porté au README quand on codera :** `periodId` filtre `href` + UID préservé (LOT C, #39) ; migration notes (LOT B à venir) ; dédoublonnage périodes (LOT A à venir).
+- **🔐 Sécurité :** mot de passe d'app iCloud régénéré + reco faciale (14-07). ✅
+- Tests récurrence (QCM 17) après les fix. Cosmétique FERMÉ jusqu'à V1.
 
 ## 🟢 REPRENDRE — RITUEL
 1. **Carburant session à Claude.** 2. Lire cet État + README.
-- **Atelier de test :** `ZZ-TEST-REC` (`1925D1D3-…`) contient `Test flush`, `Test rec`, `Test RC`, `Test`, etc. — **à nettoyer** (supprimer les séries entières depuis NC).
-- **Briefs provisoires à jeter** (chantiers scellés) : PR 2, EventForm, INVESTIGUER B, fix B. **À GARDER :** rapport INVESTIGUER `periodId` du 16-07 (chantier vivant).
 - **NE RIEN coder/merger sans go explicite d'Olivier.**
+- **Briefs provisoires à jeter** (scellés) : INVESTIGUER `periodId` 16/07, INVESTIGUER→CONSEILLER paires 19/07, brief EXÉCUTER lot C. **À GARDER :** rien de provisoire en cours (le prochain sujet = cadrer LOT B).
+- **Prochaine séquence cousin (fil neuf) :** (a) micro-INVESTIGUER pastille ; (b) cadrage brief LOT B (migration notes vers `href`) ; puis LOT A avec backup.
