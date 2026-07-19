@@ -747,7 +747,7 @@ onTaskClick={t=>{
           const now=new Date();
           const cur=periods.find(p=>now>=new Date(p.startISO)&&now<new Date(p.endISO))||periods[0];
           if(!cur) return 0;
-          return notes.filter(n=>n.periodId===cur.uid&&n.periodId!=="pending").length;
+          return notes.filter(n=>n.periodId===cur.href&&n.periodId!=="pending").length;
         } catch { return 0; } })()}
         onOpenNomadFeed={()=>alert("NomadFeed — bientôt disponible ! 🚀")}
       />
