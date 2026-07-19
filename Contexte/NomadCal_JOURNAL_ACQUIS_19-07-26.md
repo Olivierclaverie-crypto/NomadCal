@@ -3,6 +3,30 @@
 
 ---
 
+## ✅ PÉRIODES NOMADBOOK — CHANTIER COMPLET (C + C-bis + TABLE RASE + MIGRATION) — SCELLÉ (19-07-26 SOIR)
+*Suite et FIN du chantier périodes. De « 6 notes disparues » (matin, iPhone) à « 10 notes rangées » (soir, desk). Zéro perte. `pushEvent`/`deleteEvent` jamais touchées.*
+
+- **C-bis (#40, mergé) — le 8ᵉ site oublié.** Le lot C (#39) prétendait « 7 sites alignés » mais en avait manqué UN : le compteur de la pastille du pied de page, dans `App.jsx` (IIFE `noteCount`, `cur.uid`). Hors zone balayée par C (NomadBook.jsx + caldavCalendar.js). Fix `cur.uid -> cur.href`, +1/−1. Le cousin #39 l'a reconnu honnêtement (« mon "tous les filtres alignés" était inexact »). LEÇON : « tous les sites » n'est jamais sûr sans un grep hors de la zone évidente.
+- **LA CLÉ DU FILTRE = HREF COMPLET, prouvé au brut de l'écran.** Après C-bis, les notes portant `rapport-2026-09-07` (forme courte) restaient INVISIBLES en prod. Une note test créée en prod a révélé sa vraie clé : `/1012673262/calendars/nomadcal-oc/rapport-<fin>.ics` (href COMPLET, avec `.ics`). Aucune des 10 notes historiques n'avait cette forme -> toutes invisibles. LEÇON : ne jamais deviner la forme d'une clé ; la relever sur une note qui S'AFFICHE (terrain-first).
+- **PIÈGE PREVIEW/PROD.** Le test C-bis « pastille apparaît » avait été fait sur PREVIEW (bac localStorage isolé, quasi vide). En PROD (vrai bac, 10 notes), « aucune note ». Preview ≠ prod : bacs séparés (WKWebView). Toujours tester la migration sur le bac réel, après force-refresh.
+- **TABLE RASE CAPITAINE = alternative élégante au lot A.** Plutôt que le dédoublonnage iCloud chirurgical (DELETE ciblé, brief lourd, irréversible), le capitaine a SUPPRIMÉ toutes les périodes dans NomadBook puis RECRÉÉ 5 périodes propres à la main. PROPFIND après : **5 ressources, une par période**, fraîches (PRODID //NomadCal//FR). Plus AUCUN jumeau. -> LOT A rendu SANS OBJET.
+- **RECRÉATION -> nouvel UID mais MÊME href slug.** `createPeriodEvent` génère un UID neuf (`nomadcal-rapport-<nouveau_ts>@nomadcal`) mais le fichier reste `rapport-<endISO>.ics` (dérivé de la date de fin inchangée). Comme le filtre matche sur le HREF (pas l'UID), l'alignement des notes reste stable. C'est la clé de la manœuvre.
+- **MIGRATION DES NOTES = par RESTAURATION, pas par code.** Export Settings -> periodId des 11 notes réécrits (par le timonier) sur le href complet du survivant -> restauré via Settings (« Restaurer les données »). Résultat prouvé à l'écran : **10 notes Juil–Sept + 1 Juin–Juil**. Avantages : zéro code jetable (Neon réécrira), réversible (ancien backup = filet), visible à l'écran. « Minimum de code V1 » respecté.
+- **DOUBLON iCAL Juin–Juil = FANTÔME de cache Mac** (PROPFIND montre 1 seule ressource). Ignoré, se purge côté Apple. NE PAS supprimer depuis iCal (doctrine 11/07 : le brut prime, ne jamais supprimer un fantôme sans preuve).
+- **RESTE (cosmétique) :** supprimer les notes de test (Test B, TEST C1). Fonction rapport NomadBook désormais DÉBLOQUÉE (notes rangées par période).
+
+## 🧭 SESSIONS COUSIN = CLOUD, PAS DESKTOP LOCAL — CLOUÉ (19-07-26)
+*Une soirée perdue à croire le « canal GitHub cassé ». Il n'était pas cassé : les fils cousin étaient ouverts au mauvais endroit.*
+- **Le cousin (Claude Code) ne pousse/ouvre une PR QUE depuis une session CLOUD** (VM Anthropic, proxy GitHub `127.0.0.1:...` + `$GH_TOKEN=proxy-injected` provisionnés au boot). Une session **Desktop LOCALE** tourne sur le Mac : pas de proxy, `git push` -> `could not read Username`. Symptômes du fil local : `mdfind`/Spotlight, chemins `Library/CloudStorage/OneDrive...` = machine de l'user.
+- **REPÈRE VISUEL : l'icône de BRANCHE à côté du fil = session cloud (canal OK).** Pas d'icône = local (pas de canal). À vérifier AVANT tout brief qui doit pousser.
+- **Ouvrir une session cloud :** `claude.ai/code` + sélecteur repo -> NomadCal ; OU clic droit sur un fil -> Ouvrir dans -> Cloud.
+- **Prérequis (une fois) :** Claude GitHub App autorisée sur le compte avec accès à NomadCal (github.com/apps/claude -> Configure).
+- **Test tuyau (5 s) avant brief lourd :** `echo $GH_TOKEN` (=`proxy-injected`) · `git remote -v` (réécrit proxy) · repo déjà cloné à l'arrivée.
+- **SÉCURITÉ : jamais de PAT dans le chat.** Le token proxy est injecté par l'environnement, non reproductible en collant un secret. Se règle côté interface/connecteur.
+- **La doctrine « mauvaise preview » (14/07) resservie en géant :** un fix qui « ne marche pas » -> suspecter la CIBLE (ici : le mauvais type de session, le mauvais repo OneDrive stale) avant de suspecter le fond.
+
+
+
 ## ✅ PÉRIODES NOMADBOOK — LOT C : IDENTITÉ FIGÉE — SCELLÉ EN PROD (#39, 19-07-26)
 *Chantier NomadBook. Chaîne complète : alerte terrain 16/07 → INVESTIGUER code → PROPFIND serveur → INVESTIGUER→CONSEILLER cousin → brief EXÉCUTER → PR testée au brut → merge. `pushEvent`/`deleteEvent` jamais touchées.*
 
