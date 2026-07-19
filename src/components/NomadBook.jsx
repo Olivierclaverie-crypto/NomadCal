@@ -466,13 +466,13 @@ export default function NomadBook({ onClose, auth, onPeriodDeleted }) {
 
   // Notes de la période courante — recalcul forcé à chaque changement de notes ou périodes
   const periodNotes = currentPeriod
-    ? notes.filter(n => n.periodId === currentPeriod.uid && n.periodId !== "pending")
+    ? notes.filter(n => n.periodId === currentPeriod.href && n.periodId !== "pending")
     : [];
   const chapterCounts = {};
   periodNotes.forEach(n=>{chapterCounts[n.chapter]=(chapterCounts[n.chapter]||0)+1;});
   const notesByChapter = CHAPTERS.map(ch=>({chapter:ch,notes:periodNotes.filter(n=>n.chapter===ch.id)})).filter(g=>g.notes.length>0);
   // Total réel pour l'onglet Notes — exclut les notes "pending"
-  const totalNotesCount = notes.filter(n => currentPeriod && n.periodId === currentPeriod.uid && n.periodId !== "pending").length;
+  const totalNotesCount = notes.filter(n => currentPeriod && n.periodId === currentPeriod.href && n.periodId !== "pending").length;
 
   // Tri périodes
   const sortedPeriods  = [...periods].sort((a,b)=>new Date(a.startISO)-new Date(b.startISO));
@@ -598,7 +598,7 @@ export default function NomadBook({ onClose, auth, onPeriodDeleted }) {
       try{ const pid=await savePhoto(p.blob); photoIds.push(pid); }catch(e){ /* echec stockage : photo ignoree */ }
     }
     // Si pas de période encore chargée → note en attente rattachée à "pending"
-    const periodId = currentPeriod?.uid || "pending";
+    const periodId = currentPeriod?.href || "pending";  // clé stable (href), plus le uid réécrivable
     const note={id:Date.now(),text:noteText.trim(),chapter:noteChapter,createdAt:new Date().toISOString(),periodId,photos:photoIds};
     setNotes(prev=>[note,...prev]);
     setNoteText(""); clearNotePhotos(); setCaptureOpen(false);
@@ -630,7 +630,7 @@ Veuillez choisir des dates sans chevauchement.`);
     try{
       if(editingPeriod){
         // Modification
-        const result = await updatePeriodEvent(auth, editingPeriod.href, {startISO,endISO,label,rrule,noteCount:notes.filter(n=>n.periodId===editingPeriod.uid).length});
+        const result = await updatePeriodEvent(auth, editingPeriod.href, {startISO,endISO,label,rrule,noteCount:notes.filter(n=>n.periodId===editingPeriod.href).length, uid: editingPeriod.uid});
         if(result.success) await loadPeriods();
       } else {
         // Création
@@ -652,7 +652,7 @@ Veuillez choisir des dates sans chevauchement.`);
     setPeriods(pruned);
     save("nb_periods_cache", pruned);
     // Supprime aussi les notes locales de cette période
-    setNotes(prev=>prev.filter(n=>n.periodId!==p.uid));
+    setNotes(prev=>prev.filter(n=>n.periodId!==p.href));
     onPeriodDeleted?.(p.uid);
     await loadPeriods(true);
     setConfirmDelPeriod(null);
@@ -786,7 +786,7 @@ Veuillez choisir des dates sans chevauchement.`);
                 </div>
                 {[...pastPeriods].reverse().map((p,i)=>(
                   <PeriodCard key={p.uid||p.href} p={p} status="past"
-                    noteCount={notes.filter(n=>n.periodId===p.uid).length}
+                    noteCount={notes.filter(n=>n.periodId===p.href).length}
                     chapterCounts={{}} totalNotes={0}
                     synthese={syntheses[p.uid]}
                     index={sortedPeriods.findIndex(pp=>pp.uid===p.uid)} total={periods.length}
@@ -853,7 +853,7 @@ Veuillez choisir des dates sans chevauchement.`);
                 </div>
                 {futurePeriods.map((p,i)=>(
                   <PeriodCard key={p.uid||p.href} p={p} status="future"
-                    noteCount={notes.filter(n=>n.periodId===p.uid).length}
+                    noteCount={notes.filter(n=>n.periodId===p.href).length}
                     chapterCounts={{}} totalNotes={0}
                     synthese={null}
                     index={sortedPeriods.findIndex(pp=>pp.uid===p.uid)} total={periods.length}
