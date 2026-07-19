@@ -270,10 +270,11 @@ export async function createPeriodEvent(auth, { startISO, endISO, label, rrule, 
  * Met à jour un event période existant
  * Retourne { success, error }
  */
-export async function updatePeriodEvent(auth, href, { startISO, endISO, label, rrule, noteCount }) {
+export async function updatePeriodEvent(auth, href, { startISO, endISO, label, rrule, noteCount, uid }) {
   try {
     const authHeader = makeAuthHeader(auth.email, auth.appPassword);
-    const uid        = href.split("/").pop().replace(".ics","");
+    // UID PRÉSERVÉ (transmis par l'appelant). Ne plus le dériver du basename du href :
+    // c'était la source de la bascule d'identité période↔note (bug notes invisibles).
     const autoLbl    = label || autoLabel(startISO, endISO);
 
     const ics = buildPeriodICS({
@@ -402,6 +403,6 @@ function parsePeriodEvents(xml) {
  * Met à jour le nombre de notes d'une période dans son event CalDAV
  * Appelé à chaque ajout/suppression de note dans NomadBook
  */
-export async function syncNoteCount(auth, href, { startISO, endISO, label, rrule, noteCount }) {
-  return updatePeriodEvent(auth, href, { startISO, endISO, label, rrule, noteCount });
+export async function syncNoteCount(auth, href, { startISO, endISO, label, rrule, noteCount, uid }) {
+  return updatePeriodEvent(auth, href, { startISO, endISO, label, rrule, noteCount, uid });
 }
