@@ -465,6 +465,17 @@ Page : ${f.page}
   // ── Fusion couche 2 (exceptions RECURRENCE-ID) + filtre synthèses obsolètes ──
   const allEvs = mergeRecurrenceExceptions(events).filter(e => !e.id?.startsWith("synth-"));
 
+  // ── Bande all-day : DTEND est EXCLUSIF (RFC 5545) ───────────────────────────
+  // Sans fin exploitable — DTEND absent (parseEvents ignore DURATION) ou
+  // DTEND === DTSTART — l'event vaut un seul jour, soit [startDate, startDate+1).
+  // Défini une fois : c'est la divergence entre les deux sites d'appel qui a
+  // produit le bug d'origine.
+  const allDayEndEx = e => (e.endDate && e.endDate > e.startDate) ? e.endDate : null;
+  const allDayCoversDay = (e, d) => {
+    const endEx = allDayEndEx(e);
+    return d >= e.startDate && (endEx ? d < endEx : d === e.startDate);
+  };
+
 return (
   <ToastProvider>
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,overflow:"hidden",fontFamily:"Phenomena,Nunito,sans-serif"}}>
@@ -504,7 +515,7 @@ return (
       />
 
 {/* Bannières all-day */}
-{allEvs.some(e=>e.allDay&&weekDays.some(d=>d>=e.startDate&&d<=e.endDate))&&(
+{allEvs.some(e=>e.allDay&&weekDays.some(d=>allDayCoversDay(e,d)))&&(
 <div style={{display:"flex",background:C.bg,borderBottom:`1px solid ${C.border}`,padding:"4px 0",flexShrink:0}}>
 
   <div style={{width:36,flexShrink:0,fontSize:9,color:C.muted,textAlign:"center",paddingTop:4}}>
@@ -515,14 +526,14 @@ return (
     {allEvs
       .filter(e =>
         e.allDay &&
-        weekDays.some(d => d >= e.startDate && d <= (e.endDate || e.startDate))
+        weekDays.some(d => allDayCoversDay(e, d))
       )
       .map(ev => {
         const startIdx = Math.max(0, weekDays.indexOf(ev.startDate));
-        const endIdx = Math.min(
-          6,
-          weekDays.findIndex(d => d > (ev.endDate || ev.startDate)) - 1
-        );
+        const evEndEx = allDayEndEx(ev);
+        const endIdx = evEndEx
+          ? Math.min(6, weekDays.findIndex(d => d >= evEndEx) - 1)
+          : startIdx;
         const span = Math.max(
           1,
           (endIdx < 0 ? 7 : endIdx + 1) - startIdx
