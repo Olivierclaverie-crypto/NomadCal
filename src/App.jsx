@@ -587,9 +587,21 @@ return (
           </div>
           {weekDays.map(day=>{
             const isToday=day===today;
-            const caldavEvs=allEvs.filter(e=>!e.allDay&&(e.startDate===day||(!e.isRecurring&&e.startDate<=day&&(e.endDate||e.startDate)>=day)));
+            const caldavEvs=allEvs.filter(e=>!e.allDay&&(e.startDate===day||(e.startDate<=day&&(e.endDate||e.startDate)>=day)));
+            // Un event à cheval sur minuit est borné au jour rendu : début réel ou
+            // minuit, fin réelle ou fin de journée. layoutEvents ne lit que
+            // startTime/endTime et les reçoit donc toujours cohérents intra-jour.
+            // _src garde l'event d'origine — c'est lui, jamais le segment, qui part
+            // au popover (édition/copie/suppression).
+            const daySegs=caldavEvs.map(e=>{
+              const isStart=e.startDate===day;
+              const isEnd=(e.endDate||e.startDate)===day;
+              if(isStart&&isEnd) return e;                                       // intra-journée : inchangé
+              if(!isStart&&isEnd&&(e.endTime||"00:00")==="00:00") return null;    // queue de durée nulle
+              return {...e, startTime:isStart?e.startTime:"00:00", endTime:isEnd?e.endTime:"24:00", _src:e};
+            }).filter(Boolean);
             const doneTasks=tasks.filter(t=>t.done&&t.startDate===day);
-            const dayEvs=[...caldavEvs,...doneTasks];
+            const dayEvs=[...daySegs,...doneTasks];
             const nowPct=isToday?(new Date().getHours()*60+new Date().getMinutes())/GRID_TOTAL:null;
             return(
    <div key={day} style={{flex:isToday?1.08:0.98,borderLeft:`1px solid ${C.border}`,position:"relative",background:isToday?"#2B5A9E08":"transparent"}}
@@ -680,7 +692,7 @@ else {
                         if (!evPressFired.current) {
                           const rect = e.currentTarget.getBoundingClientRect();
                           setPopover({
-                            ev,
+                            ev: ev._src || ev,
                             eventRect: {
                               top:    rect.top,
                               bottom: rect.bottom,
@@ -699,7 +711,7 @@ else {
                         if(isTask){setDrawerOpen(false);return;}
                         const rect = e.currentTarget.getBoundingClientRect();
                         setPopover({
-                          ev,
+                          ev: ev._src || ev,
                           eventRect: {
                             top:    rect.top,
                             bottom: rect.bottom,
