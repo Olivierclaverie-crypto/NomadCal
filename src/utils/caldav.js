@@ -432,7 +432,7 @@ export function mergeRecurrenceExceptions(events) {
   const toRemove = new Set();
   exceptions.forEach(ex => {
     const inst = recurrenceIdToInstant(ex.recurrenceId);
-    if (inst !== null) toRemove.add(`${ex.id}@${inst}`);
+    if (inst !== null) toRemove.add(`${ex.masterUid || ex.id}@${inst}`);
   });
 
   return events
