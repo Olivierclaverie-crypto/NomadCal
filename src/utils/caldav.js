@@ -344,7 +344,7 @@ export function expandRecurring(ev, rangeStart, rangeEnd) {
 
     // ── Ajoute les occurrences valides ────────────────────────────────────
     candidates.forEach(cand => {
-      const candISO = toISO(cand);
+      const candISO = toLocalISO(cand);
       if (candISO < rangeStart) return;
       if (candISO > rangeEnd) return;
       if (untilTs !== null && cand.getTime() > untilTs) return;
@@ -361,7 +361,7 @@ export function expandRecurring(ev, rangeStart, rangeEnd) {
         id:             stableId,
         startDate:      candISO,
         startTime:      ev.allDay ? null : toTime(cand),
-        endDate:        toISO(occEnd),
+        endDate:        toLocalISO(occEnd),
         endTime:        ev.allDay ? null : toTime(occEnd),
         isRecurring:    true,
         masterUid:      ev.id,
