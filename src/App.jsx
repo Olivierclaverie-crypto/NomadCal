@@ -768,7 +768,7 @@ onTaskClick={t=>{
           const notes=JSON.parse(localStorage.getItem("nb_notes")||"[]");
           const periods=JSON.parse(localStorage.getItem("nb_periods_cache")||"[]");
           const now=new Date();
-          const cur=periods.find(p=>now>=new Date(p.startISO)&&now<new Date(p.endISO))||periods[0];
+          const cur=periods.find(p=>now>=new Date(p.startISO+"T00:00:00")&&now<new Date(p.endISO+"T00:00:00"))||periods[0];
           if(!cur) return 0;
           return notes.filter(n=>n.periodId===cur.href&&n.periodId!=="pending").length;
         } catch { return 0; } })()}

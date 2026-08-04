@@ -4,6 +4,7 @@ import {
   deletePeriodEvent, autoLabel, calendarDisplayName, checkCalendarExists
 } from "../utils/caldavCalendar.js";
 import { compressImage, savePhoto, getPhotoURL, deletePhoto, requestPersistentStorage } from "../utils/photoStore.js";
+import { todayISO } from "../utils/helpers.js";
 import WheelSelect from "./WheelSelect.jsx";
 
 const C = {
@@ -105,16 +106,18 @@ const RRULE_OPTIONS = [
   { value:"FREQ=MONTHLY;BYDAY=-1MO",             label:"Dernier lundi du mois" },
 ];
 
-const fmt      = d => new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});
-const fmtYear  = d => new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
-const daysLeft = d => Math.ceil((new Date(d)-new Date())/86400000);
+// Dates-seules : parse LOCAL obligatoire — new Date("YYYY-MM-DD") nu = minuit UTC (spec).
+// Affichage → pivot midi ; comparaison d'instant → borne minuit local.
+const fmt      = d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});
+const fmtYear  = d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});
+const daysLeft = d => Math.ceil((new Date(d + "T00:00:00")-new Date())/86400000);
 const load     = (k,def) => { try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } };
 const save     = (k,v)   => { try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} };
 
-function getPeriodStatus(p){ const now=new Date(); if(now>=new Date(p.startISO)&&now<new Date(p.endISO)) return "current"; if(now<new Date(p.startISO)) return "future"; return "past"; }
+function getPeriodStatus(p){ const now=new Date(); if(now>=new Date(p.startISO+"T00:00:00")&&now<new Date(p.endISO+"T00:00:00")) return "current"; if(now<new Date(p.startISO+"T00:00:00")) return "future"; return "past"; }
 function urgencyStyle(days){ if(days<0) return {color:C.red,bg:C.redLight,label:"Dépassé"}; if(days===0) return {color:C.red,bg:C.redLight,label:"Aujourd'hui"}; if(days<=3) return {color:C.amber,bg:C.amberLight,label:`J-${days}`}; if(days<=10) return {color:C.accent,bg:C.accentLight,label:`J-${days}`}; return {color:C.green,bg:C.greenLight,label:`J-${days}`}; }
 function chapterById(id){ return CHAPTERS.find(c=>c.id===id)||CHAPTERS[0]; }
-function daysUntilStart(iso){ return Math.ceil((new Date(iso)-new Date())/86400000); }
+function daysUntilStart(iso){ return Math.ceil((new Date(iso + "T00:00:00")-new Date())/86400000); }
 
 function ChapterIcon({ id, size=18 }) {
   const icon = ICONS[id];
@@ -219,7 +222,7 @@ function PeriodCard({ p, status, noteCount, chapterCounts, totalNotes, synthese,
 
 // ── Formulaire période ────────────────────────────────────────────────────────
 function PeriodForm({ initial, lastEndISO, onSave, onCancel, loading }) {
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayISO();
   const [startISO, setStart] = useState(initial?.startISO || lastEndISO || today);
   const [endISO,   setEnd]   = useState(initial?.endISO   || "");
   const [label,    setLabel] = useState(initial?.label    || "");
