@@ -125,3 +125,34 @@
 5. **Phenomena ne raconte pas, la système ne titre pas.**
 6. **Plancher 12px partout, Regular+espacement sous 14px, jamais Light en petit.**
 7. Cette charte prime sur les habitudes de chaque projet ; les écarts existants (icônes bleu/or NomadCal) migrent au fil de l'eau, sans big-bang.
+
+---
+
+## 📁 CE QUI VIT DANS CE DOSSIER *(ajouté le 02/09/2026)*
+
+### `Phenomena/` — le master typographique
+
+La **famille complète** : 7 graisses (Thin → Black), en OTF, TTF et WEB, avec sa licence
+Fontfabric. C'est la **réserve** de la charte.
+
+⚠️ **Ce n'est PAS un doublon des polices du dépôt NomadCal.** La relation est
+source → distribution, et les deux doivent exister :
+
+| Où | Quoi | Rôle |
+|---|---|---|
+| `NomadCharte/Phenomena/` | 7 graisses · OTF + TTF + WEB · licence | **le master** — on y pioche |
+| dépôt NomadCal, `public/` | 3 `.ttf` (Bold, Regular, Light) | **le sous-ensemble déployé** — ce que l'app sert et embarque dans les PDF |
+
+**Ne jamais « dédupliquer » l'un avec l'autre.** Retirer le master, c'est perdre les quatre
+graisses que l'app n'utilise pas et la licence. Retirer les trois du dépôt, c'est casser
+l'embarquement des polices dans les PDF NomadBook.
+
+**Conséquence pour la recette PDF NomadBook :** elle indique de récupérer les polices sur
+`raw.githubusercontent.com`. Ça reste valable, mais **le master est désormais en local** —
+la recette est rejouable sans dépendre de GitHub. Voir
+`../NomadCal/NomadBook/NomadCal_FONCTION_RAPPORT_310826.md` § RECETTE PDF ORCHARD.
+
+### `planches/` — les planches d'icônes NomadCal (PDF).
+
+### `pistes-icone-app/` — recherches en cours pour l'icône d'application.
+**Rien d'arrêté.** Voir le LISEZ-MOI du dossier.
