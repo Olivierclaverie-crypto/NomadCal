@@ -82,8 +82,8 @@ La mise à jour de ces documents se fait **quand Olivier le décide**, jamais d'
 
 ## 6. CONVENTIONS
 
-**Horodatage** — fichiers livrés : `nom_JJMMAA_HHMM`. Fichiers de contexte projet :
-`nom_AAAA-MM-JJ-HHMM`. L'heure est celle de la livraison.
+**Horodatage** — fichiers livrés **et** fichiers de contexte projet : `nom_JJMMAA_HHMM`. L'heure est celle de la livraison.
+*(décision d'Olivier du 22/10/2026 : une seule convention ; l'ancien format `nom_AAAA-MM-JJ-HHMM` est abandonné)*
 
 **L'heure est celle de Paris (Europe/Paris), jamais UTC.** *(ajouté le 20/10/2026, rapatrié
 du projet claude.ai NomadOrders avant sa suppression)* La machine de Claude tourne en UTC,
