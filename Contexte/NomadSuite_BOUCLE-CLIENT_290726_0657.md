@@ -58,6 +58,6 @@
 
 ## 📍 OÙ ÇA VIT
 
-- **Vision complète NomadSuite** (hub & spokes, écran de décision RV, NomadGuess) : `Contexte/NomadCal_VISION_NomadSuite_*.md` (GitHub NomadCal).
+- **Vision complète NomadSuite** (hub & spokes, écran de décision RV, NomadGuess) : `NomadPilote/NomadSuite_BOITE-A-IDEES_290726_0000.md` (copie sur GitHub NomadCal, `Contexte/`).
 - **Planification NomadCal** (lots, jalons) : moteur ROADMAP du projet NomadCal.
 - Cette note = l'extrait « boucle client » à l'usage de NomadMail et de Cowork.
