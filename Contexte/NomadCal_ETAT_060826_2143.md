@@ -1,13 +1,13 @@
 # ÉTAT DU PROJET NOMADCAL
-*Document VIVANT — l'établi : SEULEMENT le chantier actif, les vérifs ouvertes, la reprise. Règle de VIDANGE : chantier scellé → migre au JOURNAL le jour même, l'État ne garde qu'une ligne de renvoi. Cible : ~1 page. Dernière MAJ : 06-08-26 (**R5 : phase papier SCELLÉE** — carte validée en relecture, D13–D15 + A1 gravés · doctrine annuaire v2 + vcf 90 fiches livrés · lot T compressé en renvoi, son détail vit au Journal + Roadmap).*
+*Document VIVANT — l'établi : SEULEMENT le chantier actif, les vérifs ouvertes, la reprise. Règle de VIDANGE : chantier scellé → migre au JOURNAL le jour même, l'État ne garde qu'une ligne de renvoi. Cible : ~1 page. Dernière MAJ : 06-08-26, **corrigée le 02-09-26** (report des 3 lignes périmées signalées par `NomadCal_NOTE_REPRISE_060826.md`, retrouvée dans Téléchargements — une correction de lignes, pas une régénération). (**R5 : phase papier SCELLÉE** — carte validée en relecture, D13–D15 + A1 gravés · doctrine annuaire v2 + vcf 90 fiches livrés · lot T compressé en renvoi, son détail vit au Journal + Roadmap).*
 
 ---
 
-## 🔨 CHANTIER ACTIF — LOT R5 (phase papier scellée, brief INVESTIGUER à rédiger)
+## 🔨 CHANTIER ACTIF — LOT R5 (phase papier scellée, brief INVESTIGUER **rédigé, en attente de dépôt**)
 *Carte d'architecture cible **relue et validée par le capitaine** (06-08) : `NomadCal_R5_CARTE_060826_*.md` (Projet + `Contexte/`). **15 décisions D1–D15 + amendement A1** — registre en annexe de la carte, récit complet → Journal.*
 - **Acquis de la relecture** : **D13** — le lot K se **dissout** (moitié donnée → Neon/annuaire, moitié interface → brainstorm EventForm) · **D14** — le prospect est une fiche ordinaire, sources élargies aux fichiers plats, clause d'ouverture « étude marché prospection » · **D15** — la fiche se **tend** (vCard au partage système, identité nue sans IdC) · **A1** — outils de preuve sous clé.
 - **Décidé ≠ prouvé** : le cousin n'est pas intervenu. La carte liste **14 questions INVESTIGUER** (lecture seule).
-- **Séquence de scellement restante** : ③ bloc **Journal** (récit des jalons D1–D15 + leçons de session) → suppression GitHub des 2 fichiers DECISIONS (⚠️ **les garder sur `Contexte/` jusque-là**) → ④ **brief INVESTIGUER** cousin (cloud confortable, non obligatoire : lecture seule).
+- **Séquence de scellement** : ③ bloc **Journal** ✅ **FAIT le 06-08 au soir** (le bloc R5 est en tête de `NomadCal_JOURNAL_ACQUIS_060826_2233.md` — Journal daté 22:33, postérieur à cet État de 21:43, ce qui explique que la ligne soit restée périmée trois semaines) → suppression GitHub des 2 fichiers DECISIONS (⚠️ **les garder sur `Contexte/` jusque-là**) → ④ **brief INVESTIGUER** ✅ **RÉDIGÉ le 06-08, EN ATTENTE DE DÉPÔT** : `Briefs/NomadCal_R5_BRIEF_INVESTIGUER_060826.md` (cloud confortable, non obligatoire : lecture seule).
 
 ## 📇 ANNUAIRE NOMADSUITE — RÉÉCRITURE LIVRÉE (06-08, adjacent au lot H)
 - **Doctrine v2** consolidée (`NomadSuite_DOCTRINE_ANNUAIRE_060826_*.md`, Projet + `Contexte/`) : 12 règles + décompte d'application, P4 clos, P7 ajouté.
@@ -47,4 +47,4 @@
 - **Sessions cousin = CLOUD** (icône branche ⎇) + test tuyau avant brief lourd. *(Un brief lecture seule n'en a pas besoin.)*
 - **BRIEFS : un seul bloc, jamais imbriqué · cas de test fixé DANS le brief · brief autoportant** (→ Instructions).
 - **⏱️ Repères de temps : « maintenant » / « à la reprise »**, jamais un repère d'horloge inventé.
-- **▶️ REPRISE : R5 en cours.** Prochain geste : **③ bloc Journal** (récit jalons + leçons) puis **④ brief INVESTIGUER** (14 questions de la carte). Décision capitaine.
+- **▶️ REPRISE : R5 en cours.** Prochain geste : **DONNER le brief ④ au cousin — ne pas le refaire, il existe** (`Briefs/NomadCal_R5_BRIEF_INVESTIGUER_060826.md`, autoportant, 14 questions en 3 volets A/B/C). ⚠️ **Au moment du dépôt, et une seule fois** : reposer au capitaine si Q4, Q9 et Q10 — qui appellent du jugement autant que des faits — restent dans l'INVESTIGUER ou sortent dans un CONSEILLER séparé (alternative jamais tranchée). Décision capitaine.
