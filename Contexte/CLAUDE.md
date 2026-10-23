@@ -26,6 +26,7 @@ qui lisent et écrivent dedans sans garder leur copie.
 | `NomadTour` | la tournée — maintien du tableau de visites |
 | `NomadGuess` | l'annuaire — doctrine écrite, code non commencé |
 | `NomadFeed` | réservé, non défini |
+| `NomadFlash` | les oneshots — un sous-dossier par flash (`Nom_MMAA`), archivé au bout de 12 mois ; un flash récurrent = candidat module |
 | `NomadPilote` `NomadCharte` `NomadHub` `NomadArchives` | pilotage, charte graphique, hub, archives |
 
 **UN OUTIL, UNE MISSION.** NomadOrder ne fait pas de mail. NomadMail ne fait pas de
@@ -119,7 +120,14 @@ couleurs sont Rouge, Orange, Jaune, Vert, Bleu, Violet, Gris.)*
 | 🔴 **Rouge** | mort : à supprimer du **contexte local** (jamais allé sur GitHub) | Claude désigne | supprimer sur le disque |
 | ⚪️ **Gris** | mort : à supprimer du **local ET de `Contexte/` sur GitHub** | Claude désigne | supprimer des deux côtés |
 
-**Claude ne peut pas supprimer** — il désigne, Olivier balaie. Rouge et gris ne sont pas sur le
+**Claude ne peut pas supprimer** — il désigne, Olivier balaie.
+**Réflexe d'archivage** *(ajouté le 23/10/2026)* : tout ce que Claude archive, remplace ou
+rend obsolète (ancienne version d'outil, candidat testé, paquet de transfert, dossier de test)
+reçoit la **pastille rouge dans le même geste** — sans attendre qu'Olivier le demande.
+Et tout fichier vert que Claude modifie passe au jaune dans le même geste (règle ci-dessous).
+**Exception, les archives d'outils** (anciennes versions gardées pour revenir en arrière) : les
+**2 versions précédentes** restent sans pastille ; à chaque mise en service, celle qui devient
+la 3e passe au rouge. *(décision d'Olivier, 23/10/2026)* Rouge et gris ne sont pas sur le
 même axe que jaune et vert : ces deux-là mesurent un écart avec GitHub, les deux autres condamnent
 le fichier. C'est la présence d'une copie dans `Contexte/` qui sépare le rouge du gris.
 
