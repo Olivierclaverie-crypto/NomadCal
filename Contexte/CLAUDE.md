@@ -107,56 +107,9 @@ récent, supprimer les autres), donc il n'y en a **jamais plus d'un**. Cas connu
 `SKILL v2.md` lignes 58, 194 et 202. La règle ci-dessus vise les backups **manuels et durables**,
 ceux qu'on garde pour plus tard.
 
-**Les tags Finder** — la désignation visuelle, dans le Finder. Le tag voyage avec le
-fichier ; une liste, elle, ment dès qu'on renomme.
-
-*(tableau révisé le 12/09/2026 — le gris est ajouté. Le Finder n'offre pas de noir : ses sept
-couleurs sont Rouge, Orange, Jaune, Vert, Bleu, Violet, Gris.)*
-
-| | | Qui pose | Le geste d'Olivier |
-|---|---|---|---|
-| 🟢 **Vert** | envoyé dans `Contexte/` sur GitHub, à jour **à la date du dernier envoi** | Olivier, après l'envoi | aucun |
-| 🟡 **Jaune** | doit vivre dans `Contexte/`, et n'y est pas à jour | Claude **ou** Olivier — qui modifie un vert le repasse au jaune dans le même geste | envoyer, puis passer au vert |
-| 🔴 **Rouge** | mort : à supprimer du **contexte local** (jamais allé sur GitHub) | Claude désigne | supprimer sur le disque |
-| ⚪️ **Gris** | mort : à supprimer du **local ET de `Contexte/` sur GitHub** | Claude désigne | supprimer des deux côtés |
-
-**Claude ne peut pas supprimer** — il désigne, Olivier balaie.
-**Réflexe d'archivage** *(ajouté le 23/10/2026)* : tout ce que Claude archive, remplace ou
-rend obsolète (ancienne version d'outil, candidat testé, paquet de transfert, dossier de test)
-reçoit la **pastille rouge dans le même geste** — sans attendre qu'Olivier le demande.
-Et tout fichier vert que Claude modifie passe au jaune dans le même geste (règle ci-dessous).
-**Exception, les archives d'outils** (anciennes versions gardées pour revenir en arrière) : les
-**2 versions précédentes** restent sans pastille ; à chaque mise en service, celle qui devient
-la 3e passe au rouge. *(décision d'Olivier, 23/10/2026)* Rouge et gris ne sont pas sur le
-même axe que jaune et vert : ces deux-là mesurent un écart avec GitHub, les deux autres condamnent
-le fichier. C'est la présence d'une copie dans `Contexte/` qui sépare le rouge du gris.
-
-**La règle qui fait tenir le vert : qui modifie un fichier vert le repasse au jaune, dans
-le même geste.** Olivier comme Claude. Sans elle, le vert devient un marqueur qui ment —
-et c'est le plus dangereux des trois, parce qu'il dit « tu peux dormir tranquille ».
-
-**Le filet, parce qu'une règle de discipline finit toujours par être oubliée :**
-`NomadPilote/GITHUB_dernier-envoi.md` porte **une date unique** — pas un inventaire de
-fichiers, donc rien qui puisse dériver. Tout fichier vert modifié après cette date est
-périmé. Vérification mécanique, en une commande, quel que soit celui qui a touché le
-fichier. À faire en début de session quand un envoi GitHub est en jeu.
-
-**Un tag qui n'est pas posé n'existe pas.** *(ajouté le 12/09/2026)* Une désignation faite
-dans une conversation (« ce fichier est à supprimer ») meurt avec le fil : sept jours plus tard,
-elle se présente comme un fait du disque alors que le Finder n'en sait rien. Qui désigne pose le
-tag dans le même geste, ou ne désigne pas.
-
-⚠️ **Claude ne voit pas les tags depuis son pont** — les métadonnées Finder ne traversent pas le
-montage : côté pont, un fichier tagué et un fichier nu sont identiques. Il doit interroger le Mac.
-**Contrôle à jouer en début de toute session de rangement**, avant d'affirmer quoi que ce soit sur
-l'état des fichiers :
-
-    mdfind -onlyin ~/Library/CloudStorage/OneDrive-HachetteLivre/NomadSuite \
-      "kMDItemUserTags == '*'" | while IFS= read -r f; do \
-      printf '%s\t%s\n' "$(mdls -raw -name kMDItemUserTags "$f" | tr '\n' ' ')" "$f"; done
-
-Il sort l'inventaire complet des tags. Croisé avec la date de `GITHUB_dernier-envoi.md`, il donne
-les verts périmés. **C'est le capteur du filet — sans lui, le filet ne se déclenche jamais.**
+**Les tags miroir** — règles communes : `NomadPilote/20_regles-tags-miroir_231026_2115.md`,
+copie datée de l'original du projet Tech et IA (qui fait foi) ; même copie dans le projet
+claude.ai Nomad Suite (`claude/`). À lire avant tout rangement ou envoi vers `Contexte/`.
 
 **Un geste à la fois.** Jamais une liste d'actions à enchaîner : on demande un geste,
 on attend le retour, on enchaîne.
